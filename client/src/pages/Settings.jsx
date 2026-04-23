@@ -3002,7 +3002,7 @@ export default function Settings({ token, userRole }) {
         <h1 style={{ fontSize: 22, fontWeight: 'bold', color: BLUE, margin: 0 }}>⚙️ Settings</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <a
-            href="/api/blank-contract"
+            href={`/api/blank-contract?token=${token}`}
             download="PB_Contract_Template_BLANK.docx"
             style={{
               background: 'white',
