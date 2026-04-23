@@ -12,3 +12,9 @@ id = "A4ja9dKtqEEGUDjmw_kBM"
 uri = "file://PB_Contract_Template_BLANK.docx"
 type = "word_document"
 title = "PB Contract Template - Blank"
+
+[[outputs]]
+id = "GhMUmnoDfIIwsGr9LD7Z7"
+uri = "file://PB_Contract_Template_BLANK.pdf"
+type = "pdf"
+title = "PB Contract Template - Blank"
