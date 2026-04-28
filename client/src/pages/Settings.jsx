@@ -1997,6 +1997,25 @@ export default function Settings({ token, userRole }) {
     );
   };
 
+  const loadLogs = async (lines) => {
+    setLogsLoading(true);
+    setLogsError(null);
+    try {
+      const n = lines || logsLines;
+      setLogsLines(n);
+      const res = await fetch(`/api/settings/logs?lines=${n}`, { headers: { 'x-auth-token': token } });
+      if (!res.ok) {
+        const d = await res.json();
+        setLogsError(d.error || `Error ${res.status}`);
+      } else {
+        setLogsData(await res.json());
+      }
+    } catch (e) {
+      setLogsError('Could not reach server — ' + e.message);
+    }
+    setLogsLoading(false);
+  };
+
   const loadStatus = async () => {
     setStatusLoading(true);
     setStatusError(null);
@@ -2274,6 +2293,118 @@ export default function Settings({ token, userRole }) {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderLogs = () => {
+    const lines = logsPanel === 'error' ? (logsData?.error || []) : (logsData?.out || []);
+    const isError = (line) => /error|exception|uncaught|unhandled|fatal|crash/i.test(line);
+    const isWarn = (line) => /warn|deprecat/i.test(line);
+
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {['error', 'out'].map((p) => (
+              <button
+                key={p}
+                onClick={() => setLogsPanel(p)}
+                style={{
+                  padding: '6px 18px',
+                  borderRadius: 6,
+                  border: logsPanel === p ? 'none' : '1px solid #ddd',
+                  background: logsPanel === p ? (p === 'error' ? '#C62828' : BLUE) : '#f5f5f5',
+                  color: logsPanel === p ? 'white' : '#555',
+                  fontWeight: logsPanel === p ? 'bold' : 'normal',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                }}
+              >
+                {p === 'error' ? '🔴 Error Log' : '📋 Output Log'}
+                {logsData && (
+                  <span style={{ marginLeft: 6, opacity: 0.8, fontSize: 11 }}>
+                    ({p === 'error' ? logsData.error.length : logsData.out.length})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <select
+              value={logsLines}
+              onChange={(e) => loadLogs(parseInt(e.target.value))}
+              style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #ddd', fontSize: 13 }}
+            >
+              {[100, 200, 500, 1000].map((n) => (
+                <option key={n} value={n}>{n} lines</option>
+              ))}
+            </select>
+            <button
+              onClick={() => loadLogs(logsLines)}
+              disabled={logsLoading}
+              style={{
+                padding: '6px 16px',
+                background: BLUE,
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 'bold',
+              }}
+            >
+              {logsLoading ? '⏳' : '↻ Refresh'}
+            </button>
+          </div>
+        </div>
+
+        {logsError && (
+          <div style={{ padding: '10px 16px', background: '#fff3f3', border: '1px solid #ffcccc', borderRadius: 8, color: '#c00', fontSize: 13, marginBottom: 12 }}>
+            {logsError}
+          </div>
+        )}
+
+        {logsData && (
+          <div style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>
+            {logsData.paths[logsPanel]} — fetched {new Date(logsData.timestamp).toLocaleTimeString()}
+          </div>
+        )}
+
+        <div style={{
+          background: '#0d1117',
+          borderRadius: 8,
+          padding: '12px 14px',
+          fontFamily: 'monospace',
+          fontSize: 12,
+          lineHeight: 1.6,
+          maxHeight: 520,
+          overflowY: 'auto',
+          color: '#c9d1d9',
+        }}>
+          {!logsData && !logsLoading && (
+            <span style={{ color: '#666' }}>No logs loaded yet.</span>
+          )}
+          {logsLoading && <span style={{ color: '#888' }}>Loading logs…</span>}
+          {logsData && lines.length === 0 && (
+            <span style={{ color: '#666' }}>No entries in this log.</span>
+          )}
+          {lines.map((line, i) => (
+            <div
+              key={i}
+              style={{
+                color: isError(line) ? '#ff7b72' : isWarn(line) ? '#e3b341' : '#c9d1d9',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+                borderBottom: '1px solid #21262d',
+                paddingBottom: 2,
+                marginBottom: 2,
+              }}
+            >
+              {line}
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -3100,6 +3231,7 @@ export default function Settings({ token, userRole }) {
         {activeTab === 'Email Log' && renderEmailLog()}
         {activeTab === 'Secrets' && renderSecrets()}
         {activeTab === 'Status' && renderStatus()}
+        {activeTab === 'Logs' && renderLogs()}
       </div>
 
       {/* Email preview modal */}
