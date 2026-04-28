@@ -837,7 +837,7 @@ function buildContractHTML(data) {
 <hr class="rule">
 <div class="article-heading">Article I — The Work</div>
 
-${clauseHTML('1.1', `Contractor shall furnish all labor, materials, equipment, tools, supervision, and services necessary to complete the work (the "<strong>Work</strong>") at the Property in a good and workmanlike manner, in accordance with this Contract and all applicable laws, codes, and regulations, including <strong>780 CMR (Massachusetts State Building Code — 9th Edition and/or 10th Edition, as applicable based on the date of the permit application)</strong>, applicable municipal codes, NFPA 70 (National Electrical Code), and all other applicable federal, state, and local laws, ordinances, rules, and regulations.`)}
+${clauseHTML('1.1', `Contractor shall furnish all labor, materials, equipment, tools, supervision, and services necessary to complete the work (the "<strong>Work</strong>") at the Property in a good and workmanlike manner, in accordance with this Contract and all applicable laws, codes, and regulations, including <strong>780 CMR (Massachusetts State Building Code), as in effect on the date of permit application, including all Massachusetts amendments thereto</strong>, applicable municipal codes, NFPA 70 (National Electrical Code), and all other applicable federal, state, and local laws, ordinances, rules, and regulations.`)}
 
 ${clauseHTML('1.2', `The scope, inclusions, and exclusions of the Work are described in the <strong>Project Proposal &amp; Scope of Work, Proposal No. ${field(c.quote_number)}</strong>, dated <strong>${field(c.proposal_date)}</strong>, and <strong>Invoice No. ${field(c.invoice_number)}</strong> (collectively, the "<strong>Proposal</strong>"), which are incorporated herein by reference. In any conflict between this Contract and the Proposal, the terms of this Contract shall govern.`)}
 
@@ -911,7 +911,7 @@ ${clauseHTML(
   '7.2',
   `Permit fees and inspection charges are ${
     !job.has_permit
-      ? "not applicable to this scope of work per the parties' mutual determination at signing. Should a permit later be required due to a Change Order or code determination, permit fees shall be billed as a pass-through cost at actual cost without markup. See Article III, Clause 3.3."
+      ? "not anticipated for this scope of work based on the parties' current understanding; however, if a permit is subsequently required by law or by official determination of the applicable building department, permit fees shall be billed as a pass-through cost at actual cost without markup per Article III, Clause 3.3."
       : job.permit_paid_by === 'customer_direct'
         ? 'the responsibility of Owner, who agrees to pay the applicable municipal building department directly. Owner shall provide Contractor with written confirmation of payment and a copy of the issued permit before Contractor commences permitted work. Permit fees shall not appear on any Contractor invoice.'
         : 'itemized on Invoice 1 as a Pre-Construction Advance per Article III, Clause 3.3. Contractor shall pay permit fees directly to the issuing authority and document actual costs. Any overage or underage from the estimated permit fee shall be reflected as a credit or additional charge on the next applicable invoice.'
@@ -938,7 +938,7 @@ ${clauseHTML('9.2', `Punch list items remaining at Substantial Completion shall 
 <div class="article-heading">Article X — Mechanic's Lien Notice (M.G.L. c. 254)</div>
 
 <div class="notice">
-  <strong>NOTICE:</strong> Under M.G.L. c. 254, any contractor, subcontractor, laborer, or materialman who provides labor or materials for improvements to real property may file a lien against that property if not paid. Such lien may be filed even if Owner has paid the general contractor in full.
+  <strong>NOTICE:</strong> Under M.G.L. c. 254, any contractor, subcontractor, laborer, or materialman who provides labor or materials for improvements to real property may file a lien against that property if not paid. In certain circumstances, a lien may be filed by a subcontractor or materialman even if Owner has paid the general contractor in full, subject to the requirements and limitations of M.G.L. c. 254.
 </div>
 
 ${clauseHTML('10.1', `The notice above is provided pursuant to M.G.L. c. 254. Owner is advised that subcontractors and suppliers may have lien rights independent of payments made to Contractor.`)}
@@ -948,13 +948,13 @@ ${clauseHTML('10.2', `Contractor shall provide lien waivers from all subcontract
 <hr class="rule">
 <div class="article-heading">Article XI — Massachusetts HIC License Disclosure</div>
 
-${clauseHTML('11.1', `Preferred Builders General Services Inc. holds Massachusetts Home Improvement Contractor License No. <strong>HIC-197400</strong>, as required by M.G.L. c. 142A. All home improvement contractors performing residential contracting in Massachusetts must be registered with the Commonwealth. In addition, the project supervisor of record is <strong>Jackson Deaquino</strong>, who holds a Massachusetts Construction Supervisor License (<strong>CSL</strong>) No. <strong>${f(c.csl_number, '_______________')}</strong>, as required by 780 CMR 110.R5 (a/k/a CSL). The CSL holder is responsible for supervising the construction, reconstruction, alteration, repair, removal, or demolition of any building or structure in the Commonwealth.`)}
+${clauseHTML('11.1', `Preferred Builders General Services Inc. holds Massachusetts Home Improvement Contractor License No. <strong>HIC-197400</strong>, as required by M.G.L. c. 142A. All home improvement contractors performing residential contracting in Massachusetts must be registered with the Commonwealth. In addition, the project supervisor of record is <strong>Jackson Deaquino</strong>, who holds a Massachusetts Construction Supervisor License (<strong>CSL</strong>) No. <strong>${f(c.csl_number, '_______________')}</strong>, as required by M.G.L. c. 143 and the applicable provisions of 780 CMR governing construction supervisor licensing. The CSL holder is responsible for supervising the construction, reconstruction, alteration, repair, removal, or demolition of any building or structure in the Commonwealth.`)}
 ${clauseHTML('11.2', `The Arbitration &amp; Guaranty Fund (M.G.L. c. 142A §17) provides homeowners with recourse if a registered contractor fails to perform or causes damage. For information: <strong>www.mass.gov/hic</strong> or <strong>(617) 973-8700</strong>.`)}
 ${clauseHTML('11.3', `Per M.G.L. c. 142A, this Contract is in writing and contains all required disclosures. Owner acknowledges receipt of a fully executed copy of this Contract at or before the time of signing.`)}
 
 <!-- ARTICLE XII -->
 <hr class="rule">
-<div class="article-heading">Article XII — Three-Day Right of Rescission (M.G.L. c. 93 §48)</div>
+<div class="article-heading">Article XII — Three-Day Right of Rescission (M.G.L. c. 93 §48; see also 940 CMR 3.00 et seq.)</div>
 
 ${clauseHTML('12.1', `If this Agreement was signed at a location other than Contractor's principal place of business, Owner has the right to cancel this Agreement, without penalty or obligation, within <strong>three (3) business days</strong> of signing. No work shall commence and no funds shall be disbursed before expiration of the rescission period unless Owner waives this right in writing. Notice of cancellation must be in writing delivered or mailed to: <em>Preferred Builders General Services Inc., 37 Duck Mill Road, Fitchburg, MA 01420 — Attn: Jackson Deaquino, Project Manager.</em>`)}
 ${clauseHTML('12.2', `If Owner cancels within the rescission period, any deposit paid shall be returned within ten (10) business days of receipt of written notice of cancellation.`)}
@@ -966,7 +966,8 @@ ${clauseHTML('12.2', `If Owner cancels within the rescission period, any deposit
 ${clauseHTML('13.1', `The parties shall make a good-faith effort to resolve any dispute through direct negotiation before resorting to formal proceedings.`)}
 ${clauseHTML('13.2', `If direct negotiation fails, the dispute shall be submitted to non-binding mediation before a mutually agreed-upon mediator. Mediation costs shall be shared equally.`)}
 ${clauseHTML('13.3', `If mediation is unsuccessful, the dispute shall be submitted to binding arbitration pursuant to the Construction Industry Arbitration Rules of the American Arbitration Association then in effect. The arbitrator's award shall be final and binding. The prevailing party shall be entitled to recover reasonable attorneys' fees and costs.`)}
-${clauseHTML('13.4', `This Agreement shall be governed by the laws of the <strong>Commonwealth of Massachusetts</strong>, without regard to conflict-of-law principles.`)}
+${clauseHTML('13.4', `<strong>NOTICE TO OWNER:</strong> By agreeing to binding arbitration under §13.3, Owner waives the right to a jury trial or court proceeding for disputes covered by this clause. Owner is encouraged to consult with an attorney before signing if Owner has any questions about this provision.`)}
+${clauseHTML('13.5', `This Agreement shall be governed by the laws of the <strong>Commonwealth of Massachusetts</strong>, without regard to conflict-of-law principles.`)}
 
 <!-- ARTICLE XIV -->
 <hr class="rule">
@@ -990,7 +991,7 @@ ${clauseHTML('15.3', `Upon termination, Owner shall pay Contractor for all Work 
 ${clauseHTML('16.1', `<strong>Entire Agreement:</strong> This Agreement, together with the Proposal (Proposal No. ${field(c.quote_number)}, Invoice No. ${field(c.invoice_number)}) and Exhibit A, constitutes the entire agreement between the parties and supersedes all prior negotiations, representations, and agreements, whether oral or written.`)}
 ${clauseHTML('16.2', `<strong>Modifications:</strong> This Agreement may not be amended except by a written instrument signed by both parties. No waiver is effective unless in writing.`)}
 ${clauseHTML('16.3', `<strong>Severability:</strong> If any provision is held invalid or unenforceable, the remaining provisions shall continue in full force.`)}
-${clauseHTML('16.4', `<strong>Notices:</strong> All notices shall be in writing and delivered by hand, certified mail, or email with read receipt to the addresses set forth on the cover page.`)}
+${clauseHTML('16.4', `<strong>Notices:</strong> All notices shall be in writing. Notices of default, cure, or termination must be delivered by hand or sent by certified mail, return receipt requested, to the addresses set forth on the cover page. Email (with read receipt confirmation) is permitted for all routine notices and as a courtesy copy for termination notices, but shall not substitute for certified mail or hand delivery when this Agreement requires notice of default, cure, or termination.`)}
 ${clauseHTML('16.5', `<strong>Counterparts:</strong> This Agreement may be executed in counterparts, each deemed an original. Electronic or digital signatures shall be deemed valid and binding.`)}
 
 <!-- SIGNATURES -->

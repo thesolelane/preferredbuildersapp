@@ -18,3 +18,15 @@ id = "GhMUmnoDfIIwsGr9LD7Z7"
 uri = "file://PB_Contract_Template_BLANK.pdf"
 type = "pdf"
 title = "PB Contract Template - Blank"
+
+[[outputs]]
+id = "D_dI7kAtQOI4vHBY3T-FE"
+uri = "file://PB_Contract_CORRECTED.pdf"
+type = "pdf"
+title = "PB Contract — TOLF Corrected (PDF)"
+
+[[outputs]]
+id = "DaDRQQF9JOdWfqGqRZ8N4"
+uri = "file://PB_Contract_CORRECTED.docx"
+type = "word_document"
+title = "PB Contract — TOLF Corrected (DOCX)"
