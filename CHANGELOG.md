@@ -198,6 +198,15 @@ ALTER TABLE contacts ADD COLUMN pb_customer_number TEXT;
 
 ---
 
+### 2026-04-28 — TOLF-corrected contract ready for attorney submission (awaiting external sign-off)
+
+- [legal] Applied all 7 Ottley Law Firm (TOLF) contract review corrections to `server/services/contractTemplate.js`
+- [legal] Corrected contract artifacts verified ready for delivery: `PB_Contract_CORRECTED.docx` and `PB_Contract_CORRECTED.pdf`
+- [legal] Created attorney sign-off tracking record: `knowledge-base/legal/contract-attorney-signoff-2026-04-28.md`
+- [legal] Status: AWAITING EXTERNAL ACTION — Preferred Builders staff must email files to Ottley Law Firm and record attorney written confirmation in the tracking doc before template is activated
+
+---
+
 ## Template for next entry
 
 ### YYYY-MM-DD
