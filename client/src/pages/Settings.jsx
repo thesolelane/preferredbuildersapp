@@ -16,7 +16,7 @@ const BASE_TABS = [
 ];
 
 export default function Settings({ token, userRole }) {
-  const TABS = userRole === 'system_admin' ? [...BASE_TABS, 'Secrets', 'Status'] : BASE_TABS;
+  const TABS = userRole === 'system_admin' ? [...BASE_TABS, 'Secrets', 'Status', 'Logs'] : BASE_TABS;
 
   const [settings, setSettings] = useState({});
   const [activeTab, setActiveTab] = useState('Markup');
@@ -45,6 +45,12 @@ export default function Settings({ token, userRole }) {
   const [backupInfo, setBackupInfo] = useState(null);
   const [backupRunning, setBackupRunning] = useState(false);
   const [backupMsg, setBackupMsg] = useState(null);
+
+  const [logsData, setLogsData] = useState(null);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState(null);
+  const [logsPanel, setLogsPanel] = useState('error');
+  const [logsLines, setLogsLines] = useState(200);
 
   const [printerName, setPrinterName] = useState('');
   const [printerSaving, setPrinterSaving] = useState(false);
@@ -117,6 +123,9 @@ export default function Settings({ token, userRole }) {
           if (data && Array.isArray(data.ips)) setAllowedIps(data.ips);
         })
         .catch(() => {});
+    }
+    if (activeTab === 'Logs') {
+      loadLogs(200);
     }
   }, [activeTab]);
 
