@@ -194,6 +194,11 @@ function autoTask(db, lead, nextStage, performer) {
   if (!def) return null;
 
   try {
+    db.prepare(
+      `UPDATE tasks SET status = 'done', updated_at = CURRENT_TIMESTAMP
+       WHERE lead_id = ? AND task_type = 'lead' AND status IN ('pending', 'in_progress')`,
+    ).run(lead.id);
+
     const row = db
       .prepare(
         `
