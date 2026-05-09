@@ -267,6 +267,14 @@ ${inv.notes ? `<div style="padding:12px 16px;background:#f8f9ff;border-radius:6p
 </html>`;
 }
 
+router.get('/', requireAuth, (req, res) => {
+  const db = getDb();
+  const invs = db
+    .prepare('SELECT * FROM direct_invoices ORDER BY created_at DESC')
+    .all();
+  res.json({ invoices: invs });
+});
+
 router.get('/job/:jobId', requireAuth, (req, res) => {
   const db = getDb();
   const invs = db

@@ -13,6 +13,7 @@ import Vendors from './pages/Vendors';
 import Tasks from './pages/Tasks';
 import Leads from './pages/Leads';
 import Payments from './pages/Payments';
+import Invoices from './pages/Invoices';
 import MaterialTakeOff from './pages/MaterialTakeOff';
 import Analytics from './pages/Analytics';
 import FieldCamera from './pages/FieldCamera';
@@ -131,6 +132,7 @@ function App() {
           <Route path="/tasks" element={<Tasks token={token} />} />
           <Route path="/leads" element={<Leads token={token} />} />
           <Route path="/payments" element={<Payments token={token} />} />
+          <Route path="/invoices" element={<Invoices token={token} />} />
           <Route path="/takeoff" element={<MaterialTakeOff />} />
           <Route path="/analytics" element={<Analytics token={token} />} />
           <Route path="/reports" element={<Reports token={token} />} />
