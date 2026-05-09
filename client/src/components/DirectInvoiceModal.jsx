@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { showToast } from '../utils/toast';
 
 const BLUE = '#1B3A6B';
@@ -69,6 +69,11 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
       .filter(Boolean)
       .join(', ') || '';
 
+  const [contacts, setContacts] = useState([]);
+  const [contactSearch, setContactSearch] = useState('');
+  const [showContactDropdown, setShowContactDropdown] = useState(false);
+  const [linkedContactId, setLinkedContactId] = useState(null);
+
   const [toName, setToName] = useState(prefillName);
   const [toEmail, setToEmail] = useState(prefillEmail);
   const [toPhone, setToPhone] = useState(prefillPhone);
@@ -80,35 +85,67 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
+  useEffect(() => {
+    fetch('/api/contacts', { headers: { 'x-auth-token': token } })
+      .then((r) => r.json())
+      .then((data) => setContacts(data.contacts || []));
+  }, [token]);
+
+  const filteredContacts = contacts.filter((c) => {
+    if (!contactSearch.trim()) return true;
+    const q = contactSearch.toLowerCase();
+    return (
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.email || '').toLowerCase().includes(q) ||
+      (c.phone || '').toLowerCase().includes(q) ||
+      (c.serial_number || '').toLowerCase().includes(q)
+    );
+  });
+
+  const selectContact = (c) => {
+    setLinkedContactId(c.id);
+    setToName(c.name || '');
+    setToEmail(c.email || '');
+    setToPhone(c.phone || '');
+    setToAddress(
+      [c.address, c.city ? c.city + (c.state ? ', ' + c.state : '') : '']
+        .filter(Boolean)
+        .join(', '),
+    );
+    setContactSearch(c.name || c.serial_number || '');
+    setShowContactDropdown(false);
+  };
+
+  const clearContact = () => {
+    setLinkedContactId(null);
+    setContactSearch('');
+    setToName(prefillName);
+    setToEmail(prefillEmail);
+    setToPhone(prefillPhone);
+    setToAddress(prefillAddress);
+  };
+
   const { mat, tax, lab, total } = computeTotals(depts);
   const onlineFee = Math.round((total * ONLINE_FEE_PCT + ONLINE_FEE_FLAT) * 100) / 100;
   const onlineTotal = Math.round((total + onlineFee) * 100) / 100;
 
   const addDept = () => setDepts((p) => [...p, { dept: '', items: [{ ...EMPTY_ITEM }] }]);
-
   const removeDept = (di) => setDepts((p) => p.filter((_, i) => i !== di));
-
   const updateDeptName = (di, val) =>
     setDepts((p) => p.map((d, i) => (i === di ? { ...d, dept: val } : d)));
-
   const addItem = (di) =>
     setDepts((p) =>
       p.map((d, i) => (i === di ? { ...d, items: [...d.items, { ...EMPTY_ITEM }] } : d)),
     );
-
   const removeItem = (di, ii) =>
     setDepts((p) =>
       p.map((d, i) => (i === di ? { ...d, items: d.items.filter((_, j) => j !== ii) } : d)),
     );
-
   const updateItem = (di, ii, field, val) =>
     setDepts((p) =>
       p.map((d, i) =>
         i === di
-          ? {
-              ...d,
-              items: d.items.map((it, j) => (j === ii ? { ...it, [field]: val } : it)),
-            }
+          ? { ...d, items: d.items.map((it, j) => (j === ii ? { ...it, [field]: val } : it)) }
           : d,
       ),
     );
@@ -148,6 +185,7 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
 
     const payload = {
       job_id: jobId || null,
+      contact_id: linkedContactId || null,
       to_name: toName || null,
       to_email: toEmail || null,
       to_phone: toPhone || null,
@@ -265,7 +303,7 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
         </div>
 
         <div style={{ padding: 24 }}>
-          {/* Bill To */}
+          {/* Contact Picker */}
           <div style={{ marginBottom: 20 }}>
             <div
               style={{
@@ -274,14 +312,112 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                 color: '#888',
                 textTransform: 'uppercase',
                 letterSpacing: 1,
-                marginBottom: 10,
+                marginBottom: 8,
               }}
             >
               Bill To
             </div>
-            <div
-              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}
-            >
+
+            {/* Search existing contacts */}
+            <div style={{ position: 'relative', marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <input
+                    value={contactSearch}
+                    onChange={(e) => {
+                      setContactSearch(e.target.value);
+                      setShowContactDropdown(true);
+                      if (!e.target.value) clearContact();
+                    }}
+                    onFocus={() => setShowContactDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowContactDropdown(false), 180)}
+                    placeholder="Search existing contacts by name, email, or PB-XXXX…"
+                    style={{
+                      ...inp,
+                      background: linkedContactId ? '#f0f9ff' : 'white',
+                      borderColor: linkedContactId ? '#3B82F6' : '#C8D4E4',
+                    }}
+                  />
+                  {showContactDropdown && filteredContacts.length > 0 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        background: 'white',
+                        border: '1px solid #ddd',
+                        borderRadius: 6,
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                        zIndex: 200,
+                        maxHeight: 220,
+                        overflowY: 'auto',
+                      }}
+                    >
+                      {filteredContacts.slice(0, 12).map((c) => (
+                        <div
+                          key={c.id}
+                          onMouseDown={() => selectContact(c)}
+                          style={{
+                            padding: '9px 14px',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid #f5f5f5',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f4ff')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
+                        >
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>
+                              {c.name || '—'}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#888' }}>
+                              {[c.email, c.phone].filter(Boolean).join(' · ')}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 10, color: '#aaa', fontFamily: 'monospace' }}>
+                            {c.serial_number}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {linkedContactId && (
+                  <button
+                    onClick={clearContact}
+                    title="Clear contact"
+                    style={{
+                      background: 'none',
+                      border: '1px solid #ddd',
+                      borderRadius: 6,
+                      padding: '6px 10px',
+                      cursor: 'pointer',
+                      color: '#888',
+                      fontSize: 13,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    ✕ Clear
+                  </button>
+                )}
+              </div>
+              {linkedContactId && (
+                <div style={{ fontSize: 11, color: '#3B82F6', marginTop: 4, fontWeight: 600 }}>
+                  Linked to existing contact — fields auto-filled below
+                </div>
+              )}
+              {!linkedContactId && (
+                <div style={{ fontSize: 11, color: '#aaa', marginTop: 4 }}>
+                  Select an existing contact above, or fill in the fields below for a new contact.
+                </div>
+              )}
+            </div>
+
+            {/* Manual fields */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 3 }}>
                   Name *
@@ -379,7 +515,6 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                   overflow: 'hidden',
                 }}
               >
-                {/* Dept header */}
                 <div
                   style={{
                     background: '#f0f4ff',
@@ -426,7 +561,6 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                   )}
                 </div>
 
-                {/* Items */}
                 <div style={{ padding: '10px 12px' }}>
                   {dept.items.map((item, ii) => (
                     <div

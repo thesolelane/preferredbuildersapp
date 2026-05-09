@@ -65,13 +65,19 @@ export default function Invoices({ token }) {
       headers,
       body: JSON.stringify({ status: 'paid' }),
     });
-    if (res.ok) { load(); showToast('Invoice marked paid'); }
+    if (res.ok) {
+      load();
+      showToast('Invoice marked paid');
+    }
   };
 
   const deleteInv = async (inv) => {
     if (!(await showConfirm(`Delete invoice ${inv.invoice_number}?`))) return;
     const res = await fetch(`/api/direct-invoices/${inv.id}`, { method: 'DELETE', headers });
-    if (res.ok) { load(); showToast('Invoice deleted'); }
+    if (res.ok) {
+      load();
+      showToast('Invoice deleted');
+    }
   };
 
   const filtered = invoices.filter((inv) => {
@@ -107,7 +113,14 @@ export default function Invoices({ token }) {
         />
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+        }}
+      >
         <h2 style={{ color: BLUE, margin: 0, fontSize: 22 }}>Customer Invoices</h2>
         <button
           onClick={() => setShowModal(true)}
@@ -127,7 +140,14 @@ export default function Invoices({ token }) {
       </div>
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 14,
+          marginBottom: 24,
+        }}
+      >
         {[
           { label: 'Total Invoices', value: invoices.length, color: BLUE },
           { label: 'Outstanding', value: fmt(totalPending), color: '#3B82F6' },
@@ -143,7 +163,15 @@ export default function Invoices({ token }) {
               textAlign: 'center',
             }}
           >
-            <div style={{ fontSize: 11, color: '#888', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div
+              style={{
+                fontSize: 11,
+                color: '#888',
+                marginBottom: 4,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+            >
               {c.label}
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, color: c.color }}>{c.value}</div>
@@ -215,7 +243,15 @@ export default function Invoices({ token }) {
                   gap: 10,
                 }}
               >
-                <div style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: '#4F46E5', minWidth: 160 }}>
+                <div
+                  style={{
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#4F46E5',
+                    minWidth: 160,
+                  }}
+                >
                   {inv.invoice_number}
                 </div>
                 <div style={{ flex: 1, minWidth: 120 }}>
@@ -227,7 +263,15 @@ export default function Invoices({ token }) {
                   )}
                 </div>
                 <div style={{ fontSize: 13, color: '#555' }}>{fmtDate(inv.created_at)}</div>
-                <div style={{ fontWeight: 800, fontSize: 15, color: '#4F46E5', minWidth: 90, textAlign: 'right' }}>
+                <div
+                  style={{
+                    fontWeight: 800,
+                    fontSize: 15,
+                    color: '#4F46E5',
+                    minWidth: 90,
+                    textAlign: 'right',
+                  }}
+                >
                   {fmt(inv.total)}
                 </div>
                 <span
