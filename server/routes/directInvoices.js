@@ -70,18 +70,32 @@ function buildInvoiceHTML(inv, job, contact) {
     </tr>`;
     for (const item of dept.items) {
       const isMat = item.type === 'material';
+      const qty = item.qty != null ? item.qty : null;
+      const unitPrice = item.unit_price != null ? item.unit_price : null;
+      const qtyCell = isMat && qty != null
+        ? `<span style="font-weight:600">${qty}</span>`
+        : `<span style="color:#bbb">—</span>`;
+      const upCell = isMat && unitPrice != null
+        ? `$${fmt(unitPrice)}`
+        : `<span style="color:#bbb">—</span>`;
       itemsHTML += `<tr style="border-bottom:1px solid #f0f0f0">
         <td style="padding:7px 12px 7px 22px;font-size:12px;color:#333">
           ${item.description || (isMat ? 'Materials' : 'Labor')}
         </td>
-        <td style="padding:7px 12px;text-align:center;width:110px">
+        <td style="padding:7px 12px;text-align:center;width:90px">
           <span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;
             background:${isMat ? '#fff3e0' : '#e8f5e9'};
             color:${isMat ? '#E07B2A' : '#2E7D32'}">
             ${isMat ? 'Material' : 'Labor'}
           </span>
         </td>
-        <td style="padding:7px 12px;text-align:right;font-weight:600;font-size:12px;width:120px">
+        <td style="padding:7px 8px;text-align:center;font-size:12px;width:55px;color:#555">
+          ${qtyCell}
+        </td>
+        <td style="padding:7px 8px;text-align:right;font-size:12px;width:90px;color:#555">
+          ${upCell}
+        </td>
+        <td style="padding:7px 12px;text-align:right;font-weight:600;font-size:12px;width:110px">
           $${fmt(item.amount)}
         </td>
       </tr>`;
@@ -183,12 +197,14 @@ function buildInvoiceHTML(inv, job, contact) {
   <thead>
     <tr>
       <th>Description</th>
-      <th style="text-align:center;width:110px">Type</th>
-      <th style="text-align:right;width:120px">Amount</th>
+      <th style="text-align:center;width:90px">Type</th>
+      <th style="text-align:center;width:55px">Qty</th>
+      <th style="text-align:right;width:90px">Unit Price</th>
+      <th style="text-align:right;width:110px">Amount</th>
     </tr>
   </thead>
   <tbody>
-    ${itemsHTML || '<tr><td colspan="3" style="padding:14px;color:#aaa;text-align:center">No line items</td></tr>'}
+    ${itemsHTML || '<tr><td colspan="5" style="padding:14px;color:#aaa;text-align:center">No line items</td></tr>'}
   </tbody>
 </table>
 

@@ -31,7 +31,7 @@ const DEPARTMENTS = [
   'Other',
 ];
 
-const EMPTY_ITEM = { type: 'material', description: '', amount: '' };
+const EMPTY_ITEM = { type: 'material', description: '', qty: '1', unit_price: '', amount: '' };
 
 const fmt = (n) =>
   Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -45,12 +45,21 @@ const inp = {
   boxSizing: 'border-box',
 };
 
+function itemAmount(it) {
+  if (it.type === 'material') {
+    const q = parseFloat(it.qty) || 0;
+    const u = parseFloat(it.unit_price) || 0;
+    return q && u ? Math.round(q * u * 100) / 100 : parseFloat(it.amount) || 0;
+  }
+  return parseFloat(it.amount) || 0;
+}
+
 function computeTotals(depts) {
   let mat = 0;
   let lab = 0;
   for (const d of depts) {
     for (const it of d.items || []) {
-      const a = parseFloat(it.amount) || 0;
+      const a = itemAmount(it);
       if (it.type === 'material') mat += a;
       else if (it.type === 'labor') lab += a;
     }
@@ -165,9 +174,20 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
           showToast('All line items need a description', 'error');
           return false;
         }
-        if (!parseFloat(it.amount) || parseFloat(it.amount) <= 0) {
-          showToast('All line items need an amount greater than 0', 'error');
-          return false;
+        if (it.type === 'material') {
+          if (!(parseFloat(it.qty) > 0)) {
+            showToast('Material items need a quantity greater than 0', 'error');
+            return false;
+          }
+          if (!(parseFloat(it.unit_price) > 0)) {
+            showToast('Material items need a unit price greater than 0', 'error');
+            return false;
+          }
+        } else {
+          if (!(parseFloat(it.amount) > 0)) {
+            showToast('Labor items need an amount greater than 0', 'error');
+            return false;
+          }
         }
       }
     }
@@ -192,11 +212,23 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
       to_address: toAddress || null,
       line_items: depts.map((d) => ({
         dept: d.dept,
-        items: d.items.map((it) => ({
-          type: it.type,
-          description: it.description.trim(),
-          amount: parseFloat(it.amount),
-        })),
+        items: d.items.map((it) => {
+          const amt = itemAmount(it);
+          if (it.type === 'material') {
+            return {
+              type: it.type,
+              description: it.description.trim(),
+              qty: parseFloat(it.qty) || 1,
+              unit_price: parseFloat(it.unit_price) || 0,
+              amount: amt,
+            };
+          }
+          return {
+            type: it.type,
+            description: it.description.trim(),
+            amount: amt,
+          };
+        }),
       })),
       notes: notes || null,
     };
@@ -562,12 +594,17 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                 </div>
 
                 <div style={{ padding: '10px 12px' }}>
-                  {dept.items.map((item, ii) => (
+                  {dept.items.map((item, ii) => {
+                    const isMat = item.type === 'material';
+                    const calcAmt = isMat ? itemAmount(item) : null;
+                    return (
                     <div
                       key={ii}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '110px 1fr 110px 32px',
+                        gridTemplateColumns: isMat
+                          ? '100px 1fr 60px 100px 90px 28px'
+                          : '100px 1fr 110px 28px',
                         gap: 8,
                         marginBottom: 8,
                         alignItems: 'center',
@@ -575,14 +612,22 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                     >
                       <select
                         value={item.type}
-                        onChange={(e) => updateItem(di, ii, 'type', e.target.value)}
+                        onChange={(e) => {
+                          updateItem(di, ii, 'type', e.target.value);
+                          if (e.target.value === 'labor') {
+                            updateItem(di, ii, 'qty', '');
+                            updateItem(di, ii, 'unit_price', '');
+                          } else {
+                            updateItem(di, ii, 'qty', item.qty || '1');
+                          }
+                        }}
                         style={{
                           ...inp,
                           fontWeight: 600,
                           fontSize: 12,
-                          background: item.type === 'material' ? '#fff3e0' : '#e8f5e9',
-                          color: item.type === 'material' ? ORANGE : GREEN,
-                          borderColor: item.type === 'material' ? '#fcd34d' : '#86efac',
+                          background: isMat ? '#fff3e0' : '#e8f5e9',
+                          color: isMat ? ORANGE : GREEN,
+                          borderColor: isMat ? '#fcd34d' : '#86efac',
                         }}
                       >
                         <option value="material">Material</option>
@@ -591,22 +636,56 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                       <input
                         value={item.description}
                         onChange={(e) => updateItem(di, ii, 'description', e.target.value)}
-                        placeholder={
-                          item.type === 'material'
-                            ? 'e.g. Architectural shingles'
-                            : 'e.g. Installation labor'
-                        }
+                        placeholder={isMat ? 'e.g. Architectural shingles' : 'e.g. Installation labor'}
                         style={{ ...inp, fontSize: 12 }}
                       />
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.amount}
-                        onChange={(e) => updateItem(di, ii, 'amount', e.target.value)}
-                        placeholder="0.00"
-                        style={{ ...inp, fontSize: 12, textAlign: 'right' }}
-                      />
+                      {isMat ? (
+                        <>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={item.qty}
+                            onChange={(e) => updateItem(di, ii, 'qty', e.target.value)}
+                            placeholder="Qty"
+                            title="Quantity"
+                            style={{ ...inp, fontSize: 12, textAlign: 'center' }}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.unit_price}
+                            onChange={(e) => updateItem(di, ii, 'unit_price', e.target.value)}
+                            placeholder="Unit $"
+                            title="Price per unit"
+                            style={{ ...inp, fontSize: 12, textAlign: 'right' }}
+                          />
+                          <div
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: ORANGE,
+                              textAlign: 'right',
+                              padding: '0 4px',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title="Quantity × Unit Price"
+                          >
+                            ${fmt(calcAmt)}
+                          </div>
+                        </>
+                      ) : (
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.amount}
+                          onChange={(e) => updateItem(di, ii, 'amount', e.target.value)}
+                          placeholder="Amount"
+                          style={{ ...inp, fontSize: 12, textAlign: 'right' }}
+                        />
+                      )}
                       {dept.items.length > 1 ? (
                         <button
                           onClick={() => removeItem(di, ii)}
@@ -625,7 +704,8 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                         <div />
                       )}
                     </div>
-                  ))}
+                  );
+                  })}
                   <button
                     onClick={() => addItem(di)}
                     style={{
