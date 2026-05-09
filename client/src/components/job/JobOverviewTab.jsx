@@ -45,9 +45,7 @@ export default function JobOverviewTab({
             ],
             [
               'Proposal #',
-              job.quote_number
-                ? `${job.quote_number}${job.version ? `/${job.version}` : ''}`
-                : '—',
+              job.quote_number ? `${job.quote_number}${job.version ? `/${job.version}` : ''}` : '—',
             ],
             ['Total Value', job.total_value ? `$${job.total_value.toLocaleString()}` : '—'],
             ['Deposit', job.deposit_amount ? `$${job.deposit_amount.toLocaleString()}` : '—'],
@@ -58,9 +56,7 @@ export default function JobOverviewTab({
                 <td style={{ padding: '10px 0', fontSize: 12, color: '#888', width: 160 }}>
                   {label}
                 </td>
-                <td style={{ padding: '10px 0', fontSize: 13, color: '#222' }}>
-                  {value || '—'}
-                </td>
+                <td style={{ padding: '10px 0', fontSize: 13, color: '#222' }}>{value || '—'}</td>
               </tr>
             ))}
         </tbody>
@@ -239,13 +235,11 @@ export default function JobOverviewTab({
           if (mg.yearBuilt) rows.push(['Year Built', mg.yearBuilt]);
           if (mg.buildingArea)
             rows.push(['Building Area', `${Number(mg.buildingArea).toLocaleString()} sq ft`]);
-          if (mg.lotSize)
-            rows.push(['Lot Size', `${Number(mg.lotSize).toLocaleString()} sq ft`]);
+          if (mg.lotSize) rows.push(['Lot Size', `${Number(mg.lotSize).toLocaleString()} sq ft`]);
           if (mg.totalAssessedValue)
             rows.push(['Assessed Value', `$${Number(mg.totalAssessedValue).toLocaleString()}`]);
           if (mg.useCodeLabel) rows.push(['Use', mg.useCodeLabel]);
-          if (mg.owner1)
-            rows.push(['Owner', [mg.owner1, mg.owner2].filter(Boolean).join(' / ')]);
+          if (mg.owner1) rows.push(['Owner', [mg.owner1, mg.owner2].filter(Boolean).join(' / ')]);
           if (mg.numBedrooms) rows.push(['Bedrooms', mg.numBedrooms]);
           if (mg.numBathrooms) rows.push(['Bathrooms', mg.numBathrooms]);
           if (mg.style) rows.push(['Style', mg.style]);
@@ -273,9 +267,7 @@ export default function JobOverviewTab({
               }}
             >
               <h3 style={{ color: BLUE, margin: 0, fontSize: 15 }}>Property Record</h3>
-              <div
-                style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}
-              >
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                 <LeadBadge />
                 {lc && (
                   <>
@@ -304,14 +296,10 @@ export default function JobOverviewTab({
                 <tbody>
                   {rows.map(([label, value]) => (
                     <tr key={label} style={{ borderBottom: '1px solid #e8edf5' }}>
-                      <td
-                        style={{ padding: '7px 0', fontSize: 12, color: '#888', width: 160 }}
-                      >
+                      <td style={{ padding: '7px 0', fontSize: 12, color: '#888', width: 160 }}>
                         {label}
                       </td>
-                      <td style={{ padding: '7px 0', fontSize: 13, color: '#222' }}>
-                        {value}
-                      </td>
+                      <td style={{ padding: '7px 0', fontSize: 13, color: '#222' }}>{value}</td>
                     </tr>
                   ))}
                 </tbody>

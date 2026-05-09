@@ -127,11 +127,15 @@ router.get('/:id/job-files', requireAuth, (req, res) => {
     const jobId = req.params.id;
 
     const jobPhotos = db
-      .prepare('SELECT id, filename, original_name, caption, uploaded_at FROM job_photos WHERE job_id = ? ORDER BY uploaded_at DESC')
+      .prepare(
+        'SELECT id, filename, original_name, caption, uploaded_at FROM job_photos WHERE job_id = ? ORDER BY uploaded_at DESC',
+      )
       .all(jobId);
 
     const fieldPhotos = db
-      .prepare('SELECT id, filename, location_label, taken_at as uploaded_at FROM field_photos WHERE job_id = ? ORDER BY taken_at DESC')
+      .prepare(
+        'SELECT id, filename, location_label, taken_at as uploaded_at FROM field_photos WHERE job_id = ? ORDER BY taken_at DESC',
+      )
       .all(jobId);
 
     const files = [
@@ -196,7 +200,13 @@ router.post('/:id/extract-from-job-files', requireAuth, async (req, res) => {
 
       const fileBuffer = fs.readFileSync(filePath);
       const ext = path.extname(safeFilename).toLowerCase();
-      const mimeMap = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' };
+      const mimeMap = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp',
+      };
       const mime = mimeMap[ext] || 'image/jpeg';
 
       if (!SUPPORTED.includes(mime)) {

@@ -577,6 +577,41 @@ async function initDatabase() {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_vendors_type   ON vendors(type)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_vendors_active ON vendors(active)`);
 
+  // ── Direct Invoices (customer-facing billing invoices) ────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS direct_invoices (
+      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+      invoice_number     TEXT NOT NULL UNIQUE,
+      job_id             TEXT,
+      contact_id         INTEGER,
+      to_name            TEXT,
+      to_email           TEXT,
+      to_phone           TEXT,
+      to_address         TEXT,
+      line_items         TEXT NOT NULL DEFAULT '[]',
+      materials_subtotal REAL NOT NULL DEFAULT 0,
+      tax_amount         REAL NOT NULL DEFAULT 0,
+      labor_subtotal     REAL NOT NULL DEFAULT 0,
+      total              REAL NOT NULL DEFAULT 0,
+      notes              TEXT,
+      status             TEXT NOT NULL DEFAULT 'draft',
+      created_by         TEXT,
+      issued_at          DATETIME,
+      paid_at            DATETIME,
+      created_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at         DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_direct_invoices_job_id ON direct_invoices(job_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_direct_invoices_status ON direct_invoices(status)`);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS direct_invoice_seq (
+      id  INTEGER PRIMARY KEY CHECK (id = 1),
+      seq INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  db.prepare('INSERT OR IGNORE INTO direct_invoice_seq (id, seq) VALUES (1, 0)').run();
+
   // ── Migration: add pb_customer_number to contacts (new format: PB-C-XXXX) ────
   // The existing customer_number column uses PB-C-YEAR-NNNN format.
   // We add pb_customer_number as a simpler sequential PB-C-XXXX identifier.

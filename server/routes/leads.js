@@ -675,19 +675,15 @@ router.post('/:id/documents', requireAuth, async (req, res) => {
         `INSERT INTO lead_documents (lead_id, filename, original_name, mime_type, file_size, uploaded_by)
          VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .run(
-        req.params.id,
-        filename,
-        file.name,
-        file.mimetype,
-        file.size,
-        req.user?.name || 'staff',
-      );
+      .run(req.params.id, filename, file.name, file.mimetype, file.size, req.user?.name || 'staff');
 
-    const doc = db
-      .prepare('SELECT * FROM lead_documents WHERE id = ?')
-      .get(row.lastInsertRowid);
-    logAudit(null, 'lead_doc_upload', `Lead #${req.params.id}: uploaded "${file.name}"`, req.user?.name);
+    const doc = db.prepare('SELECT * FROM lead_documents WHERE id = ?').get(row.lastInsertRowid);
+    logAudit(
+      null,
+      'lead_doc_upload',
+      `Lead #${req.params.id}: uploaded "${file.name}"`,
+      req.user?.name,
+    );
     res.json({ document: doc });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -706,7 +702,12 @@ router.delete('/:id/documents/:docId', requireAuth, (req, res) => {
     const filePath = path.join(LEAD_DOCS_DIR, String(req.params.id), doc.filename);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     db.prepare('DELETE FROM lead_documents WHERE id = ?').run(doc.id);
-    logAudit(null, 'lead_doc_delete', `Lead #${req.params.id}: deleted "${doc.original_name}"`, req.user?.name);
+    logAudit(
+      null,
+      'lead_doc_delete',
+      `Lead #${req.params.id}: deleted "${doc.original_name}"`,
+      req.user?.name,
+    );
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

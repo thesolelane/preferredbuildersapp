@@ -123,7 +123,11 @@ router.post('/dm', requireAuth, (req, res) => {
           process.env.APP_URL ||
           (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : '');
         const escHtml = (str) =>
-          str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+          str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
         const preview = escHtml(message.trim().slice(0, 80));
         sendEmail({
           to: recipientRow.email,

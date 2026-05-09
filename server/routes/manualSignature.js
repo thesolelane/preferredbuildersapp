@@ -45,18 +45,27 @@ router.post('/:jobId', requireAuth, async (req, res) => {
 
   // Determine new job status from document type
   const newStatus =
-    doc_type === 'contract' ? 'contract_signed' :
-    doc_type === 'proposal' ? 'proposal_approved' :
-    null;
+    doc_type === 'contract'
+      ? 'contract_signed'
+      : doc_type === 'proposal'
+        ? 'proposal_approved'
+        : null;
 
   if (newStatus) {
-    db.prepare('UPDATE jobs SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newStatus, jobId);
+    db.prepare('UPDATE jobs SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(
+      newStatus,
+      jobId,
+    );
   }
 
   // Audit log
   const actor = req.user?.name || req.user?.email || 'staff';
   const label = doc_type === 'contract' ? 'Contract' : 'Proposal';
-  logAudit(jobId, 'manual_signature_upload', `${label} manually signed doc uploaded by ${actor}. File: ${filename}`);
+  logAudit(
+    jobId,
+    'manual_signature_upload',
+    `${label} manually signed doc uploaded by ${actor}. File: ${filename}`,
+  );
 
   // Real-time push — triggers Dashboard to reload
   notifyJobUpdate(jobId, 'manual_signature', { doc_type, filename });

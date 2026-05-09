@@ -31,8 +31,8 @@ async function enrichProperty(db, type, id, address) {
     console.log(`[PropertyEnrichment] Starting enrichment for ${type} ${id} at "${address}"`);
 
     let massGisData = null;
-    let mrpcData    = null;
-    let leadData    = null;
+    let mrpcData = null;
+    let leadData = null;
 
     // ── MassGIS L3 Parcel lookup (statewide: year built, areas, assessed value,
     //    lot dimensions from polygon geometry, estimated building perimeter) ──
@@ -61,8 +61,8 @@ async function enrichProperty(db, type, id, address) {
       if (mrpcData) {
         console.log(
           `[PropertyEnrichment] MRPC found for ${type} ${id} — ` +
-          `record card: ${mrpcData.recordCardUrl || 'none'}, ` +
-          `last sale: ${mrpcData.lastSaleDate || '—'} $${mrpcData.lastSalePrice || '—'}`
+            `record card: ${mrpcData.recordCardUrl || 'none'}, ` +
+            `last sale: ${mrpcData.lastSaleDate || '—'} $${mrpcData.lastSalePrice || '—'}`,
         );
       }
     } catch (err) {
@@ -84,9 +84,9 @@ async function enrichProperty(db, type, id, address) {
     }
 
     const propertyData = {
-      massGis:    massGisData,
-      mrpc:       mrpcData,
-      leadCheck:  leadData,
+      massGis: massGisData,
+      mrpc: mrpcData,
+      leadCheck: leadData,
       enrichedAt: new Date().toISOString(),
     };
 

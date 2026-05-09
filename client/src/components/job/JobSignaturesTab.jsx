@@ -351,12 +351,7 @@ export default function JobSignaturesTab({
               )}
               <div style={{ marginTop: 12, fontSize: 11, color: '#aaa' }}>
                 Link:{' '}
-                <a
-                  href={s.signing_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ color: BLUE }}
-                >
+                <a href={s.signing_url} target="_blank" rel="noreferrer" style={{ color: BLUE }}>
                   {s.signing_url}
                 </a>
               </div>

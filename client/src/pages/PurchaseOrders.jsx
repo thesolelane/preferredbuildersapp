@@ -351,7 +351,14 @@ function PODetailRow({ po, token, onAttachUploaded }) {
               <div>{fmtDate(po.closed_at)}</div>
             </div>
           )}
-          <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #e0e8f5', paddingTop: 10, marginTop: 4 }}>
+          <div
+            style={{
+              gridColumn: '1 / -1',
+              borderTop: '1px solid #e0e8f5',
+              paddingTop: 10,
+              marginTop: 4,
+            }}
+          >
             <div style={{ color: '#888', marginBottom: 6 }}>Attachment</div>
             {po.attachment_path ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -371,7 +378,14 @@ function PODetailRow({ po, token, onAttachUploaded }) {
                     disabled={uploading}
                     onChange={(e) => handleAttach(e.target.files[0])}
                   />
-                  <span style={{ fontSize: 11, color: '#888', textDecoration: 'underline', cursor: 'pointer' }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: '#888',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                    }}
+                  >
                     {uploading ? 'Uploading...' : 'Replace'}
                   </span>
                 </label>
@@ -385,7 +399,18 @@ function PODetailRow({ po, token, onAttachUploaded }) {
                   disabled={uploading}
                   onChange={(e) => handleAttach(e.target.files[0])}
                 />
-                <span style={{ display: 'inline-block', padding: '6px 12px', background: 'white', border: '1.5px dashed #C8D4E4', borderRadius: 6, fontSize: 11, color: '#888', cursor: 'pointer' }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    padding: '6px 12px',
+                    background: 'white',
+                    border: '1.5px dashed #C8D4E4',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    color: '#888',
+                    cursor: 'pointer',
+                  }}
+                >
                   {uploading ? 'Uploading...' : '📎 Attach invoice or document'}
                 </span>
               </label>

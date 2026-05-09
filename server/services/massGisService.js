@@ -25,8 +25,10 @@ function calcParcelDimensions(geometry) {
 
   const lngs = ring.map((p) => p[0]);
   const lats = ring.map((p) => p[1]);
-  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  const minLat = Math.min(...lats),
+    maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs),
+    maxLng = Math.max(...lngs);
   const midLat = ((minLat + maxLat) / 2) * (Math.PI / 180);
 
   // Earth radius in feet
@@ -34,9 +36,9 @@ function calcParcelDimensions(geometry) {
   const dLat = (maxLat - minLat) * (Math.PI / 180);
   const dLng = (maxLng - minLng) * (Math.PI / 180);
 
-  const depthFt  = Math.round(R * dLat);
-  const widthFt  = Math.round(R * Math.cos(midLat) * dLng);
-  const perimFt  = Math.round(2 * (widthFt + depthFt));
+  const depthFt = Math.round(R * dLat);
+  const widthFt = Math.round(R * Math.cos(midLat) * dLng);
+  const perimFt = Math.round(2 * (widthFt + depthFt));
 
   return { lotWidthFt: widthFt, lotDepthFt: depthFt, lotPerimeterFt: perimFt };
 }
@@ -279,8 +281,18 @@ async function lookupPropertyByAddress(fullAddress) {
 //   Vision:  https://gis.vgsi.com/<town>ma/parcel.aspx?pid=<PROP_ID>
 //   Patriot: https://<town>.patriotproperties.com/default.asp?town=<TOWN>&parcel=<MAP_PAR_ID>
 const PATRIOT_TOWNS = new Set([
-  'WORCESTER', 'SPRINGFIELD', 'LOWELL', 'CAMBRIDGE', 'NEWTON', 'SOMERVILLE',
-  'QUINCY', 'LYNN', 'FALL RIVER', 'NEW BEDFORD', 'WALTHAM', 'MEDFORD',
+  'WORCESTER',
+  'SPRINGFIELD',
+  'LOWELL',
+  'CAMBRIDGE',
+  'NEWTON',
+  'SOMERVILLE',
+  'QUINCY',
+  'LYNN',
+  'FALL RIVER',
+  'NEW BEDFORD',
+  'WALTHAM',
+  'MEDFORD',
 ]);
 
 function getAssessorUrl(town, propId, mapParId) {

@@ -11,7 +11,14 @@ export default function JobProposalTab({ proposalData, job, token }) {
         </div>
       ) : (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 16,
+            }}
+          >
             <h3 style={{ color: BLUE, margin: 0 }}>Proposal Summary</h3>
             <PrintButton
               jobId={job?.id}
@@ -20,9 +27,7 @@ export default function JobProposalTab({ proposalData, job, token }) {
               token={token}
             />
           </div>
-          <div
-            style={{ background: '#f8f9fa', borderRadius: 8, padding: 16, marginBottom: 16 }}
-          >
+          <div style={{ background: '#f8f9fa', borderRadius: 8, padding: 16, marginBottom: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
               <div>
                 <div style={{ fontSize: 11, color: '#888' }}>Total</div>

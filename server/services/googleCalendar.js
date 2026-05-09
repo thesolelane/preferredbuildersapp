@@ -193,9 +193,13 @@ async function createCalendarEvent(task, calendarId = 'primary', extraEmails = [
       try {
         const { getDb } = require('../db/database');
         const db = getDb();
-        db.prepare('UPDATE jobs SET calendar_event_id = ? WHERE id = ?')
-          .run(result.data.id, task.job_id || task.jobId);
-      } catch { /* non-fatal */ }
+        db.prepare('UPDATE jobs SET calendar_event_id = ? WHERE id = ?').run(
+          result.data.id,
+          task.job_id || task.jobId,
+        );
+      } catch {
+        /* non-fatal */
+      }
     }
 
     return result.data.htmlLink || null;

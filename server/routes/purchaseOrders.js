@@ -304,7 +304,7 @@ router.post('/:id/attachment', requireAuth, async (req, res) => {
   }
 
   db.prepare(
-    'UPDATE purchase_orders SET attachment_path = ?, attachment_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    'UPDATE purchase_orders SET attachment_path = ?, attachment_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
   ).run(`/po-attachments/${req.params.id}/${filename}`, file.name, req.params.id);
 
   const po = db.prepare('SELECT * FROM purchase_orders WHERE id = ?').get(req.params.id);

@@ -55,7 +55,9 @@ export default function JobHistoryTab({
               <tr style={{ background: BLUE, color: 'white' }}>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Version</th>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Date</th>
-                <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>Total Value</th>
+                <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>
+                  Total Value
+                </th>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Status</th>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Source</th>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}></th>
@@ -82,11 +84,7 @@ export default function JobHistoryTab({
                       <tr
                         key={v.id}
                         style={{
-                          background: isCurrent
-                            ? '#EEF3FB'
-                            : i % 2 === 0
-                              ? 'white'
-                              : '#f8f8f8',
+                          background: isCurrent ? '#EEF3FB' : i % 2 === 0 ? 'white' : '#f8f8f8',
                           borderBottom: '1px solid #eee',
                         }}
                       >

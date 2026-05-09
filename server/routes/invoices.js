@@ -442,7 +442,7 @@ ${inv.notes ? `<div class="section"><h3>Notes</h3><p style="font-size:13px">${in
 
 <div class="footer">
   Preferred Builders General Services Inc. · MA License #CS-109171 · 978-377-1784<br>
-  Please make checks payable to: <strong>Preferred Builders General Services Inc.</strong>
+  Please make your check or money order payable to: <strong>Preferred Builders General Services Inc.</strong>
 </div>
 </body></html>`;
 

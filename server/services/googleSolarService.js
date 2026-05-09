@@ -13,15 +13,20 @@ function isConfigured() {
 
 function fetchJson(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, { timeout: 10000 }, (res) => {
-      const chunks = [];
-      res.on('data', (c) => chunks.push(c));
-      res.on('end', () => {
-        try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
-        catch (e) { reject(e); }
-      });
-      res.on('error', reject);
-    }).on('error', reject);
+    https
+      .get(url, { timeout: 10000 }, (res) => {
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(Buffer.concat(chunks).toString()));
+          } catch (e) {
+            reject(e);
+          }
+        });
+        res.on('error', reject);
+      })
+      .on('error', reject);
   });
 }
 
@@ -55,10 +60,21 @@ async function getSolarBuildingData(lat, lng) {
     const solar = data.solarPotential;
 
     // Bounding box dimensions
-    let widthFt = null, depthFt = null;
+    let widthFt = null,
+      depthFt = null;
     if (bbox) {
-      const widthM = haversineM(bbox.sw.latitude, bbox.sw.longitude, bbox.sw.latitude, bbox.ne.longitude);
-      const depthM = haversineM(bbox.sw.latitude, bbox.sw.longitude, bbox.ne.latitude, bbox.sw.longitude);
+      const widthM = haversineM(
+        bbox.sw.latitude,
+        bbox.sw.longitude,
+        bbox.sw.latitude,
+        bbox.ne.longitude,
+      );
+      const depthM = haversineM(
+        bbox.sw.latitude,
+        bbox.sw.longitude,
+        bbox.ne.latitude,
+        bbox.sw.longitude,
+      );
       widthFt = Math.round(widthM * M_TO_FT);
       depthFt = Math.round(depthM * M_TO_FT);
     }

@@ -19,9 +19,7 @@ export default function JobConversationTab({ conversations }) {
               borderLeft: `3px solid ${c.direction === 'inbound' ? BLUE : GREEN}`,
             }}
           >
-            <div
-              style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}
-            >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span
                 style={{
                   fontSize: 11,
@@ -35,9 +33,7 @@ export default function JobConversationTab({ conversations }) {
                 {new Date(c.created_at).toLocaleString()}
               </span>
             </div>
-            <div style={{ fontSize: 12, color: '#333', whiteSpace: 'pre-wrap' }}>
-              {c.message}
-            </div>
+            <div style={{ fontSize: 12, color: '#333', whiteSpace: 'pre-wrap' }}>{c.message}</div>
           </div>
         ))
       )}

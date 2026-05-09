@@ -32,7 +32,9 @@ function resolveChromiumPath() {
           { encoding: 'utf8' },
         ).trim();
         if (found) return found;
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     } else if (fs.existsSync(c)) {
       return c;
     }
@@ -125,7 +127,9 @@ async function screenshotSketch(recordCardUrl) {
         const frameUrl = frame.url();
         if (!frameUrl || frameUrl === 'about:blank') continue;
         // Find the frame that has the sketch image (usually contains <img> with sketch)
-        const sketchImg = await frame.$('img[src*="sketch"], img[src*="Sketch"], img[src*="drawing"]').catch(() => null);
+        const sketchImg = await frame
+          .$('img[src*="sketch"], img[src*="Sketch"], img[src*="drawing"]')
+          .catch(() => null);
         if (sketchImg) {
           const box = await sketchImg.boundingBox();
           if (box && box.width > 50 && box.height > 50) {
@@ -145,7 +149,10 @@ async function screenshotSketch(recordCardUrl) {
             const box = await img.boundingBox().catch(() => null);
             if (box && box.width > 100 && box.height > 80) {
               sketchBase64 = await img.screenshot({ encoding: 'base64' }).catch(() => null);
-              if (sketchBase64) { console.log('[SketchExtractor] Captured fallback sketch image'); break; }
+              if (sketchBase64) {
+                console.log('[SketchExtractor] Captured fallback sketch image');
+                break;
+              }
             }
           }
           if (sketchBase64) break;

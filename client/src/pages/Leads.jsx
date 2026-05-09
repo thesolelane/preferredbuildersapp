@@ -858,7 +858,10 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard })
         body: JSON.stringify({ body }),
       });
       const note = await res.json();
-      if (!res.ok) { showToast(note.error || 'Could not save note', 'error'); return; }
+      if (!res.ok) {
+        showToast(note.error || 'Could not save note', 'error');
+        return;
+      }
       setNoteInput('');
       setNotesList((prev) => [note, ...prev]);
     } catch {
@@ -899,7 +902,10 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard })
         body: form,
       });
       const data = await res.json();
-      if (!res.ok) { showToast(data.error || 'Upload failed', 'error'); return; }
+      if (!res.ok) {
+        showToast(data.error || 'Upload failed', 'error');
+        return;
+      }
       setLeadDocs((prev) => [data.document, ...prev]);
       setDocExpand(true);
       showToast('File uploaded');
@@ -974,7 +980,15 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard })
       >
         {/* LEFT COLUMN — info, docs, photos */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+              marginBottom: 8,
+            }}
+          >
             <span style={{ fontWeight: 700, color: '#1a1a2e', fontSize: 16 }}>
               {lead.caller_name}
             </span>
@@ -1093,12 +1107,22 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard })
           )}
 
           {/* Job address / scope summary */}
-          {jobAddr && <div style={{ marginTop: 10, fontSize: 13, color: '#555' }}>📍 {jobAddr}</div>}
+          {jobAddr && (
+            <div style={{ marginTop: 10, fontSize: 13, color: '#555' }}>📍 {jobAddr}</div>
+          )}
           {lead.job_email && (
             <div style={{ marginTop: 6, fontSize: 13, color: '#555' }}>✉ {lead.job_email}</div>
           )}
           {lead.job_scope && (
-            <div style={{ marginTop: 8, fontSize: 12, color: '#777', fontStyle: 'italic', lineHeight: 1.5 }}>
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 12,
+                color: '#777',
+                fontStyle: 'italic',
+                lineHeight: 1.5,
+              }}
+            >
               {lead.job_scope.length > 140 ? lead.job_scope.slice(0, 137) + '…' : lead.job_scope}
             </div>
           )}
@@ -1409,8 +1433,19 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard })
                       fontSize: 12,
                     }}
                   >
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {doc.mime_type === 'application/pdf' ? '📄' : doc.mime_type?.startsWith('image/') ? '🖼' : '📎'}{' '}
+                    <span
+                      style={{
+                        flex: 1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {doc.mime_type === 'application/pdf'
+                        ? '📄'
+                        : doc.mime_type?.startsWith('image/')
+                          ? '🖼'
+                          : '📎'}{' '}
                       {doc.original_name || doc.filename}
                     </span>
                     <span style={{ color: '#aaa', flexShrink: 0, fontSize: 11 }}>
@@ -1509,44 +1544,66 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard })
           </div>
 
           {/* Linked job badge */}
-      {lead.job_id && (
-        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <a
-            href={`/jobs/${lead.job_id}`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              fontSize: 11,
-              fontWeight: 600,
-              color: GREEN,
-              background: '#e8f5e9',
-              border: '1px solid #a5d6a7',
-              borderRadius: 12,
-              padding: '3px 10px',
-              textDecoration: 'none',
-            }}
-          >
-            🔗 Linked Job: {lead.job_pb_number || `#${lead.job_id}`}
-          </a>
-          {lead.job_status && (
-            <span style={{
-              background: getStatusStyle(lead.job_status).bg,
-              color: getStatusStyle(lead.job_status).color,
-              fontSize: 10,
-              fontWeight: 700,
-              borderRadius: 12,
-              padding: '3px 10px',
-            }}>
-              {getStatusStyle(lead.job_status).label}
-            </span>
+          {lead.job_id && (
+            <div
+              style={{
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                flexWrap: 'wrap',
+              }}
+            >
+              <a
+                href={`/jobs/${lead.job_id}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: GREEN,
+                  background: '#e8f5e9',
+                  border: '1px solid #a5d6a7',
+                  borderRadius: 12,
+                  padding: '3px 10px',
+                  textDecoration: 'none',
+                }}
+              >
+                🔗 Linked Job: {lead.job_pb_number || `#${lead.job_id}`}
+              </a>
+              {lead.job_status && (
+                <span
+                  style={{
+                    background: getStatusStyle(lead.job_status).bg,
+                    color: getStatusStyle(lead.job_status).color,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    borderRadius: 12,
+                    padding: '3px 10px',
+                  }}
+                >
+                  {getStatusStyle(lead.job_status).label}
+                </span>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
           {/* Notes ledger */}
           <div style={{ marginTop: 14 }}>
-            <label style={{ fontSize: 11, color: '#aaa', fontWeight: 600, display: 'block', marginBottom: 6, letterSpacing: '.3px', textTransform: 'uppercase' }}>Notes</label>
+            <label
+              style={{
+                fontSize: 11,
+                color: '#aaa',
+                fontWeight: 600,
+                display: 'block',
+                marginBottom: 6,
+                letterSpacing: '.3px',
+                textTransform: 'uppercase',
+              }}
+            >
+              Notes
+            </label>
             {notesList.length > 0 && (
               <div style={{ marginBottom: 8 }}>
                 {(notesExpanded ? notesList : notesList.slice(0, 1)).map((n) => {
@@ -1557,13 +1614,40 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard })
                     .join('')
                     .toUpperCase();
                   return (
-                    <div key={n.id} style={{ display: 'flex', gap: 7, marginBottom: 7, alignItems: 'flex-start' }}>
-                      <span style={{ flexShrink: 0, background: '#e0e8ff', color: BLUE, fontWeight: 700, fontSize: 10, borderRadius: 4, padding: '2px 5px', lineHeight: '16px', minWidth: 24, textAlign: 'center' }}>
+                    <div
+                      key={n.id}
+                      style={{ display: 'flex', gap: 7, marginBottom: 7, alignItems: 'flex-start' }}
+                    >
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          background: '#e0e8ff',
+                          color: BLUE,
+                          fontWeight: 700,
+                          fontSize: 10,
+                          borderRadius: 4,
+                          padding: '2px 5px',
+                          lineHeight: '16px',
+                          minWidth: 24,
+                          textAlign: 'center',
+                        }}
+                      >
                         {initials}
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, color: '#333', lineHeight: 1.45, wordBreak: 'break-word' }}>{n.body}</div>
-                        <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>{n.note_date} {n.note_time}</div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: '#333',
+                            lineHeight: 1.45,
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {n.body}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>
+                          {n.note_date} {n.note_time}
+                        </div>
                       </div>
                     </div>
                   );
@@ -1571,7 +1655,15 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard })
                 {notesList.length > 1 && (
                   <button
                     onClick={() => setNotesExpanded((v) => !v)}
-                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 11, color: BLUE, fontWeight: 600 }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      color: BLUE,
+                      fontWeight: 600,
+                    }}
                   >
                     {notesExpanded
                       ? '▲ Collapse'
@@ -1581,7 +1673,9 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard })
               </div>
             )}
             {notesList.length === 0 && (
-              <div style={{ fontSize: 12, color: '#bbb', fontStyle: 'italic', marginBottom: 8 }}>No notes yet</div>
+              <div style={{ fontSize: 12, color: '#bbb', fontStyle: 'italic', marginBottom: 8 }}>
+                No notes yet
+              </div>
             )}
             <textarea
               value={noteInput}

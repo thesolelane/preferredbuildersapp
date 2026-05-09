@@ -73,7 +73,9 @@ function requireOfficeIp(req, res, next) {
   const allowed = getAllowedIps();
   if (allowed.includes(ip)) return next();
   console.warn(`[Security] Settings access blocked from ${ip}`);
-  return res.status(403).json({ error: 'Settings can only be accessed from an authorized network.' });
+  return res
+    .status(403)
+    .json({ error: 'Settings can only be accessed from an authorized network.' });
 }
 
 module.exports = { ipWhitelist, requireOfficeIp, invalidateIpCache };

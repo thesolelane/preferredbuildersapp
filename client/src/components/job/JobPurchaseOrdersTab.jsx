@@ -295,7 +295,9 @@ export default function JobPurchaseOrdersTab({
 
       {/* PO List */}
       {poLoading ? (
-        <div style={{ color: '#888', fontSize: 13, padding: '20px 0' }}>Loading purchase orders...</div>
+        <div style={{ color: '#888', fontSize: 13, padding: '20px 0' }}>
+          Loading purchase orders...
+        </div>
       ) : pos.length === 0 ? (
         <div style={{ color: '#888', textAlign: 'center', padding: 40 }}>
           <div style={{ fontSize: 32, marginBottom: 10 }}>📦</div>
@@ -319,13 +321,27 @@ export default function JobPurchaseOrdersTab({
             {editingPO?.id === po.id ? (
               /* Edit form */
               <div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 10,
+                    marginBottom: 10,
+                  }}
+                >
                   <div>
                     <div style={{ fontSize: 11, color: '#888', marginBottom: 3 }}>Vendor</div>
                     <input
                       value={editingPO.vendor_name || ''}
                       onChange={(e) => setEditingPO((p) => ({ ...p, vendor_name: e.target.value }))}
-                      style={{ width: '100%', padding: '6px 9px', border: '1px solid #ddd', borderRadius: 5, fontSize: 13, boxSizing: 'border-box' }}
+                      style={{
+                        width: '100%',
+                        padding: '6px 9px',
+                        border: '1px solid #ddd',
+                        borderRadius: 5,
+                        fontSize: 13,
+                        boxSizing: 'border-box',
+                      }}
                     />
                   </div>
                   <div>
@@ -334,7 +350,14 @@ export default function JobPurchaseOrdersTab({
                       type="number"
                       value={editingPO.amount || ''}
                       onChange={(e) => setEditingPO((p) => ({ ...p, amount: e.target.value }))}
-                      style={{ width: '100%', padding: '6px 9px', border: '1px solid #ddd', borderRadius: 5, fontSize: 13, boxSizing: 'border-box' }}
+                      style={{
+                        width: '100%',
+                        padding: '6px 9px',
+                        border: '1px solid #ddd',
+                        borderRadius: 5,
+                        fontSize: 13,
+                        boxSizing: 'border-box',
+                      }}
                     />
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
@@ -342,7 +365,14 @@ export default function JobPurchaseOrdersTab({
                     <input
                       value={editingPO.description || ''}
                       onChange={(e) => setEditingPO((p) => ({ ...p, description: e.target.value }))}
-                      style={{ width: '100%', padding: '6px 9px', border: '1px solid #ddd', borderRadius: 5, fontSize: 13, boxSizing: 'border-box' }}
+                      style={{
+                        width: '100%',
+                        padding: '6px 9px',
+                        border: '1px solid #ddd',
+                        borderRadius: 5,
+                        fontSize: 13,
+                        boxSizing: 'border-box',
+                      }}
                     />
                   </div>
                   <div>
@@ -350,10 +380,20 @@ export default function JobPurchaseOrdersTab({
                     <select
                       value={editingPO.category || 'materials'}
                       onChange={(e) => setEditingPO((p) => ({ ...p, category: e.target.value }))}
-                      style={{ width: '100%', padding: '6px 9px', border: '1px solid #ddd', borderRadius: 5, fontSize: 13, background: 'white', boxSizing: 'border-box' }}
+                      style={{
+                        width: '100%',
+                        padding: '6px 9px',
+                        border: '1px solid #ddd',
+                        borderRadius: 5,
+                        fontSize: 13,
+                        background: 'white',
+                        boxSizing: 'border-box',
+                      }}
                     >
                       {PO_CATEGORIES.map((c) => (
-                        <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                        <option key={c} value={c}>
+                          {c.charAt(0).toUpperCase() + c.slice(1)}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -362,10 +402,20 @@ export default function JobPurchaseOrdersTab({
                     <select
                       value={editingPO.status || 'draft'}
                       onChange={(e) => setEditingPO((p) => ({ ...p, status: e.target.value }))}
-                      style={{ width: '100%', padding: '6px 9px', border: '1px solid #ddd', borderRadius: 5, fontSize: 13, background: 'white', boxSizing: 'border-box' }}
+                      style={{
+                        width: '100%',
+                        padding: '6px 9px',
+                        border: '1px solid #ddd',
+                        borderRadius: 5,
+                        fontSize: 13,
+                        background: 'white',
+                        boxSizing: 'border-box',
+                      }}
                     >
                       {PO_STATUSES.map((s) => (
-                        <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                        <option key={s} value={s}>
+                          {STATUS_LABEL[s]}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -374,7 +424,14 @@ export default function JobPurchaseOrdersTab({
                     <input
                       value={editingPO.notes || ''}
                       onChange={(e) => setEditingPO((p) => ({ ...p, notes: e.target.value }))}
-                      style={{ width: '100%', padding: '6px 9px', border: '1px solid #ddd', borderRadius: 5, fontSize: 13, boxSizing: 'border-box' }}
+                      style={{
+                        width: '100%',
+                        padding: '6px 9px',
+                        border: '1px solid #ddd',
+                        borderRadius: 5,
+                        fontSize: 13,
+                        boxSizing: 'border-box',
+                      }}
                     />
                   </div>
                 </div>
@@ -382,13 +439,30 @@ export default function JobPurchaseOrdersTab({
                   <button
                     onClick={saveEditPO}
                     disabled={savingPO}
-                    style={{ padding: '6px 16px', background: BLUE, color: 'white', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                    style={{
+                      padding: '6px 16px',
+                      background: BLUE,
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 5,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
                   >
                     {savingPO ? 'Saving...' : '💾 Save'}
                   </button>
                   <button
                     onClick={() => setEditingPO(null)}
-                    style={{ padding: '6px 14px', background: 'white', border: '1px solid #ddd', borderRadius: 5, fontSize: 12, color: '#666', cursor: 'pointer' }}
+                    style={{
+                      padding: '6px 14px',
+                      background: 'white',
+                      border: '1px solid #ddd',
+                      borderRadius: 5,
+                      fontSize: 12,
+                      color: '#666',
+                      cursor: 'pointer',
+                    }}
                   >
                     Cancel
                   </button>
@@ -397,7 +471,14 @@ export default function JobPurchaseOrdersTab({
             ) : (
               /* View mode */
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                  }}
+                >
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                       <span style={{ fontWeight: 700, color: BLUE, fontSize: 14 }}>
@@ -415,9 +496,7 @@ export default function JobPurchaseOrdersTab({
                       >
                         {STATUS_LABEL[po.status]}
                       </span>
-                      <span style={{ fontSize: 11, color: '#888' }}>
-                        {po.category}
-                      </span>
+                      <span style={{ fontSize: 11, color: '#888' }}>{po.category}</span>
                     </div>
                     <div style={{ fontSize: 13, color: '#333', marginBottom: 2 }}>
                       {po.description}
@@ -426,7 +505,9 @@ export default function JobPurchaseOrdersTab({
                       <div style={{ fontSize: 12, color: '#666' }}>Vendor: {po.vendor_name}</div>
                     )}
                     {po.notes && (
-                      <div style={{ fontSize: 12, color: '#888', marginTop: 4, fontStyle: 'italic' }}>
+                      <div
+                        style={{ fontSize: 12, color: '#888', marginTop: 4, fontStyle: 'italic' }}
+                      >
                         {po.notes}
                       </div>
                     )}
@@ -438,7 +519,15 @@ export default function JobPurchaseOrdersTab({
                     <div style={{ fontSize: 20, fontWeight: 700, color: BLUE }}>
                       ${Number(po.amount).toLocaleString()}
                     </div>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 6,
+                        marginTop: 8,
+                        flexWrap: 'wrap',
+                        justifyContent: 'flex-end',
+                      }}
+                    >
                       <select
                         value={po.status}
                         onChange={(e) => updatePOStatus(po.id, e.target.value)}
@@ -452,7 +541,9 @@ export default function JobPurchaseOrdersTab({
                         }}
                       >
                         {PO_STATUSES.map((s) => (
-                          <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                          <option key={s} value={s}>
+                            {STATUS_LABEL[s]}
+                          </option>
                         ))}
                       </select>
                       <button

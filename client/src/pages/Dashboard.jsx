@@ -133,7 +133,15 @@ export default function Dashboard({ token }) {
 
   // Live real-time dashboard updates via Socket.io
   useRealtime('dashboard', (update) => {
-    if (['signature', 'customer_photo_upload', 'customer_change_order', 'manual_signature', 'pipeline_update'].includes(update.eventType)) {
+    if (
+      [
+        'signature',
+        'customer_photo_upload',
+        'customer_change_order',
+        'manual_signature',
+        'pipeline_update',
+      ].includes(update.eventType)
+    ) {
       loadDashboard();
     }
   });
@@ -1240,38 +1248,84 @@ export default function Dashboard({ token }) {
                     e.target.value = '';
                   }}
                 />
-                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                <div
+                  style={{
+                    marginTop: 8,
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 6,
+                    alignItems: 'center',
+                  }}
+                >
                   <button
                     onClick={() => manualFileRef.current?.click()}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
                       padding: '5px 10px',
                       background: manualFiles.length ? '#e8f0fe' : '#f4f6fb',
                       border: `1px solid ${manualFiles.length ? '#1B3A6B' : '#ddd'}`,
-                      borderRadius: 6, cursor: 'pointer', fontSize: 11,
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      fontSize: 11,
                       color: manualFiles.length ? '#1B3A6B' : '#666',
                     }}
                   >
-                    📎 {manualFiles.length ? `${manualFiles.length} file${manualFiles.length > 1 ? 's' : ''} attached` : 'Attach Plans / Photos (optional)'}
+                    📎{' '}
+                    {manualFiles.length
+                      ? `${manualFiles.length} file${manualFiles.length > 1 ? 's' : ''} attached`
+                      : 'Attach Plans / Photos (optional)'}
                   </button>
                   {manualFiles.map((f, i) => (
-                    <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: 4,
-                      background: '#e8f0fe', borderRadius: 20,
-                      padding: '3px 8px', fontSize: 10, color: '#1B3A6B',
-                    }}>
-                      <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: '#e8f0fe',
+                        borderRadius: 20,
+                        padding: '3px 8px',
+                        fontSize: 10,
+                        color: '#1B3A6B',
+                      }}
+                    >
+                      <span
+                        style={{
+                          maxWidth: 100,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {f.name}
+                      </span>
                       <button
                         onClick={() => setManualFiles((prev) => prev.filter((_, j) => j !== i))}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0, color: '#555' }}
-                      >×</button>
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: 13,
+                          lineHeight: 1,
+                          padding: 0,
+                          color: '#555',
+                        }}
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
                 </div>
 
                 <button
                   onClick={submitManual}
-                  disabled={submitBusy || manualExtracting || (!manual.estimateText.trim() && !manualFiles.length)}
+                  disabled={
+                    submitBusy ||
+                    manualExtracting ||
+                    (!manual.estimateText.trim() && !manualFiles.length)
+                  }
                   style={{
                     marginTop: 12,
                     width: '100%',
@@ -1285,7 +1339,11 @@ export default function Dashboard({ token }) {
                     fontSize: 14,
                   }}
                 >
-                  {manualExtracting ? '📖 Reading files...' : submitBusy ? '⏳ Processing with AI...' : '🤖 Generate Proposal'}
+                  {manualExtracting
+                    ? '📖 Reading files...'
+                    : submitBusy
+                      ? '⏳ Processing with AI...'
+                      : '🤖 Generate Proposal'}
                 </button>
               </div>
             )}
@@ -1444,4 +1502,3 @@ export default function Dashboard({ token }) {
     </div>
   );
 }
-

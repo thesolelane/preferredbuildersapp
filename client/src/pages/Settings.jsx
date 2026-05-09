@@ -16,7 +16,8 @@ const BASE_TABS = [
 ];
 
 export default function Settings({ token, userRole }) {
-  const TABS = userRole === 'system_admin' ? [...BASE_TABS, 'Secrets', 'Status', 'Logs'] : BASE_TABS;
+  const TABS =
+    userRole === 'system_admin' ? [...BASE_TABS, 'Secrets', 'Status', 'Logs'] : BASE_TABS;
 
   const [settings, setSettings] = useState({});
   const [activeTab, setActiveTab] = useState('Markup');
@@ -1047,8 +1048,9 @@ export default function Settings({ token, userRole }) {
         Measurement &amp; Property Data
       </h3>
       <p style={{ color: '#888', fontSize: 13, marginBottom: 16 }}>
-        The AI bot uses these services to pull building dimensions, roof area, and property data automatically.
-        Free tiers run without any setup. Paid services are ordered per job and charged to the customer.
+        The AI bot uses these services to pull building dimensions, roof area, and property data
+        automatically. Free tiers run without any setup. Paid services are ordered per job and
+        charged to the customer.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         {[
@@ -1066,7 +1068,7 @@ export default function Settings({ token, userRole }) {
           {
             id: 'google_solar',
             name: 'Google Solar API',
-            desc: 'Roof area, per-segment pitch, and building bounding box from Google\'s aerial imagery. 10,000 calls/month free. Add GOOGLE_MAPS_API_KEY to activate.',
+            desc: "Roof area, per-segment pitch, and building bounding box from Google's aerial imagery. 10,000 calls/month free. Add GOOGLE_MAPS_API_KEY to activate.",
             cost: 'Free up to 10k calls/mo',
             status: integration.google_solar?.configured ? 'active' : 'not_configured',
             badge: 'FREE',
@@ -1118,26 +1120,86 @@ export default function Settings({ token, userRole }) {
                 background: svc.status === 'active' ? '#E3ECFF' : 'white',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                <span style={{ fontWeight: 'bold', fontSize: 14, color: BLUE, lineHeight: 1.2 }}>{svc.name}</span>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                  <span style={{ background: svc.badgeColor, color: 'white', padding: '1px 8px', borderRadius: 20, fontSize: 10, fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: 6,
+                }}
+              >
+                <span style={{ fontWeight: 'bold', fontSize: 14, color: BLUE, lineHeight: 1.2 }}>
+                  {svc.name}
+                </span>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    gap: 4,
+                  }}
+                >
+                  <span
+                    style={{
+                      background: svc.badgeColor,
+                      color: 'white',
+                      padding: '1px 8px',
+                      borderRadius: 20,
+                      fontSize: 10,
+                      fontWeight: 'bold',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {svc.badge}
                   </span>
-                  <span style={{ background: statusConfig.bg, color: statusConfig.color, padding: '1px 8px', borderRadius: 20, fontSize: 10, whiteSpace: 'nowrap' }}>
+                  <span
+                    style={{
+                      background: statusConfig.bg,
+                      color: statusConfig.color,
+                      padding: '1px 8px',
+                      borderRadius: 20,
+                      fontSize: 10,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {statusConfig.label}
                   </span>
                 </div>
               </div>
-              <p style={{ fontSize: 11, color: '#666', marginBottom: 6, lineHeight: 1.5 }}>{svc.desc}</p>
-              <p style={{ fontSize: 11, color: ORANGE, fontWeight: 'bold', marginBottom: svc.setupNote ? 8 : 0 }}>{svc.cost}</p>
+              <p style={{ fontSize: 11, color: '#666', marginBottom: 6, lineHeight: 1.5 }}>
+                {svc.desc}
+              </p>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: ORANGE,
+                  fontWeight: 'bold',
+                  marginBottom: svc.setupNote ? 8 : 0,
+                }}
+              >
+                {svc.cost}
+              </p>
               {svc.setupNote && svc.status !== 'active' && (
-                <div style={{ background: '#f5f5f5', borderRadius: 6, padding: '6px 10px', fontSize: 11, color: '#444', marginBottom: 6 }}>
+                <div
+                  style={{
+                    background: '#f5f5f5',
+                    borderRadius: 6,
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    color: '#444',
+                    marginBottom: 6,
+                  }}
+                >
                   {svc.setupNote}
                 </div>
               )}
               {svc.setupUrl && svc.status !== 'active' && (
-                <a href={svc.setupUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: BLUE, textDecoration: 'underline' }}>
+                <a
+                  href={svc.setupUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ fontSize: 11, color: BLUE, textDecoration: 'underline' }}
+                >
                   → Get API credentials
                 </a>
               )}
@@ -1152,14 +1214,39 @@ export default function Settings({ token, userRole }) {
       </h3>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 12 }}>
         {[
-          { name: 'Twilio / WhatsApp', key: 'whatsapp', desc: 'WhatsApp messaging for customer communication and AI bot', configured: integration.whatsapp?.configured },
-          { name: 'Perplexity AI', key: 'perplexity', desc: 'Web search for live permit fees, material prices, code lookup', configured: integration.perplexity?.configured },
-          { name: 'Google Calendar', key: 'gcal', desc: 'Calendar sync for jobs, tasks, and scheduling', configured: true },
+          {
+            name: 'Twilio / WhatsApp',
+            key: 'whatsapp',
+            desc: 'WhatsApp messaging for customer communication and AI bot',
+            configured: integration.whatsapp?.configured,
+          },
+          {
+            name: 'Perplexity AI',
+            key: 'perplexity',
+            desc: 'Web search for live permit fees, material prices, code lookup',
+            configured: integration.perplexity?.configured,
+          },
+          {
+            name: 'Google Calendar',
+            key: 'gcal',
+            desc: 'Calendar sync for jobs, tasks, and scheduling',
+            configured: true,
+          },
         ].map((svc) => (
-          <div key={svc.key} style={{ border: `1px solid ${svc.configured ? '#4CAF50' : '#ddd'}`, borderRadius: 8, padding: 14, background: svc.configured ? '#f0fff4' : 'white' }}>
+          <div
+            key={svc.key}
+            style={{
+              border: `1px solid ${svc.configured ? '#4CAF50' : '#ddd'}`,
+              borderRadius: 8,
+              padding: 14,
+              background: svc.configured ? '#f0fff4' : 'white',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontWeight: 'bold', fontSize: 12, color: BLUE }}>{svc.name}</span>
-              <span style={{ fontSize: 10, color: svc.configured ? '#2E7D32' : '#aaa' }}>{svc.configured ? '● ON' : '○ OFF'}</span>
+              <span style={{ fontSize: 10, color: svc.configured ? '#2E7D32' : '#aaa' }}>
+                {svc.configured ? '● ON' : '○ OFF'}
+              </span>
             </div>
             <p style={{ fontSize: 11, color: '#666', margin: 0 }}>{svc.desc}</p>
           </div>
@@ -1168,30 +1255,66 @@ export default function Settings({ token, userRole }) {
 
       {/* Hardware — Printer & Scanner */}
       <div style={{ marginTop: 28 }}>
-        <div style={{ fontWeight: 700, color: BLUE, fontSize: 14, marginBottom: 4 }}>🖨️ Hardware</div>
+        <div style={{ fontWeight: 700, color: BLUE, fontSize: 14, marginBottom: 4 }}>
+          🖨️ Hardware
+        </div>
         <p style={{ fontSize: 12, color: '#888', marginBottom: 14 }}>
           Configure the default printer and the scanner inbox folder on the Windows server.
         </p>
 
         {/* Printer name input */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            marginBottom: 10,
+          }}
+        >
           <input
             value={printerName}
             onChange={(e) => setPrinterName(e.target.value)}
             placeholder="e.g. HP77ED59 (HP OfficeJet 8010 series)"
-            style={{ flex: 1, minWidth: 260, padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 13 }}
+            style={{
+              flex: 1,
+              minWidth: 260,
+              padding: '8px 12px',
+              border: '1px solid #ddd',
+              borderRadius: 6,
+              fontSize: 13,
+            }}
           />
           <button
             onClick={savePrinterName}
             disabled={printerSaving}
-            style={{ padding: '8px 18px', background: BLUE, color: 'white', border: 'none', borderRadius: 6, cursor: printerSaving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 'bold', opacity: printerSaving ? 0.6 : 1 }}
+            style={{
+              padding: '8px 18px',
+              background: BLUE,
+              color: 'white',
+              border: 'none',
+              borderRadius: 6,
+              cursor: printerSaving ? 'not-allowed' : 'pointer',
+              fontSize: 13,
+              fontWeight: 'bold',
+              opacity: printerSaving ? 0.6 : 1,
+            }}
           >
             {printerSaved ? '✅ Saved' : printerSaving ? 'Saving...' : 'Save'}
           </button>
           <button
             onClick={detectPrinters}
             disabled={printerDetecting}
-            style={{ padding: '8px 14px', background: '#f4f6fb', border: '1px solid #ddd', borderRadius: 6, cursor: printerDetecting ? 'not-allowed' : 'pointer', fontSize: 13, color: '#555', opacity: printerDetecting ? 0.6 : 1 }}
+            style={{
+              padding: '8px 14px',
+              background: '#f4f6fb',
+              border: '1px solid #ddd',
+              borderRadius: 6,
+              cursor: printerDetecting ? 'not-allowed' : 'pointer',
+              fontSize: 13,
+              color: '#555',
+              opacity: printerDetecting ? 0.6 : 1,
+            }}
           >
             {printerDetecting ? 'Detecting...' : '🔍 Detect Printers'}
           </button>
@@ -1199,14 +1322,34 @@ export default function Settings({ token, userRole }) {
 
         {/* Detected printer list */}
         {printerList.length > 0 && (
-          <div style={{ background: '#f8f9fa', border: '1px solid #e0e7ef', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-            <div style={{ fontSize: 11, color: '#555', fontWeight: 'bold', marginBottom: 8 }}>Printers found on this machine — click to select:</div>
+          <div
+            style={{
+              background: '#f8f9fa',
+              border: '1px solid #e0e7ef',
+              borderRadius: 8,
+              padding: '10px 14px',
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ fontSize: 11, color: '#555', fontWeight: 'bold', marginBottom: 8 }}>
+              Printers found on this machine — click to select:
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {printerList.map((p) => (
                 <button
                   key={p}
                   onClick={() => setPrinterName(p)}
-                  style={{ textAlign: 'left', padding: '6px 10px', background: printerName === p ? '#E3ECFF' : 'white', border: `1px solid ${printerName === p ? BLUE : '#ddd'}`, borderRadius: 6, cursor: 'pointer', fontSize: 12, color: printerName === p ? BLUE : '#333', fontWeight: printerName === p ? 'bold' : 'normal' }}
+                  style={{
+                    textAlign: 'left',
+                    padding: '6px 10px',
+                    background: printerName === p ? '#E3ECFF' : 'white',
+                    border: `1px solid ${printerName === p ? BLUE : '#ddd'}`,
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    color: printerName === p ? BLUE : '#333',
+                    fontWeight: printerName === p ? 'bold' : 'normal',
+                  }}
                 >
                   🖨️ {p}
                 </button>
@@ -1217,28 +1360,51 @@ export default function Settings({ token, userRole }) {
 
         {/* Scan inbox folder */}
         <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 4 }}>📂 Scanner Inbox Folder</div>
+          <div style={{ fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 4 }}>
+            📂 Scanner Inbox Folder
+          </div>
           <p style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>
-            Set up <strong>Scan to Network Folder</strong> on the HP printer and point it here.
-            The app will read scanned files from this folder so you can attach them to jobs.
+            Set up <strong>Scan to Network Folder</strong> on the HP printer and point it here. The
+            app will read scanned files from this folder so you can attach them to jobs.
           </p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input
               value={scanInboxFolder}
               onChange={(e) => setScanInboxFolder(e.target.value)}
               placeholder={`e.g. C:\\Users\\theso\\Desktop\\scan_inbox`}
-              style={{ flex: 1, minWidth: 260, padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 12, fontFamily: 'monospace' }}
+              style={{
+                flex: 1,
+                minWidth: 260,
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: 6,
+                fontSize: 12,
+                fontFamily: 'monospace',
+              }}
             />
             <button
               onClick={saveScanFolder}
               disabled={scanFolderSaving}
-              style={{ padding: '8px 18px', background: BLUE, color: 'white', border: 'none', borderRadius: 6, cursor: scanFolderSaving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 'bold', opacity: scanFolderSaving ? 0.6 : 1 }}
+              style={{
+                padding: '8px 18px',
+                background: BLUE,
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: scanFolderSaving ? 'not-allowed' : 'pointer',
+                fontSize: 13,
+                fontWeight: 'bold',
+                opacity: scanFolderSaving ? 0.6 : 1,
+              }}
             >
               {scanFolderSaved ? '✅ Saved' : scanFolderSaving ? 'Saving...' : 'Save'}
             </button>
           </div>
           <div style={{ fontSize: 11, color: '#6b7280', marginTop: 8, lineHeight: 1.5 }}>
-            <strong>HP Setup:</strong> On the HP printer, go to <em>Scan → Scan to Network Folder</em>, create a shortcut pointing to this folder path (or a shared network path), and use that button to scan. The file will appear in the app within seconds.
+            <strong>HP Setup:</strong> On the HP printer, go to{' '}
+            <em>Scan → Scan to Network Folder</em>, create a shortcut pointing to this folder path
+            (or a shared network path), and use that button to scan. The file will appear in the app
+            within seconds.
           </div>
         </div>
       </div>
@@ -1246,21 +1412,60 @@ export default function Settings({ token, userRole }) {
       {/* IP Allowlist — system_admin only */}
       {userRole === 'system_admin' && (
         <div style={{ marginTop: 28 }}>
-          <div style={{ fontWeight: 700, color: BLUE, fontSize: 14, marginBottom: 4 }}>🔒 IP Access Control</div>
+          <div style={{ fontWeight: 700, color: BLUE, fontSize: 14, marginBottom: 4 }}>
+            🔒 IP Access Control
+          </div>
           <p style={{ fontSize: 12, color: '#888', marginBottom: 14 }}>
-            Only these IP addresses can access the app. The customer portal (signing) is always public.
-            Local network connections are always allowed automatically.
+            Only these IP addresses can access the app. The customer portal (signing) is always
+            public. Local network connections are always allowed automatically.
           </p>
-          <div style={{ background: '#f8f9fa', border: '1px solid #e0e7ef', borderRadius: 8, padding: '12px 16px', marginBottom: 12 }}>
+          <div
+            style={{
+              background: '#f8f9fa',
+              border: '1px solid #e0e7ef',
+              borderRadius: 8,
+              padding: '12px 16px',
+              marginBottom: 12,
+            }}
+          >
             {allowedIps.length === 0 && (
-              <div style={{ fontSize: 12, color: '#aaa', marginBottom: 8 }}>No IPs configured — all traffic allowed</div>
+              <div style={{ fontSize: 12, color: '#aaa', marginBottom: 8 }}>
+                No IPs configured — all traffic allowed
+              </div>
             )}
             {allowedIps.map((ip) => (
-              <div key={ip} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eee' }}>
-                <span style={{ fontSize: 13, fontFamily: 'monospace', color: '#1B3A6B', fontWeight: 600 }}>{ip}</span>
+              <div
+                key={ip}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '6px 0',
+                  borderBottom: '1px solid #eee',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontFamily: 'monospace',
+                    color: '#1B3A6B',
+                    fontWeight: 600,
+                  }}
+                >
+                  {ip}
+                </span>
                 <button
                   onClick={() => removeIp(ip)}
-                  style={{ padding: '3px 10px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 5, cursor: 'pointer', fontSize: 12, fontWeight: 'bold' }}
+                  style={{
+                    padding: '3px 10px',
+                    background: '#fee2e2',
+                    color: '#dc2626',
+                    border: '1px solid #fca5a5',
+                    borderRadius: 5,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 'bold',
+                  }}
                 >
                   Remove
                 </button>
@@ -1273,23 +1478,57 @@ export default function Settings({ token, userRole }) {
               onChange={(e) => setNewIp(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addIp()}
               placeholder="e.g. 73.45.100.22 (your home IP)"
-              style={{ flex: 1, minWidth: 220, padding: '8px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 13, fontFamily: 'monospace' }}
+              style={{
+                flex: 1,
+                minWidth: 220,
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: 6,
+                fontSize: 13,
+                fontFamily: 'monospace',
+              }}
             />
             <button
               onClick={addIp}
               disabled={ipSaving || !newIp.trim()}
-              style={{ padding: '8px 18px', background: BLUE, color: 'white', border: 'none', borderRadius: 6, cursor: ipSaving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 'bold', opacity: ipSaving ? 0.6 : 1 }}
+              style={{
+                padding: '8px 18px',
+                background: BLUE,
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: ipSaving ? 'not-allowed' : 'pointer',
+                fontSize: 13,
+                fontWeight: 'bold',
+                opacity: ipSaving ? 0.6 : 1,
+              }}
             >
               {ipSaving ? 'Adding...' : 'Add IP'}
             </button>
           </div>
           {ipMsg && (
-            <div style={{ marginTop: 8, fontSize: 12, color: ipMsg.type === 'success' ? '#2E7D32' : '#dc2626', fontWeight: 600 }}>
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 12,
+                color: ipMsg.type === 'success' ? '#2E7D32' : '#dc2626',
+                fontWeight: 600,
+              }}
+            >
               {ipMsg.type === 'success' ? '✅' : '❌'} {ipMsg.text}
             </div>
           )}
           <div style={{ fontSize: 11, color: '#6b7280', marginTop: 10, lineHeight: 1.5 }}>
-            <strong>To find your home IP:</strong> Visit <a href="https://whatismyip.com" target="_blank" rel="noreferrer" style={{ color: BLUE }}>whatismyip.com</a> from home and paste the address above.
+            <strong>To find your home IP:</strong> Visit{' '}
+            <a
+              href="https://whatismyip.com"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: BLUE }}
+            >
+              whatismyip.com
+            </a>{' '}
+            from home and paste the address above.
           </div>
         </div>
       )}
@@ -2003,7 +2242,9 @@ export default function Settings({ token, userRole }) {
     try {
       const n = lines || logsLines;
       setLogsLines(n);
-      const res = await fetch(`/api/settings/logs?lines=${n}`, { headers: { 'x-auth-token': token } });
+      const res = await fetch(`/api/settings/logs?lines=${n}`, {
+        headers: { 'x-auth-token': token },
+      });
       if (!res.ok) {
         const d = await res.json();
         setLogsError(d.error || `Error ${res.status}`);
@@ -2299,13 +2540,22 @@ export default function Settings({ token, userRole }) {
   };
 
   const renderLogs = () => {
-    const lines = logsPanel === 'error' ? (logsData?.error || []) : (logsData?.out || []);
+    const lines = logsPanel === 'error' ? logsData?.error || [] : logsData?.out || [];
     const isError = (line) => /error|exception|uncaught|unhandled|fatal|crash/i.test(line);
     const isWarn = (line) => /warn|deprecat/i.test(line);
 
     return (
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 16,
+            flexWrap: 'wrap',
+            gap: 10,
+          }}
+        >
           <div style={{ display: 'flex', gap: 8 }}>
             {['error', 'out'].map((p) => (
               <button
@@ -2335,10 +2585,17 @@ export default function Settings({ token, userRole }) {
             <select
               value={logsLines}
               onChange={(e) => loadLogs(parseInt(e.target.value))}
-              style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #ddd', fontSize: 13 }}
+              style={{
+                padding: '5px 10px',
+                borderRadius: 6,
+                border: '1px solid #ddd',
+                fontSize: 13,
+              }}
             >
               {[100, 200, 500, 1000].map((n) => (
-                <option key={n} value={n}>{n} lines</option>
+                <option key={n} value={n}>
+                  {n} lines
+                </option>
               ))}
             </select>
             <button
@@ -2361,31 +2618,42 @@ export default function Settings({ token, userRole }) {
         </div>
 
         {logsError && (
-          <div style={{ padding: '10px 16px', background: '#fff3f3', border: '1px solid #ffcccc', borderRadius: 8, color: '#c00', fontSize: 13, marginBottom: 12 }}>
+          <div
+            style={{
+              padding: '10px 16px',
+              background: '#fff3f3',
+              border: '1px solid #ffcccc',
+              borderRadius: 8,
+              color: '#c00',
+              fontSize: 13,
+              marginBottom: 12,
+            }}
+          >
             {logsError}
           </div>
         )}
 
         {logsData && (
           <div style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>
-            {logsData.paths[logsPanel]} — fetched {new Date(logsData.timestamp).toLocaleTimeString()}
+            {logsData.paths[logsPanel]} — fetched{' '}
+            {new Date(logsData.timestamp).toLocaleTimeString()}
           </div>
         )}
 
-        <div style={{
-          background: '#0d1117',
-          borderRadius: 8,
-          padding: '12px 14px',
-          fontFamily: 'monospace',
-          fontSize: 12,
-          lineHeight: 1.6,
-          maxHeight: 520,
-          overflowY: 'auto',
-          color: '#c9d1d9',
-        }}>
-          {!logsData && !logsLoading && (
-            <span style={{ color: '#666' }}>No logs loaded yet.</span>
-          )}
+        <div
+          style={{
+            background: '#0d1117',
+            borderRadius: 8,
+            padding: '12px 14px',
+            fontFamily: 'monospace',
+            fontSize: 12,
+            lineHeight: 1.6,
+            maxHeight: 520,
+            overflowY: 'auto',
+            color: '#c9d1d9',
+          }}
+        >
+          {!logsData && !logsLoading && <span style={{ color: '#666' }}>No logs loaded yet.</span>}
           {logsLoading && <span style={{ color: '#888' }}>Loading logs…</span>}
           {logsData && lines.length === 0 && (
             <span style={{ color: '#666' }}>No entries in this log.</span>

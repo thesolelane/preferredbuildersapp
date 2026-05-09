@@ -117,7 +117,14 @@ router.patch('/:id', requireAuth, (req, res) => {
   db.prepare(
     `UPDATE rfqs SET scope_text = ?, due_date = ?, vendor_id = ?, vendor_name = ?, vendor_email = ?
      WHERE id = ?`,
-  ).run(scope_text || null, due_date || null, vendor_id || null, vendor_name || null, vendor_email || null, req.params.id);
+  ).run(
+    scope_text || null,
+    due_date || null,
+    vendor_id || null,
+    vendor_name || null,
+    vendor_email || null,
+    req.params.id,
+  );
   const rfq = db.prepare('SELECT * FROM rfqs WHERE id = ?').get(req.params.id);
   res.json(rfq);
 });
@@ -125,12 +132,20 @@ router.patch('/:id', requireAuth, (req, res) => {
 // ── POST /api/rfq/:id/send — email RFQ to vendor ────────────────────────────
 router.post('/:id/send', requireAuth, async (req, res) => {
   const db = getDb();
-  const rfq = db.prepare('SELECT r.*, j.customer_name, j.project_address FROM rfqs r LEFT JOIN jobs j ON r.job_id = j.id WHERE r.id = ?').get(req.params.id);
+  const rfq = db
+    .prepare(
+      'SELECT r.*, j.customer_name, j.project_address FROM rfqs r LEFT JOIN jobs j ON r.job_id = j.id WHERE r.id = ?',
+    )
+    .get(req.params.id);
   if (!rfq) return res.status(404).json({ error: 'RFQ not found' });
   if (!rfq.vendor_email) return res.status(400).json({ error: 'No vendor email on this RFQ' });
 
   const dueText = rfq.due_date
-    ? new Date(rfq.due_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? new Date(rfq.due_date).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
     : 'as soon as possible';
 
   const html = `
@@ -163,7 +178,9 @@ router.post('/:id/send', requireAuth, async (req, res) => {
       jobId: rfq.job_id,
     });
 
-    db.prepare(`UPDATE rfqs SET status = 'sent', sent_via = 'email', sent_at = CURRENT_TIMESTAMP WHERE id = ?`).run(rfq.id);
+    db.prepare(
+      `UPDATE rfqs SET status = 'sent', sent_via = 'email', sent_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    ).run(rfq.id);
     const updated = db.prepare('SELECT * FROM rfqs WHERE id = ?').get(rfq.id);
     res.json(updated);
   } catch (err) {

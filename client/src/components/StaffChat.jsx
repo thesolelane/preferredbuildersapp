@@ -158,27 +158,24 @@ function StaffChatWidget({ token }) {
     } catch (_) {}
   }, []);
 
-  const showBrowserNotification = useCallback(
-    (title, body, onClickOpen) => {
-      if (typeof Notification === 'undefined') return;
-      const send = () => {
-        const n = new Notification(title, { body: body.slice(0, 80) });
-        n.onclick = () => {
-          window.focus();
-          onClickOpen();
-          n.close();
-        };
+  const showBrowserNotification = useCallback((title, body, onClickOpen) => {
+    if (typeof Notification === 'undefined') return;
+    const send = () => {
+      const n = new Notification(title, { body: body.slice(0, 80) });
+      n.onclick = () => {
+        window.focus();
+        onClickOpen();
+        n.close();
       };
-      if (Notification.permission === 'granted') {
-        send();
-      } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then((perm) => {
-          if (perm === 'granted') send();
-        });
-      }
-    },
-    [],
-  );
+    };
+    if (Notification.permission === 'granted') {
+      send();
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then((perm) => {
+        if (perm === 'granted') send();
+      });
+    }
+  }, []);
 
   // ── SSE listener ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -192,10 +189,8 @@ function StaffChatWidget({ token }) {
         if (!initialLoadRef.current) {
           playPing();
           if (document.hidden) {
-            showBrowserNotification(
-              `${msg.sender_name} — Preferred Builders`,
-              msg.message,
-              () => setOpen(true),
+            showBrowserNotification(`${msg.sender_name} — Preferred Builders`, msg.message, () =>
+              setOpen(true),
             );
           }
         }
@@ -216,10 +211,8 @@ function StaffChatWidget({ token }) {
         if (!initialLoadRef.current) {
           playPing();
           if (document.hidden) {
-            showBrowserNotification(
-              `${msg.sender_name} — Preferred Builders`,
-              msg.message,
-              () => setOpen(true),
+            showBrowserNotification(`${msg.sender_name} — Preferred Builders`, msg.message, () =>
+              setOpen(true),
             );
           }
         }
@@ -229,7 +222,9 @@ function StaffChatWidget({ token }) {
 
     es.onerror = () => {};
     // Mark initial load complete after SSE is connected
-    const initTimer = setTimeout(() => { initialLoadRef.current = false; }, 1000);
+    const initTimer = setTimeout(() => {
+      initialLoadRef.current = false;
+    }, 1000);
     return () => {
       clearTimeout(initTimer);
       es.close();

@@ -55,9 +55,7 @@ export default function RfqModal({
           }}
         >
           <div>
-            <div style={{ color: '#F5A623', fontWeight: 700, fontSize: 15 }}>
-              Request for Quote
-            </div>
+            <div style={{ color: '#F5A623', fontWeight: 700, fontSize: 15 }}>Request for Quote</div>
             <div style={{ color: '#ccc', fontSize: 12, marginTop: 2 }}>
               {rfqModal.trade} — {job?.project_address || 'Project'}
             </div>
@@ -80,7 +78,13 @@ export default function RfqModal({
         <div style={{ padding: '20px 22px' }}>
           {/* Scope text */}
           <label
-            style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 6 }}
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#555',
+              display: 'block',
+              marginBottom: 6,
+            }}
           >
             Scope of Work
           </label>
@@ -121,7 +125,14 @@ export default function RfqModal({
 
           {/* Vendor picker */}
           <label
-            style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginTop: 16, marginBottom: 6 }}
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#555',
+              display: 'block',
+              marginTop: 16,
+              marginBottom: 6,
+            }}
           >
             Sub / Vendor
           </label>
@@ -157,7 +168,14 @@ export default function RfqModal({
 
           {/* Vendor email */}
           <label
-            style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginTop: 12, marginBottom: 6 }}
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#555',
+              display: 'block',
+              marginTop: 12,
+              marginBottom: 6,
+            }}
           >
             Vendor Email
           </label>
@@ -178,7 +196,14 @@ export default function RfqModal({
 
           {/* Due date */}
           <label
-            style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginTop: 12, marginBottom: 6 }}
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#555',
+              display: 'block',
+              marginTop: 12,
+              marginBottom: 6,
+            }}
           >
             Quote Due By
           </label>
@@ -186,7 +211,12 @@ export default function RfqModal({
             type="date"
             value={rfqForm.dueDate}
             onChange={(e) => setRfqForm((f) => ({ ...f, dueDate: e.target.value }))}
-            style={{ border: '1px solid #dde3ed', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}
+            style={{
+              border: '1px solid #dde3ed',
+              borderRadius: 8,
+              padding: '8px 12px',
+              fontSize: 13,
+            }}
           />
 
           {/* Internal cost note */}

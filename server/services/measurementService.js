@@ -71,16 +71,22 @@ async function getFreeMeasurements(lat, lng, address) {
 function buildSummary(data, address) {
   const lines = [];
   if (address) lines.push(`**Building measurements for ${address}**`);
-  if (data.widthFt && data.depthFt) lines.push(`- Footprint (bounding box): ${data.widthFt} ft wide × ${data.depthFt} ft deep`);
+  if (data.widthFt && data.depthFt)
+    lines.push(`- Footprint (bounding box): ${data.widthFt} ft wide × ${data.depthFt} ft deep`);
   if (data.areaFt2) lines.push(`- Ground floor area: ~${data.areaFt2.toLocaleString()} sq ft`);
   if (data.perimeterFt) lines.push(`- Building perimeter: ~${data.perimeterFt} ft`);
-  if (data.roofAreaFt2) lines.push(`- Total roof area: ~${data.roofAreaFt2.toLocaleString()} sq ft`);
+  if (data.roofAreaFt2)
+    lines.push(`- Total roof area: ~${data.roofAreaFt2.toLocaleString()} sq ft`);
   if (data.roofSegments?.length) {
-    const seg = data.roofSegments.map((s) => `${s.areaFt2} sq ft at ${s.pitchDeg}° pitch`).join('; ');
+    const seg = data.roofSegments
+      .map((s) => `${s.areaFt2} sq ft at ${s.pitchDeg}° pitch`)
+      .join('; ');
     lines.push(`- Roof segments: ${seg}`);
   }
   lines.push(`- Source: ${data.sources.join(' + ')}`);
-  lines.push(`\n*Note: These are satellite-derived estimates. For exact wall dimensions and roof pitch, order a Hover or EagleView report (charged per job).*`);
+  lines.push(
+    `\n*Note: These are satellite-derived estimates. For exact wall dimensions and roof pitch, order a Hover or EagleView report (charged per job).*`,
+  );
   return lines.join('\n');
 }
 

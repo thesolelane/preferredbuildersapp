@@ -70,7 +70,9 @@ export default function PrintButton({ jobId, docType, hasPdf, token }) {
         title={`Print ${docType}`}
       >
         🖨️ Print {docType === 'proposal' ? 'Proposal' : 'Contract'}
-        {lastPrinted && <span style={{ fontSize: 10, color: GREEN, marginLeft: 4 }}>✓ {lastPrinted}</span>}
+        {lastPrinted && (
+          <span style={{ fontSize: 10, color: GREEN, marginLeft: 4 }}>✓ {lastPrinted}</span>
+        )}
       </button>
 
       {open && (
@@ -116,7 +118,9 @@ export default function PrintButton({ jobId, docType, hasPdf, token }) {
               >
                 <option value="">Use system default</option>
                 {printers.map((p) => (
-                  <option key={p} value={p}>{p}</option>
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
                 ))}
               </select>
             </div>

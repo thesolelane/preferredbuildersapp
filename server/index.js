@@ -45,8 +45,12 @@ const io = new SocketIOServer(httpServer, {
 });
 setIO(io);
 io.on('connection', (socket) => {
-  socket.on('join-job', (jobId) => { if (jobId) socket.join(String(jobId)); });
-  socket.on('leave-job', (jobId) => { if (jobId) socket.leave(String(jobId)); });
+  socket.on('join-job', (jobId) => {
+    if (jobId) socket.join(String(jobId));
+  });
+  socket.on('leave-job', (jobId) => {
+    if (jobId) socket.leave(String(jobId));
+  });
 });
 
 // ── SECURITY MIDDLEWARE ───────────────────────────────────────
@@ -278,6 +282,7 @@ app.use('/api/ai', require('./routes/aiDocs'));
 app.use('/api/lead-check', require('./routes/leadCheck'));
 app.use('/api/purchase-orders', require('./routes/purchaseOrders'));
 app.use('/api/staff-chat', require('./routes/staffChat'));
+app.use('/api/direct-invoices', require('./routes/directInvoices'));
 
 // ── SIGNING (public pages at /sign/* + api at /api/signing/*) ─
 app.use(require('./routes/signing'));

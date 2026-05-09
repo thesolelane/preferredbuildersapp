@@ -17,19 +17,26 @@ const BASE = 'https://mrmapper.mrpc.org/arcgis6443/rest/services';
 // serverType: 'FeatureServer' or 'MapServer'
 const MRPC_TOWNS = {
   AYE: null, // alias — see below
-  AYER:        { path: 'Ayer/Ayer_ParcelsFY26_TaxParFeatureService',         type: 'FeatureServer' },
-  CLINTON:     { path: 'Clinton/Clinton_Parcels_OpenGov',                    type: 'MapServer'     },
-  ROYALSTON:   { path: 'Royalston/Royalston_ParcelsFY25_TaxParFeatureService', type: 'FeatureServer' },
-  SHIRLEY:     { path: 'Shirley/Shirley_ParcelsFY26_TaxParFeatureService',   type: 'FeatureServer' },
-  TOWNSEND:    { path: 'Townsend/Townsend_ParcelsFY26',                      type: 'MapServer'     },
-  WESTMINSTER: { path: 'Westminster/Westminster_ParcelsFY25_TaxParFeatureService', type: 'FeatureServer' },
-  ASHBURNHAM:  null, // not yet available
-  TEMPLETON:   null, // not yet available
+  AYER: { path: 'Ayer/Ayer_ParcelsFY26_TaxParFeatureService', type: 'FeatureServer' },
+  CLINTON: { path: 'Clinton/Clinton_Parcels_OpenGov', type: 'MapServer' },
+  ROYALSTON: {
+    path: 'Royalston/Royalston_ParcelsFY25_TaxParFeatureService',
+    type: 'FeatureServer',
+  },
+  SHIRLEY: { path: 'Shirley/Shirley_ParcelsFY26_TaxParFeatureService', type: 'FeatureServer' },
+  TOWNSEND: { path: 'Townsend/Townsend_ParcelsFY26', type: 'MapServer' },
+  WESTMINSTER: {
+    path: 'Westminster/Westminster_ParcelsFY25_TaxParFeatureService',
+    type: 'FeatureServer',
+  },
+  ASHBURNHAM: null, // not yet available
+  TEMPLETON: null, // not yet available
 };
 // Remove placeholder nulls
 delete MRPC_TOWNS.AYE;
 
-const MRPC_FIELDS = 'RECORD_CARD,SITE_ADDR,PROP_ID,MAP_PAR_ID,OWNER1,LS_DATE,LS_PRICE,LS_BOOK,LS_PAGE,REG_ID,ZONING,YEAR_BUILT,BLD_AREA,STORIES,STYLE,USE_CODE,USE_DESC,TOTAL_VAL';
+const MRPC_FIELDS =
+  'RECORD_CARD,SITE_ADDR,PROP_ID,MAP_PAR_ID,OWNER1,LS_DATE,LS_PRICE,LS_BOOK,LS_PAGE,REG_ID,ZONING,YEAR_BUILT,BLD_AREA,STORIES,STYLE,USE_CODE,USE_DESC,TOTAL_VAL';
 
 function buildQueryUrl(townConfig, where) {
   const { path, type } = townConfig;
@@ -58,22 +65,22 @@ function formatLastSaleDate(raw) {
 function normalizeResult(attrs) {
   if (!attrs) return null;
   return {
-    recordCardUrl:    attrs.RECORD_CARD || null,
-    siteAddress:      attrs.SITE_ADDR   || null,
-    propId:           attrs.PROP_ID     || null,
-    owner:            attrs.OWNER1      || null,
-    lastSaleDate:     formatLastSaleDate(attrs.LS_DATE),
-    lastSalePrice:    attrs.LS_PRICE    || null,
-    lastSaleBook:     attrs.LS_BOOK     || null,
-    lastSalePage:     attrs.LS_PAGE     || null,
-    registryId:       attrs.REG_ID      || null,
-    zoning:           attrs.ZONING      || null,
-    yearBuilt:        attrs.YEAR_BUILT  || null,
-    buildingArea:     attrs.BLD_AREA    || null,
-    stories:          attrs.STORIES     || null,
-    style:            attrs.STYLE       || null,
-    useCode:          attrs.USE_CODE    || null,
-    useDesc:          attrs.USE_DESC    || null,
+    recordCardUrl: attrs.RECORD_CARD || null,
+    siteAddress: attrs.SITE_ADDR || null,
+    propId: attrs.PROP_ID || null,
+    owner: attrs.OWNER1 || null,
+    lastSaleDate: formatLastSaleDate(attrs.LS_DATE),
+    lastSalePrice: attrs.LS_PRICE || null,
+    lastSaleBook: attrs.LS_BOOK || null,
+    lastSalePage: attrs.LS_PAGE || null,
+    registryId: attrs.REG_ID || null,
+    zoning: attrs.ZONING || null,
+    yearBuilt: attrs.YEAR_BUILT || null,
+    buildingArea: attrs.BLD_AREA || null,
+    stories: attrs.STORIES || null,
+    style: attrs.STYLE || null,
+    useCode: attrs.USE_CODE || null,
+    useDesc: attrs.USE_DESC || null,
     totalAssessedValue: attrs.TOTAL_VAL || null,
     source: 'MRPC Parcel',
     queriedAt: new Date().toISOString(),
@@ -94,9 +101,7 @@ async function lookupMrpcProperty({ town, address } = {}) {
   if (!townConfig) return null; // Town not covered by MRPC
 
   const addrClean = (address || '').trim().toUpperCase().replace(/'/g, "''");
-  const where = addrClean
-    ? `SITE_ADDR LIKE '%${addrClean}%'`
-    : '1=1';
+  const where = addrClean ? `SITE_ADDR LIKE '%${addrClean}%'` : '1=1';
 
   const url = buildQueryUrl(townConfig, where);
 
@@ -127,14 +132,21 @@ async function lookupMrpcProperty({ town, address } = {}) {
   // If only one result, use it; otherwise pick closest address match
   if (features.length === 1) return normalizeResult(features[0].attributes);
 
-  const norm = (s) => (s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim();
+  const norm = (s) =>
+    (s || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9 ]/g, '')
+      .trim();
   const target = norm(address);
   let best = features[0];
   let bestScore = 0;
   for (const f of features) {
     const candidate = norm(f.attributes?.SITE_ADDR || '');
-    const overlap = target.split(' ').filter(t => candidate.includes(t)).length;
-    if (overlap > bestScore) { bestScore = overlap; best = f; }
+    const overlap = target.split(' ').filter((t) => candidate.includes(t)).length;
+    if (overlap > bestScore) {
+      bestScore = overlap;
+      best = f;
+    }
   }
   return normalizeResult(best.attributes);
 }
@@ -147,7 +159,7 @@ async function lookupMrpcByAddress(fullAddress) {
   if (!fullAddress) return null;
 
   // Extract town from "street, town, MA [zip]" format
-  const parts = fullAddress.split(',').map(p => p.trim());
+  const parts = fullAddress.split(',').map((p) => p.trim());
   let street = parts[0] || '';
   let town = '';
 
@@ -157,14 +169,20 @@ async function lookupMrpcByAddress(fullAddress) {
     if (/^MA\s*\d{0,5}$/i.test(p) || /^\d{5}$/.test(p)) continue;
     // Skip if it looks like "MA" embedded with a zip
     const stateMatch = p.match(/^([A-Za-z\s]+)\s+MA\s*\d{0,5}$/i);
-    if (stateMatch) { town = town || stateMatch[1].trim(); continue; }
+    if (stateMatch) {
+      town = town || stateMatch[1].trim();
+      continue;
+    }
     if (!town) town = p;
   }
 
   // Fallback: try last token before "MA"
   if (!town) {
     const m = fullAddress.match(/^(.*?),\s*([A-Za-z\s]+),?\s*MA/i);
-    if (m) { street = m[1].trim(); town = m[2].trim(); }
+    if (m) {
+      street = m[1].trim();
+      town = m[2].trim();
+    }
   }
 
   if (!town) return null;

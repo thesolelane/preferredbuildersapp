@@ -15,7 +15,14 @@ export default function JobContractTab({ contractData, job, token }) {
         </div>
       ) : (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 16,
+            }}
+          >
             <h3 style={{ color: BLUE, margin: 0 }}>Contract Summary</h3>
             <PrintButton
               jobId={job?.id}

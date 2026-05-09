@@ -35,30 +35,34 @@ function portalPageHTML({ job, sessions }) {
   const proposalSession = sessions.find((s) => s.doc_type === 'proposal' && s.status !== 'void');
   const contractSession = sessions.find((s) => s.doc_type === 'contract' && s.status !== 'void');
 
-  const statusLabel = {
-    received: 'Received',
-    callback_done: 'Callback Done',
-    appointment_booked: 'Appointment Booked',
-    site_visit_complete: 'Site Visit Complete',
-    quote_draft: 'Proposal Being Prepared',
-    quote_sent: 'Proposal Sent',
-    proposal_sent: 'Proposal Sent',
-    follow_up_1: 'Follow-Up Sent',
-    follow_up_2: 'Follow-Up Sent',
-    proposal_declined: 'Changes Requested',
-    signed: 'Contract Signed',
-    contract_signed: 'Contract Signed',
-    complete: 'Complete',
-    lost: 'Closed',
-  }[job.status] || job.status || 'In Progress';
+  const statusLabel =
+    {
+      received: 'Received',
+      callback_done: 'Callback Done',
+      appointment_booked: 'Appointment Booked',
+      site_visit_complete: 'Site Visit Complete',
+      quote_draft: 'Proposal Being Prepared',
+      quote_sent: 'Proposal Sent',
+      proposal_sent: 'Proposal Sent',
+      follow_up_1: 'Follow-Up Sent',
+      follow_up_2: 'Follow-Up Sent',
+      proposal_declined: 'Changes Requested',
+      signed: 'Contract Signed',
+      contract_signed: 'Contract Signed',
+      complete: 'Complete',
+      lost: 'Closed',
+    }[job.status] ||
+    job.status ||
+    'In Progress';
 
-  const statusColor = {
-    signed: '#16a34a',
-    contract_signed: '#16a34a',
-    complete: '#16a34a',
-    proposal_declined: '#c62828',
-    lost: '#c62828',
-  }[job.status] || '#1B3A6B';
+  const statusColor =
+    {
+      signed: '#16a34a',
+      contract_signed: '#16a34a',
+      complete: '#16a34a',
+      proposal_declined: '#c62828',
+      lost: '#c62828',
+    }[job.status] || '#1B3A6B';
 
   const amount = job.total_value ? `$${Number(job.total_value).toLocaleString()}` : '';
 
@@ -127,18 +131,30 @@ function portalPageHTML({ job, sessions }) {
   </div>
 
   <!-- Documents Card -->
-  ${proposalSession || contractSession ? `
+  ${
+    proposalSession || contractSession
+      ? `
   <div class="card">
     <div class="card-title">📄 Documents</div>
-    ${proposalSession ? `
+    ${
+      proposalSession
+        ? `
     <a href="/sign/p/${escHtml(proposalSession.token)}" class="btn ${proposalSession.status === 'signed' ? 'btn-outline' : 'btn-primary'}">
       ${proposalSession.status === 'signed' ? '✅ Proposal Signed' : '✍️ Review & Sign Proposal'}
-    </a>` : ''}
-    ${contractSession ? `
+    </a>`
+        : ''
+    }
+    ${
+      contractSession
+        ? `
     <a href="/sign/c/${escHtml(contractSession.token)}" class="btn ${contractSession.status === 'signed' ? 'btn-outline' : 'btn-primary'}">
       ${contractSession.status === 'signed' ? '✅ Contract Signed' : '✍️ Review & Sign Contract'}
-    </a>` : ''}
-  </div>` : ''}
+    </a>`
+        : ''
+    }
+  </div>`
+      : ''
+  }
 
   <!-- Photo Upload Card -->
   <div class="card">
@@ -255,10 +271,17 @@ function portalPageHTML({ job, sessions }) {
 router.get('/portal/:token', (req, res) => {
   const db = getDb();
   const job = db.prepare('SELECT * FROM jobs WHERE portal_token = ?').get(req.params.token);
-  if (!job) return res.status(404).send('<h2 style="font-family:sans-serif;padding:40px">Portal link not found. Please contact Preferred Builders.</h2>');
+  if (!job)
+    return res
+      .status(404)
+      .send(
+        '<h2 style="font-family:sans-serif;padding:40px">Portal link not found. Please contact Preferred Builders.</h2>',
+      );
 
   const sessions = db
-    .prepare("SELECT * FROM signing_sessions WHERE job_id = ? AND status != 'void' ORDER BY created_at DESC")
+    .prepare(
+      "SELECT * FROM signing_sessions WHERE job_id = ? AND status != 'void' ORDER BY created_at DESC",
+    )
     .all(job.id);
 
   res.send(portalPageHTML({ job, sessions }));
@@ -288,9 +311,20 @@ router.post('/api/portal/:token/photos', async (req, res) => {
 
   db.prepare(
     `INSERT INTO job_photos (job_id, filename, original_name, caption, location_label) VALUES (?, ?, ?, ?, ?)`,
-  ).run(job.id, path.join('portal_photos', String(job.id), filename), file.name, '', 'Customer Upload');
+  ).run(
+    job.id,
+    path.join('portal_photos', String(job.id), filename),
+    file.name,
+    '',
+    'Customer Upload',
+  );
 
-  logAudit(job.id, 'customer_photo_uploaded', `Customer uploaded photo via portal: ${file.name}`, 'customer');
+  logAudit(
+    job.id,
+    'customer_photo_uploaded',
+    `Customer uploaded photo via portal: ${file.name}`,
+    'customer',
+  );
 
   notifyClients('job_updated', {
     jobId: job.id,
@@ -336,9 +370,12 @@ router.post('/api/portal/:token/change-order', async (req, res) => {
   const desc = String(description).trim();
   const cost = Number(estimatedCost) || 0;
 
-  logAudit(job.id, 'customer_change_order',
+  logAudit(
+    job.id,
+    'customer_change_order',
     `Change order submitted via portal by ${submitterName}: ${desc.slice(0, 200)} | Est. Cost: $${cost}`,
-    'customer');
+    'customer',
+  );
 
   notifyClients('job_updated', {
     jobId: job.id,

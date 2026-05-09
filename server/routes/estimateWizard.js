@@ -30,10 +30,18 @@ function checkDuplicateJob(db, customerName, projectAddress) {
     const params = [];
     const normAddr = (projectAddress || '').trim().toLowerCase();
     const normName = (customerName || '').trim().toLowerCase();
-    if (normAddr) { conditions.push("LOWER(TRIM(project_address)) = ?"); params.push(normAddr); }
-    if (normName) { conditions.push("LOWER(TRIM(customer_name)) = ?"); params.push(normName); }
+    if (normAddr) {
+      conditions.push('LOWER(TRIM(project_address)) = ?');
+      params.push(normAddr);
+    }
+    if (normName) {
+      conditions.push('LOWER(TRIM(customer_name)) = ?');
+      params.push(normName);
+    }
     if (!conditions.length) return [];
-    return db.prepare(`
+    return db
+      .prepare(
+        `
       SELECT id, pb_number, customer_name, project_address, status,
              strftime('%m/%d/%Y', created_at) AS created_date
       FROM jobs
@@ -41,8 +49,12 @@ function checkDuplicateJob(db, customerName, projectAddress) {
         AND datetime(created_at) >= datetime('now', '-30 days')
         AND (${conditions.join(' OR ')})
       ORDER BY created_at DESC LIMIT 5
-    `).all(...params);
-  } catch { return []; }
+    `,
+      )
+      .all(...params);
+  } catch {
+    return [];
+  }
 }
 
 // ── Build trades narrative from selected trades payload ────────────────────

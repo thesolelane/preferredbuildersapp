@@ -73,9 +73,7 @@ export default function Layout({ children, token, onLogout, userName, userRole }
   const [configOpen, setConfigOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const CONFIG_NAV = CONFIG_NAV_ALL.filter(
-    (n) => !n.adminOnly || userRole === 'system_admin',
-  );
+  const CONFIG_NAV = CONFIG_NAV_ALL.filter((n) => !n.adminOnly || userRole === 'system_admin');
 
   const configActive = CONFIG_NAV.some((n) => n.path === pathname);
   const currentPage = ALL_NAV.find((n) => n.path === pathname);
@@ -137,7 +135,13 @@ export default function Layout({ children, token, onLogout, userName, userRole }
                   <img
                     src="/images/logo-bolinha.png"
                     alt="PB"
-                    style={{ width: 34, height: 34, objectFit: 'contain', borderRadius: '50%', flexShrink: 0 }}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      objectFit: 'contain',
+                      borderRadius: '50%',
+                      flexShrink: 0,
+                    }}
                   />
                   <div>
                     <div
@@ -151,7 +155,9 @@ export default function Layout({ children, token, onLogout, userName, userRole }
                     >
                       PREFERRED BUILDERS
                     </div>
-                    <div style={{ fontSize: 9, opacity: 0.6, marginTop: 1 }}>AI Contract System</div>
+                    <div style={{ fontSize: 9, opacity: 0.6, marginTop: 1 }}>
+                      AI Contract System
+                    </div>
                   </div>
                 </div>
               </>

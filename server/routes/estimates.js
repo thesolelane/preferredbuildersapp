@@ -33,15 +33,17 @@ function checkDuplicateJob(db, customerName, projectAddress) {
     const normAddr = (projectAddress || '').trim().toLowerCase();
     const normName = (customerName || '').trim().toLowerCase();
     if (normAddr) {
-      conditions.push("LOWER(TRIM(project_address)) = ?");
+      conditions.push('LOWER(TRIM(project_address)) = ?');
       params.push(normAddr);
     }
     if (normName) {
-      conditions.push("LOWER(TRIM(customer_name)) = ?");
+      conditions.push('LOWER(TRIM(customer_name)) = ?');
       params.push(normName);
     }
     if (!conditions.length) return [];
-    return db.prepare(`
+    return db
+      .prepare(
+        `
       SELECT id, pb_number, customer_name, project_address, status,
              strftime('%m/%d/%Y', created_at) AS created_date
       FROM jobs
@@ -50,7 +52,9 @@ function checkDuplicateJob(db, customerName, projectAddress) {
         AND (${conditions.join(' OR ')})
       ORDER BY created_at DESC
       LIMIT 5
-    `).all(...params);
+    `,
+      )
+      .all(...params);
   } catch {
     return [];
   }

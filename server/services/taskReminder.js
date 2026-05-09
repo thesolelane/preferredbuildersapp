@@ -233,7 +233,9 @@ async function runReachOutSMS() {
   if (!isBusinessHours()) return;
 
   const db = getDb();
-  const dueTasks = db.prepare(`
+  const dueTasks = db
+    .prepare(
+      `
     SELECT t.*,
            COALESCE(j.customer_name, l.caller_name)    AS customer_name,
            COALESCE(j.project_address, l.job_address)  AS project_address,
@@ -246,7 +248,9 @@ async function runReachOutSMS() {
       AND (t.title LIKE '%Reach Out%' OR t.task_type LIKE '%reach_out%')
       AND datetime(t.due_at) <= datetime('now')
       AND (t.reminded_at IS NULL OR datetime(t.reminded_at) <= datetime('now', '-23 hours'))
-  `).all();
+  `,
+    )
+    .all();
 
   for (const task of dueTasks) {
     const customerName = task.customer_name || 'Customer';
@@ -255,7 +259,9 @@ async function runReachOutSMS() {
 
     if (phone && !task.sms_opt_out) {
       const smsText = `Hi ${customerName}, just following up on your project${address ? ` at ${address}` : ''}. Any updates? Reply here or call us at 978-377-1784.`;
-      await sendWhatsApp(phone, smsText).catch((e) => console.warn('[TaskReminder] WhatsApp failed:', e.message));
+      await sendWhatsApp(phone, smsText).catch((e) =>
+        console.warn('[TaskReminder] WhatsApp failed:', e.message),
+      );
     } else if (task.sms_opt_out) {
       console.log(`[TaskReminder] Reach Out skipped — customer opted out (task #${task.id})`);
     }
@@ -269,8 +275,11 @@ async function runReachOutSMS() {
       emailType: 'task_reminder',
     }).catch((e) => console.warn('[TaskReminder] Reach Out email failed:', e.message));
 
-    db.prepare(`UPDATE tasks SET status = 'reminded', reminded_at = CURRENT_TIMESTAMP WHERE id = ?`).run(task.id);
-    if (task.job_id) notifyJobUpdate(task.job_id, 'task_reminder', { taskId: task.id, title: task.title });
+    db.prepare(
+      `UPDATE tasks SET status = 'reminded', reminded_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    ).run(task.id);
+    if (task.job_id)
+      notifyJobUpdate(task.job_id, 'task_reminder', { taskId: task.id, title: task.title });
     console.log(`[TaskReminder] Reach Out processed for task #${task.id} — ${customerName}`);
   }
 }
@@ -282,7 +291,9 @@ async function runDocumentFollowUp() {
   if (!isBusinessHours()) return;
 
   const db = getDb();
-  const sessions = db.prepare(`
+  const sessions = db
+    .prepare(
+      `
     SELECT ss.*, j.customer_name, j.customer_phone, j.project_address, j.sms_opt_out
     FROM signing_sessions ss
     JOIN jobs j ON ss.job_id = j.id
@@ -291,7 +302,9 @@ async function runDocumentFollowUp() {
       AND ss.opened_at IS NULL
       AND ss.followup_sms_at IS NULL
       AND datetime(ss.email_sent_at) <= datetime('now', '-3 hours')
-  `).all();
+  `,
+    )
+    .all();
 
   for (const session of sessions) {
     const customerName = session.customer_name || 'Customer';
@@ -300,25 +313,40 @@ async function runDocumentFollowUp() {
 
     if (phone && !session.sms_opt_out) {
       const msg = `Hi ${customerName}, did you get our ${docLabel} from Preferred Builders? It should be in your inbox — if you don't see it, check your junk/spam folder. Questions? Call us at 978-377-1784.`;
-      await sendWhatsApp(phone, msg).catch((e) => console.warn('[TaskReminder] Doc follow-up WhatsApp failed:', e.message));
-      console.log(`[TaskReminder] ${docLabel} follow-up SMS sent — ${customerName} (session #${session.id})`);
+      await sendWhatsApp(phone, msg).catch((e) =>
+        console.warn('[TaskReminder] Doc follow-up WhatsApp failed:', e.message),
+      );
+      console.log(
+        `[TaskReminder] ${docLabel} follow-up SMS sent — ${customerName} (session #${session.id})`,
+      );
     }
 
-    db.prepare(`UPDATE signing_sessions SET followup_sms_at = CURRENT_TIMESTAMP WHERE id = ?`).run(session.id);
-    if (session.job_id) notifyJobUpdate(session.job_id, 'document_followup_sent', { doc_type: session.doc_type });
+    db.prepare(`UPDATE signing_sessions SET followup_sms_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
+      session.id,
+    );
+    if (session.job_id)
+      notifyJobUpdate(session.job_id, 'document_followup_sent', { doc_type: session.doc_type });
   }
 }
 
 function startTaskReminderScheduler() {
   console.log('[TaskReminder] Scheduler started — checking every 60 minutes');
   runReminderTick().catch((e) => console.warn('[TaskReminder] Initial tick error:', e.message));
-  runReachOutSMS().catch((e) => console.warn('[TaskReminder] Reach Out initial tick error:', e.message));
-  runDocumentFollowUp().catch((e) => console.warn('[TaskReminder] Doc follow-up initial tick error:', e.message));
+  runReachOutSMS().catch((e) =>
+    console.warn('[TaskReminder] Reach Out initial tick error:', e.message),
+  );
+  runDocumentFollowUp().catch((e) =>
+    console.warn('[TaskReminder] Doc follow-up initial tick error:', e.message),
+  );
   setInterval(
     () => {
       runReminderTick().catch((e) => console.warn('[TaskReminder] Tick error:', e.message));
-      runReachOutSMS().catch((e) => console.warn('[TaskReminder] Reach Out tick error:', e.message));
-      runDocumentFollowUp().catch((e) => console.warn('[TaskReminder] Doc follow-up tick error:', e.message));
+      runReachOutSMS().catch((e) =>
+        console.warn('[TaskReminder] Reach Out tick error:', e.message),
+      );
+      runDocumentFollowUp().catch((e) =>
+        console.warn('[TaskReminder] Doc follow-up tick error:', e.message),
+      );
     },
     60 * 60 * 1000,
   );

@@ -48,8 +48,11 @@ async function getAccessToken() {
         const chunks = [];
         res.on('data', (c) => chunks.push(c));
         res.on('end', () => {
-          try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
-          catch (e) { reject(e); }
+          try {
+            resolve(JSON.parse(Buffer.concat(chunks).toString()));
+          } catch (e) {
+            reject(e);
+          }
         });
         res.on('error', reject);
       },
@@ -86,8 +89,11 @@ function apiRequest(method, path, body, token) {
         const chunks = [];
         res.on('data', (c) => chunks.push(c));
         res.on('end', () => {
-          try { resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString()) }); }
-          catch (e) { reject(e); }
+          try {
+            resolve({ status: res.statusCode, body: JSON.parse(Buffer.concat(chunks).toString()) });
+          } catch (e) {
+            reject(e);
+          }
         });
         res.on('error', reject);
       },
@@ -116,7 +122,10 @@ function apiRequest(method, path, body, token) {
  * @returns {Promise<{eagleViewOrderId, status, estimatedDelivery}|null>}
  */
 async function createOrder({ address, city, state, zip, reportType = 'Premium', jobId }) {
-  if (!isConfigured()) throw new Error('EagleView credentials not configured (EAGLEVIEW_CLIENT_ID / EAGLEVIEW_CLIENT_SECRET)');
+  if (!isConfigured())
+    throw new Error(
+      'EagleView credentials not configured (EAGLEVIEW_CLIENT_ID / EAGLEVIEW_CLIENT_SECRET)',
+    );
 
   const token = await getAccessToken();
 

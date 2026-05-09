@@ -119,7 +119,10 @@ export default function JobAssessmentTab({
   };
 
   const BASE_ADU_TRADES = [
-    { label: 'Foundation / Slab', kw: ['foundation', 'slab', 'concrete', 'crawl', 'pier', 'footing'] },
+    {
+      label: 'Foundation / Slab',
+      kw: ['foundation', 'slab', 'concrete', 'crawl', 'pier', 'footing'],
+    },
     { label: 'Framing', kw: ['framing', 'frame', 'structural'] },
     { label: 'Roofing', kw: ['roof', 'shingle', 'standing seam', 'metal roof'] },
     { label: 'Siding', kw: ['siding', 'hardie', 'fiber cement', 'clapboard', 'board & batten'] },
@@ -128,28 +131,46 @@ export default function JobAssessmentTab({
   ];
   const EXPECTED_TRADES = {
     garage: [
-      { label: 'Foundation / Slab', kw: ['foundation', 'slab', 'concrete', 'crawl', 'pier', 'footing'] },
+      {
+        label: 'Foundation / Slab',
+        kw: ['foundation', 'slab', 'concrete', 'crawl', 'pier', 'footing'],
+      },
       { label: 'Framing', kw: ['framing', 'frame', 'structural'] },
       { label: 'Roofing', kw: ['roof', 'shingle', 'standing seam', 'metal roof'] },
-      { label: 'Siding / Exterior', kw: ['siding', 'hardie', 'fiber cement', 'clapboard', 'board & batten'] },
+      {
+        label: 'Siding / Exterior',
+        kw: ['siding', 'hardie', 'fiber cement', 'clapboard', 'board & batten'],
+      },
       { label: 'Electrical', kw: ['electric', 'wiring', 'panel'] },
       { label: 'Permits', kw: ['permit', 'fee', 'stretch code'] },
     ],
     adu: [
       ...BASE_ADU_TRADES,
       { label: 'Plumbing', kw: ['plumbing', 'pipe', 'drain', 'fixture'] },
-      { label: 'HVAC / Mini-Split', kw: ['hvac', 'heat', 'mini-split', 'furnace', 'erv', 'mechanical'] },
+      {
+        label: 'HVAC / Mini-Split',
+        kw: ['hvac', 'heat', 'mini-split', 'furnace', 'erv', 'mechanical'],
+      },
       { label: 'Insulation', kw: ['insulation', 'spray foam', 'batt', 'blown'] },
       { label: 'Drywall / Plaster', kw: ['drywall', 'sheetrock', 'plaster', 'blueboard'] },
       ...(aduOnSeptic
         ? [
-            { label: 'Title 5 / Septic Inspection', kw: ['title 5', 'title5', 'septic inspection', 'perc test'] },
-            { label: 'Septic / Site Work', kw: ['septic', 'leach', 'site work', 'excavat', 'well'] },
+            {
+              label: 'Title 5 / Septic Inspection',
+              kw: ['title 5', 'title5', 'septic inspection', 'perc test'],
+            },
+            {
+              label: 'Septic / Site Work',
+              kw: ['septic', 'leach', 'site work', 'excavat', 'well'],
+            },
           ]
         : []),
     ],
     new_construction: [
-      { label: 'Foundation / Slab', kw: ['foundation', 'slab', 'concrete', 'crawl', 'pier', 'footing'] },
+      {
+        label: 'Foundation / Slab',
+        kw: ['foundation', 'slab', 'concrete', 'crawl', 'pier', 'footing'],
+      },
       { label: 'Framing', kw: ['framing', 'frame', 'structural'] },
       { label: 'Roofing', kw: ['roof', 'shingle', 'standing seam', 'metal roof', 'tpo'] },
       { label: 'Siding', kw: ['siding', 'hardie', 'fiber cement', 'clapboard', 'board & batten'] },
@@ -183,24 +204,114 @@ export default function JobAssessmentTab({
   );
 
   const BENCHMARKS = [
-    { kw: ['foundation', 'slab', 'concrete', 'basement', 'crawl', 'pier', 'footing'], note: '$18–55/sqft (sub cost)', low: 5000, high: 80000 },
-    { kw: ['framing', 'frame', 'structural', 'lvl', 'tji'], note: '$45–70/sqft labor+materials', low: 8000, high: 200000 },
-    { kw: ['roof', 'shingle', 'metal roofing', 'tpo', 'standing seam'], note: '$450–650/sq; $18–28/sqft metal', low: 3000, high: 60000 },
-    { kw: ['siding', 'hardie', 'fiber cement', 'vinyl siding', 'clapboard', 'board & batten'], note: '$4–20/sqft installed', low: 2000, high: 50000 },
-    { kw: ['window', 'door', 'entry door', 'garage door'], note: '$600–4,500 each by type', low: 600, high: 40000 },
-    { kw: ['electric', 'wiring', 'panel', 'service upgrade', 'circuit'], note: '$12–20/sqft full house', low: 2000, high: 50000 },
-    { kw: ['plumbing', 'pipe', 'drain', 'fixture', 'bath rough', 'kitchen rough'], note: '$1,500–8,000/trade scope', low: 1500, high: 30000 },
-    { kw: ['hvac', 'heat', 'mini-split', 'minisplit', 'furnace', 'erv', 'mechanical'], note: '$3,500–20,000+ per system', low: 3500, high: 50000 },
-    { kw: ['insulation', 'spray foam', 'batt', 'blown', 'rigid foam'], note: '$1.20–6/sqft by type', low: 800, high: 25000 },
-    { kw: ['drywall', 'sheetrock', 'plaster', 'skim coat', 'blueboard'], note: '$3.50–6/sqft hang & finish', low: 1500, high: 40000 },
-    { kw: ['permit', 'fee', 'inspection', 'compliance', 'stretch code'], note: '0.5–1.5% of project value', low: 500, high: 15000 },
-    { kw: ['demo', 'demolition', 'removal', 'tear out'], note: 'Varies by scope', low: null, high: null },
-    { kw: ['floor', 'tile', 'hardwood', 'carpet', 'lvp', 'vinyl plank'], note: '$5–25/sqft installed', low: 1000, high: 40000 },
-    { kw: ['cabinet', 'kitchen', 'counter', 'quartz', 'granite'], note: 'Mid-range kitchen $25K–50K', low: 5000, high: 80000 },
-    { kw: ['painting', 'interior paint', 'exterior paint'], note: '$1.50–4/sqft interior', low: 500, high: 15000 },
-    { kw: ['trim', 'baseboard', 'millwork', 'interior finish', 'crown molding'], note: 'Interior finishes pkg $35K–120K', low: 5000, high: 120000 },
-    { kw: ['septic', 'title 5', 'title5', 'leach field'], note: 'Title 5 + septic $3K–30K+', low: 1500, high: 60000 },
-    { kw: ['site work', 'excavat', 'grading', 'well', 'driveway'], note: 'Typically excluded — verify', low: null, high: null },
+    {
+      kw: ['foundation', 'slab', 'concrete', 'basement', 'crawl', 'pier', 'footing'],
+      note: '$18–55/sqft (sub cost)',
+      low: 5000,
+      high: 80000,
+    },
+    {
+      kw: ['framing', 'frame', 'structural', 'lvl', 'tji'],
+      note: '$45–70/sqft labor+materials',
+      low: 8000,
+      high: 200000,
+    },
+    {
+      kw: ['roof', 'shingle', 'metal roofing', 'tpo', 'standing seam'],
+      note: '$450–650/sq; $18–28/sqft metal',
+      low: 3000,
+      high: 60000,
+    },
+    {
+      kw: ['siding', 'hardie', 'fiber cement', 'vinyl siding', 'clapboard', 'board & batten'],
+      note: '$4–20/sqft installed',
+      low: 2000,
+      high: 50000,
+    },
+    {
+      kw: ['window', 'door', 'entry door', 'garage door'],
+      note: '$600–4,500 each by type',
+      low: 600,
+      high: 40000,
+    },
+    {
+      kw: ['electric', 'wiring', 'panel', 'service upgrade', 'circuit'],
+      note: '$12–20/sqft full house',
+      low: 2000,
+      high: 50000,
+    },
+    {
+      kw: ['plumbing', 'pipe', 'drain', 'fixture', 'bath rough', 'kitchen rough'],
+      note: '$1,500–8,000/trade scope',
+      low: 1500,
+      high: 30000,
+    },
+    {
+      kw: ['hvac', 'heat', 'mini-split', 'minisplit', 'furnace', 'erv', 'mechanical'],
+      note: '$3,500–20,000+ per system',
+      low: 3500,
+      high: 50000,
+    },
+    {
+      kw: ['insulation', 'spray foam', 'batt', 'blown', 'rigid foam'],
+      note: '$1.20–6/sqft by type',
+      low: 800,
+      high: 25000,
+    },
+    {
+      kw: ['drywall', 'sheetrock', 'plaster', 'skim coat', 'blueboard'],
+      note: '$3.50–6/sqft hang & finish',
+      low: 1500,
+      high: 40000,
+    },
+    {
+      kw: ['permit', 'fee', 'inspection', 'compliance', 'stretch code'],
+      note: '0.5–1.5% of project value',
+      low: 500,
+      high: 15000,
+    },
+    {
+      kw: ['demo', 'demolition', 'removal', 'tear out'],
+      note: 'Varies by scope',
+      low: null,
+      high: null,
+    },
+    {
+      kw: ['floor', 'tile', 'hardwood', 'carpet', 'lvp', 'vinyl plank'],
+      note: '$5–25/sqft installed',
+      low: 1000,
+      high: 40000,
+    },
+    {
+      kw: ['cabinet', 'kitchen', 'counter', 'quartz', 'granite'],
+      note: 'Mid-range kitchen $25K–50K',
+      low: 5000,
+      high: 80000,
+    },
+    {
+      kw: ['painting', 'interior paint', 'exterior paint'],
+      note: '$1.50–4/sqft interior',
+      low: 500,
+      high: 15000,
+    },
+    {
+      kw: ['trim', 'baseboard', 'millwork', 'interior finish', 'crown molding'],
+      note: 'Interior finishes pkg $35K–120K',
+      low: 5000,
+      high: 120000,
+    },
+    {
+      kw: ['septic', 'title 5', 'title5', 'leach field'],
+      note: 'Title 5 + septic $3K–30K+',
+      low: 1500,
+      high: 60000,
+    },
+    {
+      kw: ['site work', 'excavat', 'grading', 'well', 'driveway'],
+      note: 'Typically excluded — verify',
+      low: null,
+      high: null,
+    },
     { kw: ['dumpster', 'disposal', 'waste'], note: '$500–1,500 typical', low: 400, high: 2500 },
   ];
 
@@ -221,9 +332,19 @@ export default function JobAssessmentTab({
       <div style={{ marginBottom: 28 }}>
         <h3 style={{ color: BLUE, marginBottom: 16, marginTop: 0 }}>💰 Financial Health Check</h3>
         {marginLoading ? (
-          <div style={{ color: '#888', fontSize: 13, padding: '20px 0' }}>Loading financial data...</div>
+          <div style={{ color: '#888', fontSize: 13, padding: '20px 0' }}>
+            Loading financial data...
+          </div>
         ) : !marginData || !marginData.hasData ? (
-          <div style={{ background: '#f8f9fa', border: '1px solid #e5e7eb', borderRadius: 8, padding: 28, textAlign: 'center' }}>
+          <div
+            style={{
+              background: '#f8f9fa',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: 28,
+              textAlign: 'center',
+            }}
+          >
             <div style={{ fontSize: 28, marginBottom: 8 }}>📊</div>
             <div style={{ fontWeight: 600, color: '#555' }}>No estimate data yet</div>
             <div style={{ fontSize: 12, color: '#aaa', marginTop: 4 }}>
@@ -236,18 +357,35 @@ export default function JobAssessmentTab({
               <thead>
                 <tr style={{ background: BLUE, color: 'white' }}>
                   <th style={{ padding: '9px 14px', textAlign: 'left', fontWeight: 600 }}>Layer</th>
-                  <th style={{ padding: '9px 14px', textAlign: 'right', fontWeight: 600 }}>Target %</th>
-                  <th style={{ padding: '9px 14px', textAlign: 'right', fontWeight: 600 }}>Actual %</th>
-                  <th style={{ padding: '9px 14px', textAlign: 'right', fontWeight: 600 }}>$ Added</th>
-                  <th style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 600 }}>Pass / Fail</th>
+                  <th style={{ padding: '9px 14px', textAlign: 'right', fontWeight: 600 }}>
+                    Target %
+                  </th>
+                  <th style={{ padding: '9px 14px', textAlign: 'right', fontWeight: 600 }}>
+                    Actual %
+                  </th>
+                  <th style={{ padding: '9px 14px', textAlign: 'right', fontWeight: 600 }}>
+                    $ Added
+                  </th>
+                  <th style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 600 }}>
+                    Pass / Fail
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <tr style={{ background: '#f8f9fa', borderBottom: '1px solid #e9ecef' }}>
-                  <td style={{ padding: '10px 14px', fontWeight: 600, color: '#333' }}>Base Cost</td>
+                  <td style={{ padding: '10px 14px', fontWeight: 600, color: '#333' }}>
+                    Base Cost
+                  </td>
                   <td style={{ padding: '10px 14px', textAlign: 'right', color: '#aaa' }}>—</td>
                   <td style={{ padding: '10px 14px', textAlign: 'right', color: '#aaa' }}>—</td>
-                  <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: '#333' }}>
+                  <td
+                    style={{
+                      padding: '10px 14px',
+                      textAlign: 'right',
+                      fontWeight: 700,
+                      color: '#333',
+                    }}
+                  >
                     ${marginData.baseCost.toLocaleString()}
                   </td>
                   <td style={{ padding: '10px 14px', textAlign: 'center', color: '#aaa' }}>—</td>
@@ -255,7 +393,10 @@ export default function JobAssessmentTab({
                 {marginData.layers.map((layer, i) => (
                   <tr
                     key={layer.label}
-                    style={{ background: i % 2 === 0 ? 'white' : '#fafafa', borderBottom: '1px solid #f0f0f0' }}
+                    style={{
+                      background: i % 2 === 0 ? 'white' : '#fafafa',
+                      borderBottom: '1px solid #f0f0f0',
+                    }}
                   >
                     <td style={{ padding: '10px 14px', color: '#444' }}>{layer.label}</td>
                     <td style={{ padding: '10px 14px', textAlign: 'right', color: '#777' }}>
@@ -271,7 +412,12 @@ export default function JobAssessmentTab({
                     >
                       {(layer.actualPct * 100).toFixed(1)}%
                       {!marginData.hasStoredRates && (
-                        <span title="Assumed from current settings" style={{ fontSize: 10, color: '#aaa', marginLeft: 3 }}>*</span>
+                        <span
+                          title="Assumed from current settings"
+                          style={{ fontSize: 10, color: '#aaa', marginLeft: 3 }}
+                        >
+                          *
+                        </span>
                       )}
                     </td>
                     <td style={{ padding: '10px 14px', textAlign: 'right', color: '#555' }}>
@@ -279,27 +425,75 @@ export default function JobAssessmentTab({
                     </td>
                     <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                       {layer.pass ? (
-                        <span style={{ background: '#dcfce7', color: '#166534', borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>✓ Pass</span>
+                        <span
+                          style={{
+                            background: '#dcfce7',
+                            color: '#166534',
+                            borderRadius: 12,
+                            padding: '2px 10px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        >
+                          ✓ Pass
+                        </span>
                       ) : (
-                        <span style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>✗ Fail</span>
+                        <span
+                          style={{
+                            background: '#fee2e2',
+                            color: '#991b1b',
+                            borderRadius: 12,
+                            padding: '2px 10px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        >
+                          ✗ Fail
+                        </span>
                       )}
                     </td>
                   </tr>
                 ))}
-                <tr style={{ background: '#EEF3FB', borderTop: '2px solid #c7d7f4', fontWeight: 700 }}>
+                <tr
+                  style={{ background: '#EEF3FB', borderTop: '2px solid #c7d7f4', fontWeight: 700 }}
+                >
                   <td style={{ padding: '12px 14px', color: BLUE }}>Contract Price</td>
                   <td style={{ padding: '12px 14px', textAlign: 'right', color: '#aaa' }}>—</td>
                   <td style={{ padding: '12px 14px', textAlign: 'right', color: '#aaa' }}>—</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', color: BLUE, fontSize: 15 }}>
+                  <td
+                    style={{ padding: '12px 14px', textAlign: 'right', color: BLUE, fontSize: 15 }}
+                  >
                     ${marginData.contractPrice.toLocaleString()}
                   </td>
                   <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                     {marginData.overallPass === null ? (
                       <span style={{ color: '#bbb', fontSize: 12 }}>—</span>
                     ) : marginData.overallPass ? (
-                      <span style={{ background: '#dcfce7', color: '#166534', borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>✓ On Target</span>
+                      <span
+                        style={{
+                          background: '#dcfce7',
+                          color: '#166534',
+                          borderRadius: 12,
+                          padding: '2px 10px',
+                          fontSize: 12,
+                          fontWeight: 600,
+                        }}
+                      >
+                        ✓ On Target
+                      </span>
                     ) : (
-                      <span style={{ background: '#fff3cd', color: '#92400e', borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>⚠ Off Target</span>
+                      <span
+                        style={{
+                          background: '#fff3cd',
+                          color: '#92400e',
+                          borderRadius: 12,
+                          padding: '2px 10px',
+                          fontSize: 12,
+                          fontWeight: 600,
+                        }}
+                      >
+                        ⚠ Off Target
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -323,7 +517,9 @@ export default function JobAssessmentTab({
             >
               <div style={{ fontSize: 13, color: '#555' }}>
                 <span style={{ fontWeight: 600 }}>Actual Profit Margin</span>
-                <span style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>(revenue − base cost) ÷ revenue</span>
+                <span style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>
+                  (revenue − base cost) ÷ revenue
+                </span>
                 {!marginData.hasStoredRates && (
                   <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>
                     * Actual % assumed from current settings (proposal predates rate tracking)
@@ -352,15 +548,42 @@ export default function JobAssessmentTab({
       <hr style={{ border: 'none', borderTop: '1px solid #eee', marginBottom: 24 }} />
 
       {/* Header + lock badge */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+        }}
+      >
         <h3 style={{ color: BLUE, margin: 0 }}>Proposal Assessment</h3>
         {isLocked && (
-          <span style={{ background: '#f1f5f9', border: '1px solid #94a3b8', borderRadius: 6, padding: '4px 12px', fontSize: 12, color: '#475569', fontWeight: 700 }}>
+          <span
+            style={{
+              background: '#f1f5f9',
+              border: '1px solid #94a3b8',
+              borderRadius: 6,
+              padding: '4px 12px',
+              fontSize: 12,
+              color: '#475569',
+              fontWeight: 700,
+            }}
+          >
             🔒 Locked — Proposal Approved
           </span>
         )}
         {isSemiLocked && !isLocked && (
-          <span style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 6, padding: '4px 12px', fontSize: 12, color: '#c2410c', fontWeight: 700 }}>
+          <span
+            style={{
+              background: '#fff7ed',
+              border: '1px solid #fed7aa',
+              borderRadius: 6,
+              padding: '4px 12px',
+              fontSize: 12,
+              color: '#c2410c',
+              fontWeight: 700,
+            }}
+          >
             📋 Semi-locked — Proposal Ready
           </span>
         )}
@@ -377,10 +600,31 @@ export default function JobAssessmentTab({
       ) : (
         <>
           {/* Score cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
-            <div style={{ background: '#EEF3FB', borderRadius: 8, padding: 14, textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>Estimate Total</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: BLUE }}>${totalVal.toLocaleString()}</div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3,1fr)',
+              gap: 12,
+              marginBottom: 20,
+            }}
+          >
+            <div
+              style={{ background: '#EEF3FB', borderRadius: 8, padding: 14, textAlign: 'center' }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  color: '#666',
+                  textTransform: 'uppercase',
+                  letterSpacing: '.5px',
+                  marginBottom: 4,
+                }}
+              >
+                Estimate Total
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: BLUE }}>
+                ${totalVal.toLocaleString()}
+              </div>
             </div>
             <div
               style={{
@@ -398,7 +642,17 @@ export default function JobAssessmentTab({
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>Price / Sq Ft</div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: '#666',
+                  textTransform: 'uppercase',
+                  letterSpacing: '.5px',
+                  marginBottom: 4,
+                }}
+              >
+                Price / Sq Ft
+              </div>
               <div
                 style={{
                   fontSize: 20,
@@ -422,13 +676,27 @@ export default function JobAssessmentTab({
                 </div>
               )}
               {bandStatus && band && (
-                <div style={{ fontSize: 10, color: BAND_TEXT[bandStatus], marginTop: 3, fontWeight: 600 }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: BAND_TEXT[bandStatus],
+                    marginTop: 3,
+                    fontWeight: 600,
+                  }}
+                >
                   {BAND_LABEL[bandStatus]} (${band.low}–${band.high}/sqft)
                 </div>
               )}
               {!bandStatus && computedSqftWarning && (
-                <div style={{ fontSize: 10, color: computedSqftWarning === 'below' ? '#92400e' : '#991b1b', marginTop: 2 }}>
-                  ⚠️ {computedSqftWarning === 'below' ? 'Below' : 'Above'} target ({sqftTargetLow}–{sqftTargetHigh}/sqft)
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: computedSqftWarning === 'below' ? '#92400e' : '#991b1b',
+                    marginTop: 2,
+                  }}
+                >
+                  ⚠️ {computedSqftWarning === 'below' ? 'Below' : 'Above'} target ({sqftTargetLow}–
+                  {sqftTargetHigh}/sqft)
                 </div>
               )}
               {!bandStatus && !computedSqftWarning && sqftPrice && (
@@ -437,7 +705,9 @@ export default function JobAssessmentTab({
                 </div>
               )}
               {!sqftPrice && (
-                <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>Sqft not found in estimate</div>
+                <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>
+                  Sqft not found in estimate
+                </div>
               )}
             </div>
             <div
@@ -448,12 +718,30 @@ export default function JobAssessmentTab({
                 textAlign: 'center',
               }}
             >
-              <div style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>Deposit</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: depositAmt > 0 ? (depositOk ? '#166534' : '#92400e') : '#aaa' }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: '#666',
+                  textTransform: 'uppercase',
+                  letterSpacing: '.5px',
+                  marginBottom: 4,
+                }}
+              >
+                Deposit
+              </div>
+              <div
+                style={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: depositAmt > 0 ? (depositOk ? '#166534' : '#92400e') : '#aaa',
+                }}
+              >
                 {depositAmt > 0 ? `$${Number(depositAmt).toLocaleString()}` : '—'}
               </div>
               {depositAmt > 0 && (
-                <div style={{ fontSize: 10, color: depositOk ? '#166534' : '#92400e', marginTop: 2 }}>
+                <div
+                  style={{ fontSize: 10, color: depositOk ? '#166534' : '#92400e', marginTop: 2 }}
+                >
                   {depositPct}% of total {depositOk ? '✅' : '⚠️ (expect ~33%)'}
                 </div>
               )}
@@ -462,9 +750,25 @@ export default function JobAssessmentTab({
 
           {/* Pipeline Context */}
           {pipelineCtx && (
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16, marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, color: BLUE, marginBottom: 12 }}>Pipeline Context</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: 8,
+                padding: 16,
+                marginBottom: 16,
+              }}
+            >
+              <div style={{ fontWeight: 600, fontSize: 13, color: BLUE, marginBottom: 12 }}>
+                Pipeline Context
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                  gap: 12,
+                }}
+              >
                 <div style={{ textAlign: 'center' }}>
                   <div
                     style={{
@@ -484,9 +788,13 @@ export default function JobAssessmentTab({
                 </div>
                 {pipelineCtx.avgDaysToClose !== null && (
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: BLUE }}>{pipelineCtx.avgDaysToClose}d</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: BLUE }}>
+                      {pipelineCtx.avgDaysToClose}d
+                    </div>
                     <div style={{ fontSize: 11, color: '#666' }}>Avg Days to Close</div>
-                    <div style={{ fontSize: 10, color: '#aaa' }}>({pipelineCtx.avgDaysToCloseSample} won jobs)</div>
+                    <div style={{ fontSize: 10, color: '#aaa' }}>
+                      ({pipelineCtx.avgDaysToCloseSample} won jobs)
+                    </div>
                   </div>
                 )}
                 {pipelineCtx.avgWonMargin !== null && (
@@ -505,7 +813,9 @@ export default function JobAssessmentTab({
                       {pipelineCtx.avgWonMargin}%
                     </div>
                     <div style={{ fontSize: 11, color: '#666' }}>Avg Won Margin</div>
-                    <div style={{ fontSize: 10, color: '#aaa' }}>({pipelineCtx.avgWonMarginSample} jobs)</div>
+                    <div style={{ fontSize: 10, color: '#aaa' }}>
+                      ({pipelineCtx.avgWonMarginSample} jobs)
+                    </div>
                   </div>
                 )}
                 {pipelineCtx.avgWonSqftPrice !== null && (
@@ -523,12 +833,24 @@ export default function JobAssessmentTab({
                       ${pipelineCtx.avgWonSqftPrice}/sqft
                     </div>
                     <div style={{ fontSize: 11, color: '#666' }}>Avg Won $/sqft</div>
-                    <div style={{ fontSize: 10, color: '#aaa' }}>({pipelineCtx.avgWonSqftPriceSample} jobs)</div>
+                    <div style={{ fontSize: 10, color: '#aaa' }}>
+                      ({pipelineCtx.avgWonSqftPriceSample} jobs)
+                    </div>
                   </div>
                 )}
               </div>
               {pipelineCtx.daysAtCurrentStage > 14 && (
-                <div style={{ marginTop: 10, fontSize: 12, color: '#991b1b', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '10px 12px' }}>
+                <div
+                  style={{
+                    marginTop: 10,
+                    fontSize: 12,
+                    color: '#991b1b',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: 6,
+                    padding: '10px 12px',
+                  }}
+                >
                   <div style={{ fontWeight: 600, marginBottom: 6 }}>
                     ⚠️ Stale — {pipelineCtx.daysAtCurrentStage} days at current stage
                   </div>
@@ -571,7 +893,16 @@ export default function JobAssessmentTab({
                           setFollowUpTask('error');
                         }
                       }}
-                      style={{ padding: '5px 14px', background: '#991b1b', color: 'white', border: 'none', borderRadius: 4, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+                      style={{
+                        padding: '5px 14px',
+                        background: '#991b1b',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
                     >
                       + Create Reach Out Task
                     </button>
@@ -580,19 +911,41 @@ export default function JobAssessmentTab({
                     <div style={{ color: '#7f1d1d', fontStyle: 'italic' }}>Creating task...</div>
                   )}
                   {followUpTask === 'error' && (
-                    <div style={{ color: '#7f1d1d' }}>Failed to create task — try again from the Tasks page.</div>
+                    <div style={{ color: '#7f1d1d' }}>
+                      Failed to create task — try again from the Tasks page.
+                    </div>
                   )}
                   {followUpTask && typeof followUpTask === 'object' && (
-                    <div style={{ background: '#fff1f1', border: '1px solid #fca5a5', borderRadius: 4, padding: '7px 10px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <div
+                      style={{
+                        background: '#fff1f1',
+                        border: '1px solid #fca5a5',
+                        borderRadius: 4,
+                        padding: '7px 10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                      }}
+                    >
                       <span style={{ color: '#166534', fontWeight: 600 }}>✅ Task created:</span>
                       <span style={{ color: '#333' }}>{followUpTask.title}</span>
                       {followUpTask.due_at && (
                         <span style={{ color: '#777' }}>
-                          — due {new Date(followUpTask.due_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          — due{' '}
+                          {new Date(followUpTask.due_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
                         </span>
                       )}
                       {followUpTask.calendar_url && (
-                        <a href={followUpTask.calendar_url} target="_blank" rel="noreferrer" style={{ color: '#991b1b', fontWeight: 600, marginLeft: 4 }}>
+                        <a
+                          href={followUpTask.calendar_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: '#991b1b', fontWeight: 600, marginLeft: 4 }}
+                        >
                           📅 View in Calendar
                         </a>
                       )}
@@ -613,10 +966,22 @@ export default function JobAssessmentTab({
                   : [];
             if (flags.length === 0) return null;
             return (
-              <div style={{ background: '#FFF8F0', border: `1px solid ${ORANGE}`, borderRadius: 8, padding: 14, marginBottom: 16 }}>
-                <strong style={{ color: ORANGE, fontSize: 13 }}>⚠️ Items Flagged by AI ({flags.length})</strong>
+              <div
+                style={{
+                  background: '#FFF8F0',
+                  border: `1px solid ${ORANGE}`,
+                  borderRadius: 8,
+                  padding: 14,
+                  marginBottom: 16,
+                }}
+              >
+                <strong style={{ color: ORANGE, fontSize: 13 }}>
+                  ⚠️ Items Flagged by AI ({flags.length})
+                </strong>
                 <ul style={{ margin: '8px 0 0 18px', fontSize: 13, color: '#5D3A00' }}>
-                  {flags.map((f, i) => <li key={i}>{f}</li>)}
+                  {flags.map((f, i) => (
+                    <li key={i}>{f}</li>
+                  ))}
                 </ul>
               </div>
             );
@@ -624,7 +989,15 @@ export default function JobAssessmentTab({
 
           {/* Missing trades */}
           {missingTrades.length > 0 && (
-            <div style={{ background: '#fef9f0', border: '1px solid #fcd34d', borderRadius: 8, padding: 14, marginBottom: 16 }}>
+            <div
+              style={{
+                background: '#fef9f0',
+                border: '1px solid #fcd34d',
+                borderRadius: 8,
+                padding: 14,
+                marginBottom: 16,
+              }}
+            >
               <strong style={{ color: '#92400e', fontSize: 13 }}>
                 ⚠️ Expected Trades Not Found ({missingTrades.length})
                 <span style={{ fontWeight: 400, fontSize: 12, marginLeft: 8, color: '#b45309' }}>
@@ -633,20 +1006,43 @@ export default function JobAssessmentTab({
               </strong>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                 {missingTrades.map((t) => (
-                  <span key={t.label} style={{ background: '#fef3c7', color: '#92400e', borderRadius: 12, padding: '3px 10px', fontSize: 12, fontWeight: 600 }}>
+                  <span
+                    key={t.label}
+                    style={{
+                      background: '#fef3c7',
+                      color: '#92400e',
+                      borderRadius: 12,
+                      padding: '3px 10px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
                     {t.label}
                   </span>
                 ))}
               </div>
               <div style={{ fontSize: 11, color: '#b45309', marginTop: 8 }}>
-                These trades are typically scoped in a {band ? band.label : 'this type of project'} but appear missing from the estimate.
-                Confirm with the sub or verify the scope intentionally excludes them.
-                {isADU && aduOnSeptic && ' Note: ADU on private septic — Title 5 inspection + septic work may be required.'}
+                These trades are typically scoped in a {band ? band.label : 'this type of project'}{' '}
+                but appear missing from the estimate. Confirm with the sub or verify the scope
+                intentionally excludes them.
+                {isADU &&
+                  aduOnSeptic &&
+                  ' Note: ADU on private septic — Title 5 inspection + septic work may be required.'}
               </div>
             </div>
           )}
           {missingTrades.length === 0 && expectedTrades.length > 0 && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 10, marginBottom: 16, fontSize: 12, color: '#166534' }}>
+            <div
+              style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: 8,
+                padding: 10,
+                marginBottom: 16,
+                fontSize: 12,
+                color: '#166534',
+              }}
+            >
               ✅ All expected trades present for a {band ? band.label : projType || 'this'} project
             </div>
           )}
@@ -659,10 +1055,18 @@ export default function JobAssessmentTab({
             <thead>
               <tr style={{ background: BLUE, color: 'white' }}>
                 <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}>Trade</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>Sub Cost</th>
-                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>Client Price</th>
-                <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}>PB Benchmark Range</th>
-                <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>Status</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>
+                  Sub Cost
+                </th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>
+                  Client Price
+                </th>
+                <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}>
+                  PB Benchmark Range
+                </th>
+                <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>
+                  Status
+                </th>
                 <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>RFQ</th>
               </tr>
             </thead>
@@ -674,32 +1078,73 @@ export default function JobAssessmentTab({
                 const statusIcon =
                   bs === 'ok' ? '✅' : bs === 'low' ? '⚠️ Low' : bs === 'high' ? '🔴 High' : '—';
                 const statusColor =
-                  bs === 'ok' ? '#166534' : bs === 'low' ? '#92400e' : bs === 'high' ? '#991b1b' : '#aaa';
+                  bs === 'ok'
+                    ? '#166534'
+                    : bs === 'low'
+                      ? '#92400e'
+                      : bs === 'high'
+                        ? '#991b1b'
+                        : '#aaa';
                 const rowBg =
-                  bs === 'high' ? '#fff1f2' : bs === 'low' ? '#fffbeb' : i % 2 === 0 ? 'white' : '#f8f8f8';
+                  bs === 'high'
+                    ? '#fff1f2'
+                    : bs === 'low'
+                      ? '#fffbeb'
+                      : i % 2 === 0
+                        ? 'white'
+                        : '#f8f8f8';
                 return (
                   <tr key={i} style={{ background: rowBg, borderBottom: '1px solid #eee' }}>
                     <td style={{ padding: '8px 10px', color: '#333' }}>{li.trade}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', color: '#777' }}>
                       ${bc.toLocaleString()}
                     </td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: BLUE }}>
+                    <td
+                      style={{
+                        padding: '8px 10px',
+                        textAlign: 'right',
+                        fontWeight: 600,
+                        color: BLUE,
+                      }}
+                    >
                       ${(Number(li.finalPrice) || 0).toLocaleString()}
                     </td>
                     <td
                       style={{ padding: '8px 10px', color: bench ? '#555' : '#bbb', fontSize: 12 }}
-                      title={bench ? `Range: $${bench.low?.toLocaleString()}–$${bench.high?.toLocaleString()} (sub cost)` : ''}
+                      title={
+                        bench
+                          ? `Range: $${bench.low?.toLocaleString()}–$${bench.high?.toLocaleString()} (sub cost)`
+                          : ''
+                      }
                     >
                       {bench ? bench.note : '—'}
                     </td>
-                    <td style={{ padding: '8px 10px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: statusColor }}>
+                    <td
+                      style={{
+                        padding: '8px 10px',
+                        textAlign: 'center',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: statusColor,
+                      }}
+                    >
                       {statusIcon}
                     </td>
                     <td style={{ padding: '6px 10px', textAlign: 'center' }}>
                       <button
                         onClick={() => openRfqModal(li)}
                         title="Create Request for Quote"
-                        style={{ background: '#EEF3FB', color: BLUE, border: '1px solid #c7d7f4', borderRadius: 5, padding: '3px 9px', fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        style={{
+                          background: '#EEF3FB',
+                          color: BLUE,
+                          border: '1px solid #c7d7f4',
+                          borderRadius: 5,
+                          padding: '3px 9px',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
                       >
                         📋 RFQ
                       </button>
@@ -707,10 +1152,16 @@ export default function JobAssessmentTab({
                   </tr>
                 );
               })}
-              <tr style={{ background: '#EEF3FB', fontWeight: 700, borderTop: '2px solid #c7d7f4' }}>
+              <tr
+                style={{ background: '#EEF3FB', fontWeight: 700, borderTop: '2px solid #c7d7f4' }}
+              >
                 <td style={{ padding: '10px', color: BLUE }}>TOTAL</td>
-                <td style={{ padding: '10px', textAlign: 'right', color: '#555' }}>${subTotal.toLocaleString()}</td>
-                <td style={{ padding: '10px', textAlign: 'right', color: BLUE }}>${clientTotal.toLocaleString()}</td>
+                <td style={{ padding: '10px', textAlign: 'right', color: '#555' }}>
+                  ${subTotal.toLocaleString()}
+                </td>
+                <td style={{ padding: '10px', textAlign: 'right', color: BLUE }}>
+                  ${clientTotal.toLocaleString()}
+                </td>
                 <td style={{ padding: '10px' }}></td>
                 <td style={{ padding: '10px' }}></td>
                 <td style={{ padding: '10px' }}></td>
@@ -719,8 +1170,19 @@ export default function JobAssessmentTab({
           </table>
 
           {isLocked && (
-            <div style={{ marginTop: 16, padding: 12, background: '#f1f5f9', borderRadius: 8, fontSize: 12, color: '#64748b', textAlign: 'center' }}>
-              🔒 This assessment was locked when the proposal was approved and is preserved as a permanent historical record for this job.
+            <div
+              style={{
+                marginTop: 16,
+                padding: 12,
+                background: '#f1f5f9',
+                borderRadius: 8,
+                fontSize: 12,
+                color: '#64748b',
+                textAlign: 'center',
+              }}
+            >
+              🔒 This assessment was locked when the proposal was approved and is preserved as a
+              permanent historical record for this job.
             </div>
           )}
         </>

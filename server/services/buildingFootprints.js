@@ -46,44 +46,56 @@ function latLngToQuadKey(lat, lng, zoom = 9) {
 
 function fetchText(url, maxBytes = 5 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
-    https.get(url, { timeout: TILE_TIMEOUT_MS }, (res) => {
-      if (res.statusCode === 301 || res.statusCode === 302) {
-        return fetchText(res.headers.location, maxBytes).then(resolve).catch(reject);
-      }
-      if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode} for ${url}`));
-      const chunks = [];
-      let total = 0;
-      res.on('data', (chunk) => {
-        total += chunk.length;
-        if (total > maxBytes) { res.destroy(); reject(new Error('Response too large')); return; }
-        chunks.push(chunk);
-      });
-      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-      res.on('error', reject);
-    }).on('error', reject);
+    https
+      .get(url, { timeout: TILE_TIMEOUT_MS }, (res) => {
+        if (res.statusCode === 301 || res.statusCode === 302) {
+          return fetchText(res.headers.location, maxBytes).then(resolve).catch(reject);
+        }
+        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode} for ${url}`));
+        const chunks = [];
+        let total = 0;
+        res.on('data', (chunk) => {
+          total += chunk.length;
+          if (total > maxBytes) {
+            res.destroy();
+            reject(new Error('Response too large'));
+            return;
+          }
+          chunks.push(chunk);
+        });
+        res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+        res.on('error', reject);
+      })
+      .on('error', reject);
   });
 }
 
 function fetchGzip(url, maxBytes = TILE_MAX_BYTES) {
   return new Promise((resolve, reject) => {
-    https.get(url, { timeout: TILE_TIMEOUT_MS }, (res) => {
-      if (res.statusCode === 301 || res.statusCode === 302) {
-        return fetchGzip(res.headers.location, maxBytes).then(resolve).catch(reject);
-      }
-      if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
-      const gunzip = zlib.createGunzip();
-      const chunks = [];
-      let total = 0;
-      res.pipe(gunzip);
-      gunzip.on('data', (chunk) => {
-        total += chunk.length;
-        if (total > maxBytes) { gunzip.destroy(); reject(new Error('Tile too large')); return; }
-        chunks.push(chunk);
-      });
-      gunzip.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-      gunzip.on('error', reject);
-      res.on('error', reject);
-    }).on('error', reject);
+    https
+      .get(url, { timeout: TILE_TIMEOUT_MS }, (res) => {
+        if (res.statusCode === 301 || res.statusCode === 302) {
+          return fetchGzip(res.headers.location, maxBytes).then(resolve).catch(reject);
+        }
+        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+        const gunzip = zlib.createGunzip();
+        const chunks = [];
+        let total = 0;
+        res.pipe(gunzip);
+        gunzip.on('data', (chunk) => {
+          total += chunk.length;
+          if (total > maxBytes) {
+            gunzip.destroy();
+            reject(new Error('Tile too large'));
+            return;
+          }
+          chunks.push(chunk);
+        });
+        gunzip.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+        gunzip.on('error', reject);
+        res.on('error', reject);
+      })
+      .on('error', reject);
   });
 }
 
@@ -162,7 +174,10 @@ function polygonPerimeterM(coords) {
 }
 
 function polygonBoundingBox(coords) {
-  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  let minLat = Infinity,
+    maxLat = -Infinity,
+    minLng = Infinity,
+    maxLng = -Infinity;
   for (const [lng, lat] of coords) {
     if (lat < minLat) minLat = lat;
     if (lat > maxLat) maxLat = lat;
@@ -173,9 +188,13 @@ function polygonBoundingBox(coords) {
 }
 
 function centroid(coords) {
-  let sumLat = 0, sumLng = 0;
+  let sumLat = 0,
+    sumLng = 0;
   const n = coords.length - 1; // last coord repeats first
-  for (let i = 0; i < n; i++) { sumLng += coords[i][0]; sumLat += coords[i][1]; }
+  for (let i = 0; i < n; i++) {
+    sumLng += coords[i][0];
+    sumLat += coords[i][1];
+  }
   return { lat: sumLat / n, lng: sumLng / n };
 }
 
@@ -216,7 +235,9 @@ function parseTileBuildings(tileText) {
         const center = centroid(geo.coordinates[0]);
         buildings.push({ geometry: geo, lat: center.lat, lng: center.lng });
       }
-    } catch { /* skip malformed lines */ }
+    } catch {
+      /* skip malformed lines */
+    }
   }
   return buildings;
 }
@@ -226,7 +247,10 @@ function findNearestBuilding(buildings, lat, lng) {
   let bestDist = Infinity;
   for (const b of buildings) {
     const d = haversineM(lat, lng, b.lat, b.lng);
-    if (d < bestDist) { bestDist = d; best = b; }
+    if (d < bestDist) {
+      bestDist = d;
+      best = b;
+    }
   }
   // Only return if building is within 100m (0.1km) of the query point
   return bestDist < 100 ? best : null;
@@ -262,7 +286,11 @@ async function getMicrosoftFootprint(lat, lng) {
       console.log(`[Footprints] Downloading tile: ${tileUrl.slice(0, 80)}…`);
       tileText = await fetchGzip(tileUrl);
       // Cache the decompressed tile
-      try { fs.writeFileSync(tileCachePath, tileText); } catch { /* non-critical */ }
+      try {
+        fs.writeFileSync(tileCachePath, tileText);
+      } catch {
+        /* non-critical */
+      }
     }
 
     const buildings = parseTileBuildings(tileText);

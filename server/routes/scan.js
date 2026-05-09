@@ -57,10 +57,13 @@ router.get('/preview', requireAuth, (req, res) => {
     const buf = fs.readFileSync(filePath);
     const ext = path.extname(safeName).toLowerCase();
     const mime =
-      ext === '.pdf' ? 'application/pdf'
-      : ext === '.png' ? 'image/png'
-      : ext === '.tif' || ext === '.tiff' ? 'image/tiff'
-      : 'image/jpeg';
+      ext === '.pdf'
+        ? 'application/pdf'
+        : ext === '.png'
+          ? 'image/png'
+          : ext === '.tif' || ext === '.tiff'
+            ? 'image/tiff'
+            : 'image/jpeg';
     const preview = `data:${mime};base64,${buf.toString('base64')}`;
     res.json({ preview, mime });
   } catch (err) {
@@ -107,11 +110,11 @@ router.post('/attach/:jobId', requireAuth, (req, res) => {
       const pdfCol = docType === 'contract' ? 'contract_pdf_path' : 'proposal_pdf_path';
 
       db.prepare(
-        `UPDATE jobs SET status = ?, ${pdfCol} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+        `UPDATE jobs SET status = ?, ${pdfCol} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       ).run(newStatus, destPath, req.params.jobId);
 
       db.prepare(
-        'INSERT INTO job_photos (job_id, filename, original_name, caption) VALUES (?, ?, ?, ?)'
+        'INSERT INTO job_photos (job_id, filename, original_name, caption) VALUES (?, ?, ?, ?)',
       ).run(req.params.jobId, destFilename, safeName, `Scanned signed ${docType}`);
 
       if (deleteAfter) fs.unlinkSync(srcPath);
@@ -124,17 +127,27 @@ router.post('/attach/:jobId', requireAuth, (req, res) => {
       fs.copyFileSync(srcPath, destPath);
 
       const caption =
-        docType === 'receipt' ? 'Receipt / Check'
-        : docType === 'check' ? 'Check'
-        : 'Scanned document';
+        docType === 'receipt'
+          ? 'Receipt / Check'
+          : docType === 'check'
+            ? 'Check'
+            : 'Scanned document';
 
-      const result = db.prepare(
-        'INSERT INTO job_photos (job_id, filename, original_name, caption) VALUES (?, ?, ?, ?)'
-      ).run(req.params.jobId, destFilename, safeName, caption);
+      const result = db
+        .prepare(
+          'INSERT INTO job_photos (job_id, filename, original_name, caption) VALUES (?, ?, ?, ?)',
+        )
+        .run(req.params.jobId, destFilename, safeName, caption);
 
       if (deleteAfter) fs.unlinkSync(srcPath);
 
-      res.json({ ok: true, attachType, caption, filename: destFilename, photoId: result.lastInsertRowid });
+      res.json({
+        ok: true,
+        attachType,
+        caption,
+        filename: destFilename,
+        photoId: result.lastInsertRowid,
+      });
     }
   } catch (err) {
     console.error('[scan] attach error:', err.message);

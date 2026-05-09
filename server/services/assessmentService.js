@@ -152,9 +152,10 @@ ${referenceLog
       ).run(activeRow.content);
     }
     // Write new report as ACTIVE
-    db.prepare(
-      'UPDATE knowledge_base SET content = ?, active = 1 WHERE id = ?',
-    ).run(fullReport, activeRow.id);
+    db.prepare('UPDATE knowledge_base SET content = ?, active = 1 WHERE id = ?').run(
+      fullReport,
+      activeRow.id,
+    );
   } else {
     // First ever assessment — insert as ACTIVE only
     db.prepare(

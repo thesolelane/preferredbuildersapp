@@ -84,8 +84,24 @@ export default function StaffView({ token }) {
         </div>
       </div>
 
-      <div style={{ background: 'white', borderRadius: 10, padding: 20, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: '#333', display: 'block', marginBottom: 8 }}>
+      <div
+        style={{
+          background: 'white',
+          borderRadius: 10,
+          padding: 20,
+          marginBottom: 16,
+          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+        }}
+      >
+        <label
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: '#333',
+            display: 'block',
+            marginBottom: 8,
+          }}
+        >
           Job Address Search
         </label>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -124,14 +140,25 @@ export default function StaffView({ token }) {
       </div>
 
       {results.length > 0 && !selectedJob && (
-        <div style={{ background: 'white', borderRadius: 10, padding: 16, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+        <div
+          style={{
+            background: 'white',
+            borderRadius: 10,
+            padding: 16,
+            marginBottom: 16,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          }}
+        >
           <div style={{ fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 10 }}>
             Select the correct job:
           </div>
           {results.map((contact) => (
             <button
               key={contact.id}
-              onClick={() => { setSelectedJob(contact); setUploadedCount(0); }}
+              onClick={() => {
+                setSelectedJob(contact);
+                setUploadedCount(0);
+              }}
               style={{
                 width: '100%',
                 textAlign: 'left',
@@ -154,7 +181,14 @@ export default function StaffView({ token }) {
       )}
 
       {selectedJob && (
-        <div style={{ background: 'white', borderRadius: 10, padding: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+        <div
+          style={{
+            background: 'white',
+            borderRadius: 10,
+            padding: 20,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+          }}
+        >
           <div
             style={{
               display: 'flex',
@@ -166,19 +200,37 @@ export default function StaffView({ token }) {
             <div>
               <div style={{ fontWeight: 700, fontSize: 16, color: '#222' }}>{selectedJob.name}</div>
               <div style={{ fontSize: 13, color: '#666', marginTop: 3 }}>
-                {[selectedJob.address, selectedJob.city, selectedJob.state].filter(Boolean).join(', ')}
+                {[selectedJob.address, selectedJob.city, selectedJob.state]
+                  .filter(Boolean)
+                  .join(', ')}
               </div>
-              {selectedJob.status && (() => {
-                const s = getStatusStyle(selectedJob.status);
-                return (
-                  <span style={{ display: 'inline-block', marginTop: 6, background: s.bg, color: s.color, fontSize: 10, fontWeight: 700, borderRadius: 12, padding: '3px 10px' }}>
-                    {s.label}
-                  </span>
-                );
-              })()}
+              {selectedJob.status &&
+                (() => {
+                  const s = getStatusStyle(selectedJob.status);
+                  return (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        marginTop: 6,
+                        background: s.bg,
+                        color: s.color,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        borderRadius: 12,
+                        padding: '3px 10px',
+                      }}
+                    >
+                      {s.label}
+                    </span>
+                  );
+                })()}
             </div>
             <button
-              onClick={() => { setSelectedJob(null); setResults([]); setSearch(''); }}
+              onClick={() => {
+                setSelectedJob(null);
+                setResults([]);
+                setSearch('');
+              }}
               style={{
                 background: 'none',
                 border: '1px solid #ddd',

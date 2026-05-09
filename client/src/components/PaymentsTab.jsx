@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { showToast } from '../utils/toast';
 import { showConfirm } from '../utils/confirm';
+import DirectInvoiceModal from './DirectInvoiceModal';
 
 const BLUE = '#1B3A6B';
 const ORANGE = '#E07B2A';
@@ -83,6 +84,9 @@ export default function PaymentsTab({ jobId, token, job }) {
   const [formInv, setFormInv] = useState(EMPTY_INV);
   const [saving, setSaving] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showDirectInvoice, setShowDirectInvoice] = useState(false);
+  const [directInvoices, setDirectInvoices] = useState([]);
+  const [diSending, setDiSending] = useState(null);
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
@@ -95,11 +99,15 @@ export default function PaymentsTab({ jobId, token, job }) {
       fetch(`/api/invoices/job/${jobId}`, { headers: { 'x-auth-token': token } }).then((r) =>
         r.json(),
       ),
-    ]).then(([payData, invData]) => {
+      fetch(`/api/direct-invoices/job/${jobId}`, { headers: { 'x-auth-token': token } }).then((r) =>
+        r.json(),
+      ),
+    ]).then(([payData, invData, diData]) => {
       setReceived(payData.received || []);
       setMade(payData.made || []);
       setSummary(payData.summary || { total_received: 0, total_paid_out: 0, balance: 0 });
       setInvoices(invData.invoices || []);
+      setDirectInvoices(diData.invoices || []);
       setLoading(false);
     });
   }, [jobId, token]);
@@ -242,6 +250,45 @@ export default function PaymentsTab({ jobId, token, job }) {
     } else showToast(data.error || 'Failed to delete', 'error');
   };
 
+  const sendDirectInvoice = async (inv) => {
+    if (!inv.to_email) return showToast('No email on this invoice', 'error');
+    setDiSending(inv.id);
+    const res = await fetch(`/api/direct-invoices/${inv.id}/send`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ to_email: inv.to_email }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      load();
+      showToast(`Invoice sent to ${inv.to_email}`);
+    } else {
+      showToast(data.error || 'Send failed', 'error');
+    }
+    setDiSending(null);
+  };
+
+  const markDirectInvoicePaid = async (inv) => {
+    const res = await fetch(`/api/direct-invoices/${inv.id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ status: 'paid' }),
+    });
+    if (res.ok) {
+      load();
+      showToast('Invoice marked paid');
+    }
+  };
+
+  const deleteDirectInvoice = async (inv) => {
+    if (!(await showConfirm(`Delete invoice ${inv.invoice_number}?`))) return;
+    const res = await fetch(`/api/direct-invoices/${inv.id}`, { method: 'DELETE', headers });
+    if (res.ok) {
+      load();
+      showToast('Invoice deleted');
+    }
+  };
+
   const categoryChanged = (cat) => {
     const isPassThrough = PASS_THROUGH_CATS.includes(cat) || cat === 'permit';
     setFormOut((p) => ({
@@ -300,6 +347,15 @@ export default function PaymentsTab({ jobId, token, job }) {
 
   return (
     <div>
+      {showDirectInvoice && (
+        <DirectInvoiceModal
+          jobId={jobId}
+          job={job}
+          token={token}
+          onClose={() => setShowDirectInvoice(false)}
+          onSaved={load}
+        />
+      )}
       <div
         style={{
           display: 'flex',
@@ -312,7 +368,28 @@ export default function PaymentsTab({ jobId, token, job }) {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
             onClick={() => {
+              setShowDirectInvoice(true);
+              setShowInvoiceForm(false);
+              setShowIn(false);
+              setShowOut(false);
+            }}
+            style={{
+              padding: '8px 14px',
+              background: '#4F46E5',
+              color: 'white',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: 12,
+            }}
+          >
+            + Send Invoice
+          </button>
+          <button
+            onClick={() => {
               setShowInvoiceForm(true);
+              setShowDirectInvoice(false);
               setShowIn(false);
               setShowOut(false);
             }}
@@ -327,7 +404,7 @@ export default function PaymentsTab({ jobId, token, job }) {
               fontSize: 12,
             }}
           >
-            + Invoice
+            + Internal Invoice
           </button>
           <button
             onClick={() => {
@@ -1064,6 +1141,130 @@ export default function PaymentsTab({ jobId, token, job }) {
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Direct Invoices Sent to Customers */}
+      {directInvoices.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontWeight: 'bold', color: '#4F46E5', fontSize: 13, marginBottom: 10 }}>
+            Customer Invoices Sent
+          </div>
+          {directInvoices.map((inv) => {
+            const statusColor =
+              { draft: '#888', sent: '#3B82F6', paid: GREEN }[inv.status] || '#888';
+            return (
+              <div
+                key={inv.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 10,
+                  padding: '10px 14px',
+                  background: '#f8f7ff',
+                  border: '1px solid #e0e0ff',
+                  borderRadius: 7,
+                  marginBottom: 8,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#4F46E5',
+                    minWidth: 160,
+                  }}
+                >
+                  {inv.invoice_number}
+                </div>
+                <div style={{ fontSize: 13, color: '#333', flex: 1, minWidth: 120 }}>
+                  {inv.to_name || inv.to_email || '—'}
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#4F46E5' }}>
+                  ${Number(inv.total).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </div>
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: '2px 8px',
+                    borderRadius: 10,
+                    background: statusColor + '22',
+                    color: statusColor,
+                    fontWeight: 700,
+                  }}
+                >
+                  {inv.status?.toUpperCase()}
+                </span>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  <a
+                    href={`/api/direct-invoices/${inv.id}/pdf?token=${encodeURIComponent(token || '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      fontSize: 10,
+                      padding: '3px 8px',
+                      background: '#4F46E511',
+                      color: '#4F46E5',
+                      border: '1px solid #4F46E522',
+                      borderRadius: 4,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    View PDF
+                  </a>
+                  {inv.to_email && inv.status !== 'paid' && (
+                    <button
+                      onClick={() => sendDirectInvoice(inv)}
+                      disabled={diSending === inv.id}
+                      style={{
+                        fontSize: 10,
+                        padding: '3px 8px',
+                        background: '#3B82F611',
+                        color: '#3B82F6',
+                        border: '1px solid #3B82F622',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {diSending === inv.id ? 'Sending...' : 'Resend'}
+                    </button>
+                  )}
+                  {inv.status !== 'paid' && (
+                    <button
+                      onClick={() => markDirectInvoicePaid(inv)}
+                      style={{
+                        fontSize: 10,
+                        padding: '3px 8px',
+                        background: '#2E7D3211',
+                        color: GREEN,
+                        border: '1px solid #2E7D3222',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Mark Paid
+                    </button>
+                  )}
+                  <button
+                    onClick={() => deleteDirectInvoice(inv)}
+                    style={{
+                      fontSize: 10,
+                      padding: '3px 8px',
+                      background: '#ff000011',
+                      color: RED,
+                      border: '1px solid #ff000022',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

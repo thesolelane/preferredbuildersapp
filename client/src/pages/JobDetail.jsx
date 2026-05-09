@@ -811,7 +811,9 @@ export default function JobDetail({ token, userName }) {
       const res = await fetch(`/api/jobs/${id}/extract-from-job-files`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ selectedFiles: selected.map((f) => ({ type: f.type, filename: f.filename })) }),
+        body: JSON.stringify({
+          selectedFiles: selected.map((f) => ({ type: f.type, filename: f.filename })),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -835,7 +837,8 @@ export default function JobDetail({ token, userName }) {
       setShowJobFilesPicker(false);
       setActionLoading(false);
       load();
-      if (submitData.allAnswered) showToast('All questions answered — generating proposal now', 'info');
+      if (submitData.allAnswered)
+        showToast('All questions answered — generating proposal now', 'info');
     } catch {
       showToast('Extraction failed — check your connection', 'error');
       setClarExtracting(false);
@@ -894,8 +897,7 @@ export default function JobDetail({ token, userName }) {
   if (!job) return <div style={{ padding: 40, color: '#C62828' }}>Job not found.</div>;
 
   const statusColor = STATUS_COLORS[job.status] || '#888';
-  const statusLabel =
-    STATUS_LABELS[job.status] || job.status?.replace(/_/g, ' ').toUpperCase();
+  const statusLabel = STATUS_LABELS[job.status] || job.status?.replace(/_/g, ' ').toUpperCase();
   const proposalData = job.proposal_data;
   const contractData = job.contract_data;
 
@@ -1105,9 +1107,7 @@ export default function JobDetail({ token, userName }) {
             <JobContractTab contractData={contractData} job={job} token={token} />
           )}
 
-          {activeTab === 'conversation' && (
-            <JobConversationTab conversations={conversations} />
-          )}
+          {activeTab === 'conversation' && <JobConversationTab conversations={conversations} />}
 
           {activeTab === 'assessment' && (
             <JobAssessmentTab

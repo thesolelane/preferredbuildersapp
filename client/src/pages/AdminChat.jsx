@@ -43,7 +43,9 @@ function DocPickerModal({ token, onClose, onInject }) {
   const [selected, setSelected] = useState(new Set());
 
   const searchRef = useRef(null);
-  useEffect(() => { searchRef.current?.focus(); }, []);
+  useEffect(() => {
+    searchRef.current?.focus();
+  }, []);
 
   // Debounced entity search
   useEffect(() => {
@@ -62,7 +64,11 @@ function DocPickerModal({ token, onClose, onInject }) {
 
   // Load docs when entity selected
   useEffect(() => {
-    if (!entity) { setDocs([]); setSelected(new Set()); return; }
+    if (!entity) {
+      setDocs([]);
+      setSelected(new Set());
+      return;
+    }
     setDocsLoading(true);
     fetch(`/api/ai/entity-docs?type=${entity.entity_type}&id=${entity.id}`, {
       headers: { 'x-auth-token': token },
@@ -94,12 +100,17 @@ function DocPickerModal({ token, onClose, onInject }) {
 
   return (
     <div
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       style={{
-        position: 'fixed', inset: 0,
+        position: 'fixed',
+        inset: 0,
         background: 'rgba(0,0,0,0.45)',
         zIndex: 1000,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         padding: 20,
       }}
     >
@@ -119,15 +130,15 @@ function DocPickerModal({ token, onClose, onInject }) {
         {/* Header */}
         <div
           style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             padding: '16px 20px',
             borderBottom: '1px solid #eef1f6',
           }}
         >
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: BLUE }}>
-              📁 Import Documents
-            </div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: BLUE }}>📁 Import Documents</div>
             <div style={{ fontSize: 11, color: GREY, marginTop: 2 }}>
               Inject uploaded plans, photos, or docs into this conversation
             </div>
@@ -135,8 +146,12 @@ function DocPickerModal({ token, onClose, onInject }) {
           <button
             onClick={onClose}
             style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 20, color: '#aaa', lineHeight: 1,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 20,
+              color: '#aaa',
+              lineHeight: 1,
             }}
           >
             ×
@@ -148,12 +163,19 @@ function DocPickerModal({ token, onClose, onInject }) {
           <input
             ref={searchRef}
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setEntity(null); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setEntity(null);
+            }}
             placeholder="Search lead or contact by name, address, phone…"
             style={{
-              width: '100%', boxSizing: 'border-box',
-              padding: '9px 12px', border: '1.5px solid #C8D4E4',
-              borderRadius: 8, fontSize: 13, outline: 'none',
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '9px 12px',
+              border: '1.5px solid #C8D4E4',
+              borderRadius: 8,
+              fontSize: 13,
+              outline: 'none',
             }}
           />
 
@@ -170,52 +192,70 @@ function DocPickerModal({ token, onClose, onInject }) {
             {results.map((r) => {
               const isSelected = entity?.entity_type === r.entity_type && entity?.id === r.id;
               const label = r.entity_type === 'lead' ? 'Lead' : 'Contact';
-              const badge = r.entity_type === 'lead' && r.stage
-                ? STAGE_LABELS[r.stage] || r.stage
-                : null;
+              const badge =
+                r.entity_type === 'lead' && r.stage ? STAGE_LABELS[r.stage] || r.stage : null;
               const detail = [r.detail, r.city].filter(Boolean).join(', ');
               return (
                 <div
                   key={`${r.entity_type}_${r.id}`}
-                  onClick={() => { setEntity(r); setSearch(''); }}
+                  onClick={() => {
+                    setEntity(r);
+                    setSearch('');
+                  }}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '8px 10px', borderRadius: 7, cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 10px',
+                    borderRadius: 7,
+                    cursor: 'pointer',
                     background: isSelected ? '#e8f0fe' : 'transparent',
                     border: isSelected ? '1px solid #b8d0ff' : '1px solid transparent',
                     marginBottom: 4,
                   }}
                 >
-                  <span style={{ fontSize: 16 }}>
-                    {r.entity_type === 'lead' ? '📋' : '👤'}
-                  </span>
+                  <span style={{ fontSize: 16 }}>{r.entity_type === 'lead' ? '📋' : '👤'}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e' }}>
                       {r.name || '(No name)'}
                     </div>
                     {detail && (
-                      <div style={{
-                        fontSize: 11, color: GREY,
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: GREY,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
                         {detail}
                       </div>
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                    <span style={{
-                      fontSize: 10, fontWeight: 700,
-                      background: r.entity_type === 'lead' ? '#e0e8ff' : '#e8f5e9',
-                      color: r.entity_type === 'lead' ? BLUE : GREEN,
-                      borderRadius: 10, padding: '1px 7px',
-                    }}>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        background: r.entity_type === 'lead' ? '#e0e8ff' : '#e8f5e9',
+                        color: r.entity_type === 'lead' ? BLUE : GREEN,
+                        borderRadius: 10,
+                        padding: '1px 7px',
+                      }}
+                    >
                       {label}
                     </span>
                     {badge && (
-                      <span style={{
-                        fontSize: 10, background: '#f0f4f8',
-                        color: GREY, borderRadius: 10, padding: '1px 7px',
-                      }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          background: '#f0f4f8',
+                          color: GREY,
+                          borderRadius: 10,
+                          padding: '1px 7px',
+                        }}
+                      >
                         {badge}
                       </span>
                     )}
@@ -229,10 +269,14 @@ function DocPickerModal({ token, onClose, onInject }) {
         {/* Selected entity + docs list */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px' }}>
           {!entity && (
-            <div style={{
-              textAlign: 'center', padding: '30px 0',
-              color: '#bbb', fontSize: 13,
-            }}>
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '30px 0',
+                color: '#bbb',
+                fontSize: 13,
+              }}
+            >
               Search and select a lead or contact above to see their files
             </div>
           )}
@@ -240,17 +284,17 @@ function DocPickerModal({ token, onClose, onInject }) {
           {entity && (
             <>
               {/* Entity header */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                marginBottom: 12,
-              }}>
-                <span style={{ fontSize: 16 }}>
-                  {entity.entity_type === 'lead' ? '📋' : '👤'}
-                </span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginBottom: 12,
+                }}
+              >
+                <span style={{ fontSize: 16 }}>{entity.entity_type === 'lead' ? '📋' : '👤'}</span>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: BLUE }}>
-                    {entity.name}
-                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: BLUE }}>{entity.name}</div>
                   {entity.detail && (
                     <div style={{ fontSize: 11, color: GREY }}>
                       {[entity.detail, entity.city].filter(Boolean).join(', ')}
@@ -260,24 +304,31 @@ function DocPickerModal({ token, onClose, onInject }) {
                 <button
                   onClick={() => setEntity(null)}
                   style={{
-                    marginLeft: 'auto', background: 'none', border: 'none',
-                    cursor: 'pointer', fontSize: 11, color: GREY,
+                    marginLeft: 'auto',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    color: GREY,
                   }}
                 >
                   ← Change
                 </button>
               </div>
 
-              {docsLoading && (
-                <div style={{ fontSize: 12, color: GREY }}>Loading files…</div>
-              )}
+              {docsLoading && <div style={{ fontSize: 12, color: GREY }}>Loading files…</div>}
 
               {!docsLoading && docs.length === 0 && (
-                <div style={{
-                  textAlign: 'center', padding: '24px 0',
-                  border: '1px dashed #dde3ed', borderRadius: 8,
-                  color: '#bbb', fontSize: 13,
-                }}>
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: '24px 0',
+                    border: '1px dashed #dde3ed',
+                    borderRadius: 8,
+                    color: '#bbb',
+                    fontSize: 13,
+                  }}
+                >
                   📭 No documents available for import
                   <div style={{ fontSize: 11, marginTop: 4, color: '#ccc' }}>
                     Upload files to this {entity.entity_type} first, then return here to inject them
@@ -287,10 +338,14 @@ function DocPickerModal({ token, onClose, onInject }) {
 
               {!docsLoading && docs.length > 0 && (
                 <>
-                  <div style={{
-                    display: 'flex', justifyContent: 'space-between',
-                    alignItems: 'center', marginBottom: 8,
-                  }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 8,
+                    }}
+                  >
                     <span style={{ fontSize: 11, color: GREY, fontWeight: 600 }}>
                       {docs.length} file{docs.length !== 1 ? 's' : ''} available
                     </span>
@@ -298,8 +353,12 @@ function DocPickerModal({ token, onClose, onInject }) {
                       <button
                         onClick={selectAll}
                         style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          fontSize: 11, color: BLUE, fontWeight: 600,
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: 11,
+                          color: BLUE,
+                          fontWeight: 600,
                         }}
                       >
                         Select all
@@ -308,8 +367,11 @@ function DocPickerModal({ token, onClose, onInject }) {
                         <button
                           onClick={clearAll}
                           style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            fontSize: 11, color: GREY,
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: 11,
+                            color: GREY,
                           }}
                         >
                           Clear
@@ -325,8 +387,12 @@ function DocPickerModal({ token, onClose, onInject }) {
                         key={doc.id}
                         onClick={() => toggleDoc(doc.id)}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '9px 12px', borderRadius: 8, cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '9px 12px',
+                          borderRadius: 8,
+                          cursor: 'pointer',
                           background: isChecked ? '#e8f0fe' : '#fafafa',
                           border: `1px solid ${isChecked ? '#b8d0ff' : '#e2e8f0'}`,
                           marginBottom: 6,
@@ -344,20 +410,31 @@ function DocPickerModal({ token, onClose, onInject }) {
                           {fileIcon(doc.mime_type)}
                         </span>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: 13, fontWeight: 500, color: '#1a1a2e',
-                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                          }}>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: '#1a1a2e',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
                             {doc.name}
                           </div>
                           <div style={{ fontSize: 10, color: GREY }}>
-                            {doc.source_table === 'field_photos' ? '📷 Field Photo' :
-                             doc.source_table === 'lead_documents' ? '📁 Lead Doc' : '📁 Contact Doc'}
+                            {doc.source_table === 'field_photos'
+                              ? '📷 Field Photo'
+                              : doc.source_table === 'lead_documents'
+                                ? '📁 Lead Doc'
+                                : '📁 Contact Doc'}
                             {doc.file_size ? ` · ${fmtSize(doc.file_size)}` : ''}
                           </div>
                         </div>
                         {isChecked && (
-                          <span style={{ fontSize: 12, color: BLUE, fontWeight: 700, flexShrink: 0 }}>
+                          <span
+                            style={{ fontSize: 12, color: BLUE, fontWeight: 700, flexShrink: 0 }}
+                          >
                             ✓
                           </span>
                         )}
@@ -371,18 +448,26 @@ function DocPickerModal({ token, onClose, onInject }) {
         </div>
 
         {/* Footer */}
-        <div style={{
-          padding: '14px 20px',
-          borderTop: '1px solid #eef1f6',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          gap: 10,
-        }}>
+        <div
+          style={{
+            padding: '14px 20px',
+            borderTop: '1px solid #eef1f6',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
           <button
             onClick={onClose}
             style={{
-              padding: '9px 16px', background: '#f4f6fb',
-              border: '1px solid #dde3ed', borderRadius: 7,
-              fontSize: 13, color: GREY, cursor: 'pointer',
+              padding: '9px 16px',
+              background: '#f4f6fb',
+              border: '1px solid #dde3ed',
+              borderRadius: 7,
+              fontSize: 13,
+              color: GREY,
+              cursor: 'pointer',
             }}
           >
             Cancel
@@ -391,9 +476,13 @@ function DocPickerModal({ token, onClose, onInject }) {
             onClick={handleInject}
             disabled={selected.size === 0}
             style={{
-              padding: '9px 20px', background: selected.size > 0 ? BLUE : '#c8d4e4',
-              color: 'white', border: 'none', borderRadius: 7,
-              fontSize: 13, fontWeight: 700,
+              padding: '9px 20px',
+              background: selected.size > 0 ? BLUE : '#c8d4e4',
+              color: 'white',
+              border: 'none',
+              borderRadius: 7,
+              fontSize: 13,
+              fontWeight: 700,
               cursor: selected.size > 0 ? 'pointer' : 'default',
             }}
           >
@@ -509,7 +598,8 @@ export default function AdminChat({ token }) {
             : '';
           const names = filesSnapshot.map((f) => f.name).join(', ');
           userMsg = [
-            userMsg || "I've attached construction documents. Please analyze them and help me build a quote.",
+            userMsg ||
+              "I've attached construction documents. Please analyze them and help me build a quote.",
             `\n\n[ATTACHED DOCUMENTS: ${names}]${addrNote}\n${extractedText}`,
           ].join('');
         } else {
@@ -851,19 +941,40 @@ export default function AdminChat({ token }) {
             <div
               key={`file_${i}`}
               style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                background: '#e8f0fe', borderRadius: 20,
-                padding: '4px 10px', fontSize: 11,
-                color: BLUE, fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                background: '#e8f0fe',
+                borderRadius: 20,
+                padding: '4px 10px',
+                fontSize: 11,
+                color: BLUE,
+                fontWeight: 600,
               }}
             >
               <span>{f.type.startsWith('image/') ? '🖼️' : '📄'}</span>
-              <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span
+                style={{
+                  maxWidth: 140,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {f.name}
               </span>
               <button
                 onClick={() => removeFile(i)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 2 }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#666',
+                  fontSize: 14,
+                  lineHeight: 1,
+                  padding: 0,
+                  marginLeft: 2,
+                }}
               >
                 ×
               </button>
@@ -875,20 +986,41 @@ export default function AdminChat({ token }) {
             <div
               key={`inj_${doc.id}`}
               style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                background: '#fdf4e7', borderRadius: 20,
-                padding: '4px 10px', fontSize: 11,
-                color: '#92400e', fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                background: '#fdf4e7',
+                borderRadius: 20,
+                padding: '4px 10px',
+                fontSize: 11,
+                color: '#92400e',
+                fontWeight: 600,
                 border: '1px solid #fed7aa',
               }}
             >
               <span>📁</span>
-              <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span
+                style={{
+                  maxWidth: 140,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {doc.name}
               </span>
               <button
                 onClick={() => removeInjected(doc.id)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 2 }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#92400e',
+                  fontSize: 14,
+                  lineHeight: 1,
+                  padding: 0,
+                  marginLeft: 2,
+                }}
               >
                 ×
               </button>
@@ -923,8 +1055,10 @@ export default function AdminChat({ token }) {
             padding: '10px 14px',
             background: attachedFiles.length ? '#e8f0fe' : '#f4f6fb',
             border: `1.5px solid ${attachedFiles.length ? BLUE : '#C8D4E4'}`,
-            borderRadius: 8, cursor: 'pointer',
-            fontSize: 18, lineHeight: 1,
+            borderRadius: 8,
+            cursor: 'pointer',
+            fontSize: 18,
+            lineHeight: 1,
             color: attachedFiles.length ? BLUE : '#888',
             flexShrink: 0,
           }}
@@ -940,8 +1074,10 @@ export default function AdminChat({ token }) {
             padding: '10px 14px',
             background: injectedDocs.length ? '#fdf4e7' : '#f4f6fb',
             border: `1.5px solid ${injectedDocs.length ? '#f59e0b' : '#C8D4E4'}`,
-            borderRadius: 8, cursor: 'pointer',
-            fontSize: 18, lineHeight: 1,
+            borderRadius: 8,
+            cursor: 'pointer',
+            fontSize: 18,
+            lineHeight: 1,
             color: injectedDocs.length ? '#92400e' : '#888',
             flexShrink: 0,
           }}
@@ -972,13 +1108,26 @@ export default function AdminChat({ token }) {
 
         <button
           onClick={send}
-          disabled={loading || extracting || (!input.trim() && !attachedFiles.length && !injectedDocs.length)}
+          disabled={
+            loading ||
+            extracting ||
+            (!input.trim() && !attachedFiles.length && !injectedDocs.length)
+          }
           style={{
             padding: '12px 24px',
-            background: BLUE, color: 'white',
-            border: 'none', borderRadius: 8,
-            cursor: 'pointer', fontWeight: 'bold', fontSize: 14,
-            opacity: loading || extracting || (!input.trim() && !attachedFiles.length && !injectedDocs.length) ? 0.5 : 1,
+            background: BLUE,
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontSize: 14,
+            opacity:
+              loading ||
+              extracting ||
+              (!input.trim() && !attachedFiles.length && !injectedDocs.length)
+                ? 0.5
+                : 1,
             flexShrink: 0,
           }}
         >

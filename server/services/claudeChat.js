@@ -133,7 +133,11 @@ Only use this when the user explicitly asks to order a Hover or EagleView report
   input_schema: {
     type: 'object',
     properties: {
-      provider: { type: 'string', enum: ['hover', 'eagleview'], description: 'Which service to use' },
+      provider: {
+        type: 'string',
+        enum: ['hover', 'eagleview'],
+        description: 'Which service to use',
+      },
       address: { type: 'string', description: 'Full property address' },
       city: { type: 'string' },
       state: { type: 'string', description: 'State abbreviation, e.g. "MA"' },
@@ -176,7 +180,8 @@ You must first call lookup_property or lookup_jobs to get the assessorFieldCardU
     properties: {
       record_card_url: {
         type: 'string',
-        description: 'The assessor field card URL (from recordCardUrl or assessorFieldCardUrl in the property record)',
+        description:
+          'The assessor field card URL (from recordCardUrl or assessorFieldCardUrl in the property record)',
       },
       address: {
         type: 'string',
@@ -305,7 +310,7 @@ async function runAdminTool(toolName, toolInput, db) {
         if (j.property_data) {
           try {
             const pd = JSON.parse(j.property_data);
-            const gis  = pd.massGis;
+            const gis = pd.massGis;
             const mrpc = pd.mrpc;
 
             // MRPC record card (direct link to field card with exterior photo +
@@ -315,34 +320,52 @@ async function runAdminTool(toolName, toolInput, db) {
 
             const parts = [
               // Building basics
-              (gis?.yearBuilt || mrpc?.yearBuilt) ? `Year Built: ${gis?.yearBuilt || mrpc?.yearBuilt}` : null,
-              (gis?.stories   || mrpc?.stories)   ? `Stories: ${gis?.stories   || mrpc?.stories}`     : null,
-              (gis?.style     || mrpc?.style)      ? `Style: ${gis?.style       || mrpc?.style}`       : null,
+              gis?.yearBuilt || mrpc?.yearBuilt
+                ? `Year Built: ${gis?.yearBuilt || mrpc?.yearBuilt}`
+                : null,
+              gis?.stories || mrpc?.stories ? `Stories: ${gis?.stories || mrpc?.stories}` : null,
+              gis?.style || mrpc?.style ? `Style: ${gis?.style || mrpc?.style}` : null,
               // Building dimensions
-              (gis?.buildingArea || mrpc?.buildingArea) ? `Total Building Area: ${gis?.buildingArea || mrpc?.buildingArea} sq ft` : null,
-              gis?.footprintSqFt    ? `Building Footprint: ~${gis.footprintSqFt} sq ft`         : null,
-              gis?.estBuildingPerimFt ? `Est. Building Perimeter: ~${gis.estBuildingPerimFt} ft` : null,
+              gis?.buildingArea || mrpc?.buildingArea
+                ? `Total Building Area: ${gis?.buildingArea || mrpc?.buildingArea} sq ft`
+                : null,
+              gis?.footprintSqFt ? `Building Footprint: ~${gis.footprintSqFt} sq ft` : null,
+              gis?.estBuildingPerimFt
+                ? `Est. Building Perimeter: ~${gis.estBuildingPerimFt} ft`
+                : null,
               // Lot dimensions
-              (gis?.lotWidthFt && gis?.lotDepthFt) ? `Lot Dimensions: ~${gis.lotWidthFt} ft wide × ${gis.lotDepthFt} ft deep` : null,
+              gis?.lotWidthFt && gis?.lotDepthFt
+                ? `Lot Dimensions: ~${gis.lotWidthFt} ft wide × ${gis.lotDepthFt} ft deep`
+                : null,
               gis?.lotPerimeterFt ? `Lot Perimeter: ~${gis.lotPerimeterFt} ft` : null,
               gis?.lotSize ? `Lot Size: ${gis.lotSize} sq ft` : null,
               // Assessor values
-              (gis?.totalAssessedValue || mrpc?.totalAssessedValue) ? `Assessed Value: $${Number(gis?.totalAssessedValue || mrpc?.totalAssessedValue).toLocaleString()}` : null,
-              mrpc?.lastSaleDate  ? `Last Sale: ${mrpc.lastSaleDate} for $${Number(mrpc.lastSalePrice).toLocaleString()}` : null,
-              mrpc?.zoning        ? `Zoning: ${mrpc.zoning}` : null,
-              gis?.useCodeLabel   ? `Use: ${gis.useCodeLabel}` : null,
+              gis?.totalAssessedValue || mrpc?.totalAssessedValue
+                ? `Assessed Value: $${Number(gis?.totalAssessedValue || mrpc?.totalAssessedValue).toLocaleString()}`
+                : null,
+              mrpc?.lastSaleDate
+                ? `Last Sale: ${mrpc.lastSaleDate} for $${Number(mrpc.lastSalePrice).toLocaleString()}`
+                : null,
+              mrpc?.zoning ? `Zoning: ${mrpc.zoning}` : null,
+              gis?.useCodeLabel ? `Use: ${gis.useCodeLabel}` : null,
               // Building details
-              gis?.numBedrooms    ? `Bedrooms: ${gis.numBedrooms}`   : null,
-              gis?.numBathrooms   ? `Bathrooms: ${gis.numBathrooms}` : null,
-              gis?.heatType       ? `Heat: ${gis.heatType}`          : null,
+              gis?.numBedrooms ? `Bedrooms: ${gis.numBedrooms}` : null,
+              gis?.numBathrooms ? `Bathrooms: ${gis.numBathrooms}` : null,
+              gis?.heatType ? `Heat: ${gis.heatType}` : null,
               // Ownership
-              gis?.owner1 ? `Record Owner: ${gis.owner1}${gis.owner2 ? ' / ' + gis.owner2 : ''}` : null,
-              gis?.ownerAddress   ? `Owner Mailing: ${gis.ownerAddress}` : null,
+              gis?.owner1
+                ? `Record Owner: ${gis.owner1}${gis.owner2 ? ' / ' + gis.owner2 : ''}`
+                : null,
+              gis?.ownerAddress ? `Owner Mailing: ${gis.ownerAddress}` : null,
               // Field card — exterior photo + hand-drawn sketch with actual dimensions
-              fieldCardUrl ? `Assessor Field Card (exterior photo + sketch w/ dimensions): ${fieldCardUrl}` : null,
+              fieldCardUrl
+                ? `Assessor Field Card (exterior photo + sketch w/ dimensions): ${fieldCardUrl}`
+                : null,
             ].filter(Boolean);
             if (parts.length) propLines = '\nProperty Record:\n' + parts.join('\n');
-          } catch { /* ignore parse errors */ }
+          } catch {
+            /* ignore parse errors */
+          }
         }
         return `**${j.customer_name}** — ${j.project_address}${j.project_city ? ', ' + j.project_city : ''}\nStatus: ${j.status?.replace(/_/g, ' ')}\nValue: ${j.total_value ? '$' + Number(j.total_value).toLocaleString() : '—'}\nEmail: ${j.customer_email || '—'} | Phone: ${j.customer_phone || '—'}${propLines}`;
       })
@@ -388,21 +411,46 @@ async function runAdminTool(toolName, toolInput, db) {
     console.log(`[Chat→Measurements] lat=${lat} lng=${lng} address="${address}"`);
     const { getFreeMeasurements } = require('./measurementService');
     const result = await getFreeMeasurements(lat, lng, address);
-    if (!result) return 'No building footprint data found for this location from free sources. Consider ordering a Hover or EagleView report for professional measurements.';
+    if (!result)
+      return 'No building footprint data found for this location from free sources. Consider ordering a Hover or EagleView report for professional measurements.';
     return result.summary || JSON.stringify(result, null, 2);
   }
 
   if (toolName === 'order_measurement_report') {
-    const { provider, address, city, state, zip, job_id, customer_name, customer_email, customer_phone, report_type } = toolInput;
+    const {
+      provider,
+      address,
+      city,
+      state,
+      zip,
+      job_id,
+      customer_name,
+      customer_email,
+      customer_phone,
+      report_type,
+    } = toolInput;
     console.log(`[Chat→MeasurementOrder] provider=${provider} address="${address}"`);
     const { orderHoverReport, orderEagleViewReport } = require('./measurementService');
     try {
       let order;
       if (provider === 'hover') {
-        order = await orderHoverReport({ address, name: customer_name, email: customer_email, phone: customer_phone, jobId: job_id });
+        order = await orderHoverReport({
+          address,
+          name: customer_name,
+          email: customer_email,
+          phone: customer_phone,
+          jobId: job_id,
+        });
         return `Hover report ordered successfully!\n- Hover Job ID: ${order.hoverId}\n- Status: ${order.status}\n${order.captureUrl ? `- Capture link (send to customer for photos): ${order.captureUrl}` : ''}\nResults arrive in 24-48 hours. Use check_measurement_order to follow up.`;
       } else {
-        order = await orderEagleViewReport({ address, city, state: state || 'MA', zip, reportType: report_type, jobId: job_id });
+        order = await orderEagleViewReport({
+          address,
+          city,
+          state: state || 'MA',
+          zip,
+          reportType: report_type,
+          jobId: job_id,
+        });
         return `EagleView report ordered successfully!\n- EagleView Order ID: ${order.eagleViewOrderId}\n- Status: ${order.status}\n- Estimated delivery: ${order.estimatedDelivery}\nUse check_measurement_order to follow up.`;
       }
     } catch (err) {
@@ -426,7 +474,8 @@ async function runAdminTool(toolName, toolInput, db) {
     console.log(`[Chat→SketchExtractor] url="${toolInput.record_card_url}"`);
     const { extractBuildingDimensions } = require('./sketchExtractor');
     const result = await extractBuildingDimensions(toolInput.record_card_url, toolInput.address);
-    if (!result) return 'Could not access the assessor sketch for this property. The field card link may require a browser session. Share the link with the user so they can open it directly.';
+    if (!result)
+      return 'Could not access the assessor sketch for this property. The field card link may require a browser session. Share the link with the user so they can open it directly.';
     return result.raw || 'Sketch captured but no dimensions could be read from the image.';
   }
 

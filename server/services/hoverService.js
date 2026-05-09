@@ -43,7 +43,9 @@ function request(method, path, body, token) {
         try {
           const text = Buffer.concat(chunks).toString();
           resolve({ status: res.statusCode, body: JSON.parse(text) });
-        } catch (e) { reject(e); }
+        } catch (e) {
+          reject(e);
+        }
       });
       res.on('error', reject);
     });
@@ -65,7 +67,8 @@ function request(method, path, body, token) {
  * @returns {Promise<{hoverId, status, captureUrl}|null>}
  */
 async function createHoverJob({ address, name, email, phone, jobId }) {
-  if (!isConfigured()) throw new Error('Hover API credentials not configured (HOVER_CLIENT_ID / HOVER_CLIENT_SECRET)');
+  if (!isConfigured())
+    throw new Error('Hover API credentials not configured (HOVER_CLIENT_ID / HOVER_CLIENT_SECRET)');
   if (!hasToken()) throw new Error('HOVER_ACCESS_TOKEN not set — complete OAuth flow first');
 
   const token = process.env.HOVER_ACCESS_TOKEN;
@@ -140,7 +143,12 @@ async function getHoverMeasurements(hoverId) {
   if (!jsonReport) return { available: attachments.map((a) => a.label), raw: null };
 
   // Fetch the JSON report
-  const reportRes = await request('GET', `/jobs/${hoverId}/attachments/${jsonReport.id}`, null, token);
+  const reportRes = await request(
+    'GET',
+    `/jobs/${hoverId}/attachments/${jsonReport.id}`,
+    null,
+    token,
+  );
   return reportRes.body;
 }
 
