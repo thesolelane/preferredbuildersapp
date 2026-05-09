@@ -72,12 +72,12 @@ function buildInvoiceHTML(inv, job, contact) {
       const isMat = item.type === 'material';
       const qty = item.qty != null ? item.qty : null;
       const unitPrice = item.unit_price != null ? item.unit_price : null;
-      const qtyCell = isMat && qty != null
-        ? `<span style="font-weight:600">${qty}</span>`
-        : `<span style="color:#bbb">—</span>`;
-      const upCell = isMat && unitPrice != null
-        ? `$${fmt(unitPrice)}`
-        : `<span style="color:#bbb">—</span>`;
+      const qtyCell =
+        isMat && qty != null
+          ? `<span style="font-weight:600">${qty}</span>`
+          : `<span style="color:#bbb">—</span>`;
+      const upCell =
+        isMat && unitPrice != null ? `$${fmt(unitPrice)}` : `<span style="color:#bbb">—</span>`;
       itemsHTML += `<tr style="border-bottom:1px solid #f0f0f0">
         <td style="padding:7px 12px 7px 22px;font-size:12px;color:#333">
           ${item.description || (isMat ? 'Materials' : 'Labor')}

@@ -83,6 +83,10 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [linkedContactId, setLinkedContactId] = useState(null);
 
+  const [contactJobs, setContactJobs] = useState([]);
+  const [linkedJobId, setLinkedJobId] = useState(jobId || null);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+
   const [toName, setToName] = useState(prefillName);
   const [toEmail, setToEmail] = useState(prefillEmail);
   const [toPhone, setToPhone] = useState(prefillPhone);
@@ -100,6 +104,25 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
       .then((data) => setContacts(data.contacts || []));
   }, [token]);
 
+  useEffect(() => {
+    if (!linkedContactId) {
+      setContactJobs([]);
+      setLinkedJobId(jobId || null);
+      return;
+    }
+    setLoadingJobs(true);
+    fetch('/api/jobs', { headers: { 'x-auth-token': token } })
+      .then((r) => r.json())
+      .then((data) => {
+        const jobs = (data.jobs || []).filter(
+          (j) => String(j.contact_id) === String(linkedContactId),
+        );
+        setContactJobs(jobs);
+        setLinkedJobId(jobs.length === 1 ? jobs[0].id : null);
+      })
+      .finally(() => setLoadingJobs(false));
+  }, [linkedContactId, token, jobId]);
+
   const filteredContacts = contacts.filter((c) => {
     if (!contactSearch.trim()) return true;
     const q = contactSearch.toLowerCase();
@@ -113,6 +136,7 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
 
   const selectContact = (c) => {
     setLinkedContactId(c.id);
+    setLinkedJobId(null);
     setToName(c.name || '');
     setToEmail(c.email || '');
     setToPhone(c.phone || '');
@@ -127,6 +151,8 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
 
   const clearContact = () => {
     setLinkedContactId(null);
+    setLinkedJobId(null);
+    setContactJobs([]);
     setContactSearch('');
     setToName(prefillName);
     setToEmail(prefillEmail);
@@ -204,7 +230,7 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
     setSendMode(send);
 
     const payload = {
-      job_id: jobId || null,
+      job_id: linkedJobId || null,
       contact_id: linkedContactId || null,
       to_name: toName || null,
       to_email: toEmail || null,
@@ -448,6 +474,49 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
               )}
             </div>
 
+            {/* Job / contract picker — appears only when a contact is linked and has jobs */}
+            {linkedContactId && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>
+                  Link to Contract / Job{' '}
+                  <span style={{ color: '#bbb', fontWeight: 400 }}>(optional)</span>
+                </label>
+                {loadingJobs ? (
+                  <div style={{ fontSize: 12, color: '#aaa', padding: '6px 0' }}>Loading jobs…</div>
+                ) : contactJobs.length === 0 ? (
+                  <div style={{ fontSize: 12, color: '#bbb', padding: '6px 0' }}>
+                    No active jobs found for this contact.
+                  </div>
+                ) : (
+                  <select
+                    value={linkedJobId || ''}
+                    onChange={(e) => setLinkedJobId(e.target.value || null)}
+                    style={{
+                      ...inp,
+                      background: linkedJobId ? '#f0fff4' : 'white',
+                      borderColor: linkedJobId ? '#2E7D32' : '#C8D4E4',
+                      color: linkedJobId ? '#1a1a1a' : '#888',
+                    }}
+                  >
+                    <option value="">— No specific job —</option>
+                    {contactJobs.map((j) => (
+                      <option key={j.id} value={j.id}>
+                        {j.pb_number ? `${j.pb_number} · ` : ''}
+                        {j.project_address || j.customer_name || j.id}
+                        {j.project_city ? `, ${j.project_city}` : ''} [
+                        {j.status?.replace(/_/g, ' ')}]
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {linkedJobId && (
+                  <div style={{ fontSize: 11, color: '#2E7D32', marginTop: 4, fontWeight: 600 }}>
+                    Invoice will be linked to this contract
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Manual fields */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
@@ -598,113 +667,115 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                     const isMat = item.type === 'material';
                     const calcAmt = isMat ? itemAmount(item) : null;
                     return (
-                    <div
-                      key={ii}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMat
-                          ? '100px 1fr 60px 100px 90px 28px'
-                          : '100px 1fr 110px 28px',
-                        gap: 8,
-                        marginBottom: 8,
-                        alignItems: 'center',
-                      }}
-                    >
-                      <select
-                        value={item.type}
-                        onChange={(e) => {
-                          updateItem(di, ii, 'type', e.target.value);
-                          if (e.target.value === 'labor') {
-                            updateItem(di, ii, 'qty', '');
-                            updateItem(di, ii, 'unit_price', '');
-                          } else {
-                            updateItem(di, ii, 'qty', item.qty || '1');
-                          }
-                        }}
+                      <div
+                        key={ii}
                         style={{
-                          ...inp,
-                          fontWeight: 600,
-                          fontSize: 12,
-                          background: isMat ? '#fff3e0' : '#e8f5e9',
-                          color: isMat ? ORANGE : GREEN,
-                          borderColor: isMat ? '#fcd34d' : '#86efac',
+                          display: 'grid',
+                          gridTemplateColumns: isMat
+                            ? '100px 1fr 60px 100px 90px 28px'
+                            : '100px 1fr 110px 28px',
+                          gap: 8,
+                          marginBottom: 8,
+                          alignItems: 'center',
                         }}
                       >
-                        <option value="material">Material</option>
-                        <option value="labor">Labor</option>
-                      </select>
-                      <input
-                        value={item.description}
-                        onChange={(e) => updateItem(di, ii, 'description', e.target.value)}
-                        placeholder={isMat ? 'e.g. Architectural shingles' : 'e.g. Installation labor'}
-                        style={{ ...inp, fontSize: 12 }}
-                      />
-                      {isMat ? (
-                        <>
-                          <input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={item.qty}
-                            onChange={(e) => updateItem(di, ii, 'qty', e.target.value)}
-                            placeholder="Qty"
-                            title="Quantity"
-                            style={{ ...inp, fontSize: 12, textAlign: 'center' }}
-                          />
+                        <select
+                          value={item.type}
+                          onChange={(e) => {
+                            updateItem(di, ii, 'type', e.target.value);
+                            if (e.target.value === 'labor') {
+                              updateItem(di, ii, 'qty', '');
+                              updateItem(di, ii, 'unit_price', '');
+                            } else {
+                              updateItem(di, ii, 'qty', item.qty || '1');
+                            }
+                          }}
+                          style={{
+                            ...inp,
+                            fontWeight: 600,
+                            fontSize: 12,
+                            background: isMat ? '#fff3e0' : '#e8f5e9',
+                            color: isMat ? ORANGE : GREEN,
+                            borderColor: isMat ? '#fcd34d' : '#86efac',
+                          }}
+                        >
+                          <option value="material">Material</option>
+                          <option value="labor">Labor</option>
+                        </select>
+                        <input
+                          value={item.description}
+                          onChange={(e) => updateItem(di, ii, 'description', e.target.value)}
+                          placeholder={
+                            isMat ? 'e.g. Architectural shingles' : 'e.g. Installation labor'
+                          }
+                          style={{ ...inp, fontSize: 12 }}
+                        />
+                        {isMat ? (
+                          <>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={item.qty}
+                              onChange={(e) => updateItem(di, ii, 'qty', e.target.value)}
+                              placeholder="Qty"
+                              title="Quantity"
+                              style={{ ...inp, fontSize: 12, textAlign: 'center' }}
+                            />
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.unit_price}
+                              onChange={(e) => updateItem(di, ii, 'unit_price', e.target.value)}
+                              placeholder="Unit $"
+                              title="Price per unit"
+                              style={{ ...inp, fontSize: 12, textAlign: 'right' }}
+                            />
+                            <div
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 700,
+                                color: ORANGE,
+                                textAlign: 'right',
+                                padding: '0 4px',
+                                whiteSpace: 'nowrap',
+                              }}
+                              title="Quantity × Unit Price"
+                            >
+                              ${fmt(calcAmt)}
+                            </div>
+                          </>
+                        ) : (
                           <input
                             type="number"
                             min="0"
                             step="0.01"
-                            value={item.unit_price}
-                            onChange={(e) => updateItem(di, ii, 'unit_price', e.target.value)}
-                            placeholder="Unit $"
-                            title="Price per unit"
+                            value={item.amount}
+                            onChange={(e) => updateItem(di, ii, 'amount', e.target.value)}
+                            placeholder="Amount"
                             style={{ ...inp, fontSize: 12, textAlign: 'right' }}
                           />
-                          <div
+                        )}
+                        {dept.items.length > 1 ? (
+                          <button
+                            onClick={() => removeItem(di, ii)}
                             style={{
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color: ORANGE,
-                              textAlign: 'right',
-                              padding: '0 4px',
-                              whiteSpace: 'nowrap',
+                              background: 'none',
+                              border: 'none',
+                              color: '#ccc',
+                              cursor: 'pointer',
+                              fontSize: 15,
+                              padding: '2px 4px',
                             }}
-                            title="Quantity × Unit Price"
                           >
-                            ${fmt(calcAmt)}
-                          </div>
-                        </>
-                      ) : (
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.amount}
-                          onChange={(e) => updateItem(di, ii, 'amount', e.target.value)}
-                          placeholder="Amount"
-                          style={{ ...inp, fontSize: 12, textAlign: 'right' }}
-                        />
-                      )}
-                      {dept.items.length > 1 ? (
-                        <button
-                          onClick={() => removeItem(di, ii)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#ccc',
-                            cursor: 'pointer',
-                            fontSize: 15,
-                            padding: '2px 4px',
-                          }}
-                        >
-                          ✕
-                        </button>
-                      ) : (
-                        <div />
-                      )}
-                    </div>
-                  );
+                            ✕
+                          </button>
+                        ) : (
+                          <div />
+                        )}
+                      </div>
+                    );
                   })}
                   <button
                     onClick={() => addItem(di)}
