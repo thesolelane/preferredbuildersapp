@@ -337,13 +337,15 @@ router.get('/stats/summary', requireAuth, (req, res) => {
   const pipelineValue = db
     .prepare(
       `SELECT SUM(total_value) as total FROM jobs WHERE archived = 0
-     AND status IN ('proposal_sent','proposal_approved','customer_approved','contract_ready','contract_sent','contract_signed')`,
+     AND status IN ('proposal_sent','proposal_approved','customer_approved','contract_ready','contract_sent')`,
     )
     .get();
 
   const revenueWon = db
     .prepare(
-      "SELECT SUM(total_value) as value FROM jobs WHERE archived = 0 AND status = 'complete' AND updated_at >= date('now','start of year')",
+      `SELECT SUM(total_value) as value FROM jobs WHERE archived = 0
+       AND status IN ('complete','contract_signed')
+       AND updated_at >= date('now','start of year')`,
     )
     .get();
 
