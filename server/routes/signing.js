@@ -40,6 +40,23 @@ function isSessionExpired(session) {
   return new Date() > cutoff;
 }
 
+function supersededPageHTML(docLabel) {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Link No Longer Active</title>
+  <style>body{font-family:system-ui,sans-serif;background:#f5f7fb;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+  .box{background:#fff;border-radius:12px;padding:48px 36px;max-width:440px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+  h2{color:#1B3A6B;margin-bottom:12px}p{color:#555;font-size:15px;line-height:1.6}
+  .badge{display:inline-block;background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;margin-bottom:24px}</style>
+  </head><body><div class="box">
+  <div style="font-size:48px;margin-bottom:16px">🔄</div>
+  <div class="badge">Link Replaced</div>
+  <h2>This link is no longer active</h2>
+  <p>A newer ${docLabel} signing link was sent to your email.<br><br>
+  Please check your inbox for the most recent email from Preferred Builders and use that link to sign.<br><br>
+  If you need help, call us at <strong>978-377-1784</strong>.</p>
+  </div></body></html>`;
+}
+
 function expiredPageHTML(docLabel) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Link Expired</title>
@@ -405,6 +422,7 @@ router.get('/sign/p/:token', (req, res) => {
     .prepare('SELECT * FROM signing_sessions WHERE token = ? AND doc_type = ?')
     .get(req.params.token, 'proposal');
   if (!session) return res.status(404).send('<h2>Link not found or expired.</h2>');
+  if (session.status === 'superseded') return res.status(410).send(supersededPageHTML('proposal'));
   if (isSessionExpired(session)) return res.status(410).send(expiredPageHTML('proposal'));
   const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(session.job_id);
   if (!job) return res.status(404).send('<h2>Job not found.</h2>');
@@ -417,6 +435,7 @@ router.get('/sign/c/:token', (req, res) => {
     .prepare('SELECT * FROM signing_sessions WHERE token = ? AND doc_type = ?')
     .get(req.params.token, 'contract');
   if (!session) return res.status(404).send('<h2>Link not found or expired.</h2>');
+  if (session.status === 'superseded') return res.status(410).send(supersededPageHTML('contract'));
   if (isSessionExpired(session)) return res.status(410).send(expiredPageHTML('contract'));
   const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(session.job_id);
   if (!job) return res.status(404).send('<h2>Job not found.</h2>');

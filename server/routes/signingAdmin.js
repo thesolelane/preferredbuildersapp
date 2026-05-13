@@ -34,6 +34,9 @@ router.post('/api/signing/send-proposal/:jobId', requireAuth, async (req, res) =
     const link = `${base}/sign/p/${token}`;
 
     db.prepare(
+      `UPDATE signing_sessions SET status = 'superseded' WHERE job_id = ? AND doc_type = 'proposal' AND status IN ('sent', 'opened')`,
+    ).run(job.id);
+    db.prepare(
       `INSERT INTO signing_sessions (job_id, doc_type, token, email_sent_at, status) VALUES (?, 'proposal', ?, CURRENT_TIMESTAMP, 'sent')`,
     ).run(job.id, token);
     db.prepare(
@@ -170,6 +173,9 @@ router.post('/api/signing/send-contract/:jobId', requireAuth, async (req, res) =
   const base = baseURL(req);
   const link = `${base}/sign/c/${token}`;
 
+  db.prepare(
+    `UPDATE signing_sessions SET status = 'superseded' WHERE job_id = ? AND doc_type = 'contract' AND status IN ('sent', 'opened')`,
+  ).run(job.id);
   db.prepare(
     `INSERT INTO signing_sessions (job_id, doc_type, token, email_sent_at, status) VALUES (?, 'contract', ?, CURRENT_TIMESTAMP, 'sent')`,
   ).run(job.id, token);
