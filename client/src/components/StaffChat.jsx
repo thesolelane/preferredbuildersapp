@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 
 const BLUE = '#1B3A6B';
 const ORANGE = '#E07B2A';
@@ -685,6 +686,8 @@ function StaffChatWidget({ token }) {
 
 export default function StaffChat({ token }) {
   const isDesktop = useIsDesktop();
+  const { pathname } = useLocation();
   if (!isDesktop) return null;
+  if (pathname === '/chat') return null;
   return <StaffChatWidget token={token} />;
 }
