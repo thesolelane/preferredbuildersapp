@@ -21,16 +21,19 @@ function nextInvoiceNumber(db) {
 function computeTotals(lineItems) {
   let materialsSubtotal = 0;
   let laborSubtotal = 0;
+  let creditSubtotal = 0;
   for (const dept of lineItems) {
     for (const item of dept.items || []) {
       const amt = parseFloat(item.amount) || 0;
-      if (item.type === 'material') materialsSubtotal += amt;
-      else if (item.type === 'labor') laborSubtotal += amt;
+      if (item.type === 'material') materialsSubtotal += Math.abs(amt);
+      else if (item.type === 'labor') laborSubtotal += Math.abs(amt);
+      else if (item.type === 'credit') creditSubtotal += Math.abs(amt);
     }
   }
   const taxAmount = Math.round(materialsSubtotal * MA_TAX_RATE * 100) / 100;
-  const total = Math.round((materialsSubtotal + taxAmount + laborSubtotal) * 100) / 100;
-  return { materialsSubtotal, taxAmount, laborSubtotal, total };
+  const total =
+    Math.round((materialsSubtotal + taxAmount + laborSubtotal - creditSubtotal) * 100) / 100;
+  return { materialsSubtotal, taxAmount, laborSubtotal, creditSubtotal, total };
 }
 
 function buildInvoiceHTML(inv, job, contact) {
@@ -70,6 +73,7 @@ function buildInvoiceHTML(inv, job, contact) {
     </tr>`;
     for (const item of dept.items) {
       const isMat = item.type === 'material';
+      const isCredit = item.type === 'credit';
       const qty = item.qty != null ? item.qty : null;
       const unitPrice = item.unit_price != null ? item.unit_price : null;
       const qtyCell =
@@ -78,15 +82,20 @@ function buildInvoiceHTML(inv, job, contact) {
           : `<span style="color:#bbb">—</span>`;
       const upCell =
         isMat && unitPrice != null ? `$${fmt(unitPrice)}` : `<span style="color:#bbb">—</span>`;
-      itemsHTML += `<tr style="border-bottom:1px solid #f0f0f0">
-        <td style="padding:7px 12px 7px 22px;font-size:12px;color:#333">
-          ${item.description || (isMat ? 'Materials' : 'Labor')}
+      const typeBg = isMat ? '#fff3e0' : isCredit ? '#fef2f2' : '#e8f5e9';
+      const typeColor = isMat ? '#E07B2A' : isCredit ? '#C62828' : '#2E7D32';
+      const typeLabel = isMat ? 'Material' : isCredit ? 'Credit' : 'Labor';
+      const amtDisplay = isCredit
+        ? `<span style="color:#C62828">- $${fmt(Math.abs(parseFloat(item.amount) || 0))}</span>`
+        : `$${fmt(item.amount)}`;
+      itemsHTML += `<tr style="border-bottom:1px solid #f0f0f0${isCredit ? ';background:#fff8f8' : ''}">
+        <td style="padding:7px 12px 7px 22px;font-size:12px;color:${isCredit ? '#C62828' : '#333'}">
+          ${item.description || typeLabel}
         </td>
         <td style="padding:7px 12px;text-align:center;width:90px">
           <span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;
-            background:${isMat ? '#fff3e0' : '#e8f5e9'};
-            color:${isMat ? '#E07B2A' : '#2E7D32'}">
-            ${isMat ? 'Material' : 'Labor'}
+            background:${typeBg};color:${typeColor}">
+            ${typeLabel}
           </span>
         </td>
         <td style="padding:7px 8px;text-align:center;font-size:12px;width:55px;color:#555">
@@ -96,7 +105,7 @@ function buildInvoiceHTML(inv, job, contact) {
           ${upCell}
         </td>
         <td style="padding:7px 12px;text-align:right;font-weight:600;font-size:12px;width:110px">
-          $${fmt(item.amount)}
+          ${amtDisplay}
         </td>
       </tr>`;
     }
@@ -222,6 +231,14 @@ function buildInvoiceHTML(inv, job, contact) {
       <td style="color:#2E7D32">Labor Subtotal</td>
       <td style="color:#2E7D32">$${fmt(inv.labor_subtotal)}</td>
     </tr>
+    ${
+      inv.credit_subtotal > 0
+        ? `<tr>
+      <td style="color:#C62828">Credits / Discounts</td>
+      <td style="color:#C62828">- $${fmt(inv.credit_subtotal)}</td>
+    </tr>`
+        : ''
+    }
     <tr class="total-row">
       <td>Invoice Total</td>
       <td>$${fmt(inv.total)}</td>
@@ -316,8 +333,8 @@ router.post('/', requireAuth, (req, res) => {
     .prepare(
       `INSERT INTO direct_invoices
         (invoice_number, job_id, contact_id, to_name, to_email, to_phone, to_address,
-         line_items, materials_subtotal, tax_amount, labor_subtotal, total, notes, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         line_items, materials_subtotal, tax_amount, labor_subtotal, credit_subtotal, total, notes, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     )
     .run(
       invNum,
@@ -331,6 +348,7 @@ router.post('/', requireAuth, (req, res) => {
       materialsSubtotal,
       taxAmount,
       laborSubtotal,
+      creditSubtotal,
       total,
       notes || null,
       req.session?.name || 'staff',

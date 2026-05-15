@@ -422,6 +422,9 @@ async function initDatabase() {
   addColIfMissing('jobs', 'closed_note', 'TEXT');
   addColIfMissing('jobs', 'error_message', 'TEXT');
 
+  // Migration: credit_subtotal on direct_invoices
+  addColIfMissing('direct_invoices', 'credit_subtotal', 'REAL NOT NULL DEFAULT 0');
+
   // Migration: task reminder columns
   addColIfMissing('tasks', 'remind_at', 'DATETIME');
   addColIfMissing('tasks', 'remind_interval_hours', 'INTEGER DEFAULT 168');
@@ -592,6 +595,7 @@ async function initDatabase() {
       materials_subtotal REAL NOT NULL DEFAULT 0,
       tax_amount         REAL NOT NULL DEFAULT 0,
       labor_subtotal     REAL NOT NULL DEFAULT 0,
+      credit_subtotal    REAL NOT NULL DEFAULT 0,
       total              REAL NOT NULL DEFAULT 0,
       notes              TEXT,
       status             TEXT NOT NULL DEFAULT 'draft',

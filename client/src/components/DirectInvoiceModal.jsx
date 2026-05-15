@@ -51,22 +51,24 @@ function itemAmount(it) {
     const u = parseFloat(it.unit_price) || 0;
     return q && u ? Math.round(q * u * 100) / 100 : parseFloat(it.amount) || 0;
   }
+  if (it.type === 'credit') return -Math.abs(parseFloat(it.amount) || 0);
   return parseFloat(it.amount) || 0;
 }
 
 function computeTotals(depts) {
   let mat = 0;
   let lab = 0;
+  let credit = 0;
   for (const d of depts) {
     for (const it of d.items || []) {
-      const a = itemAmount(it);
-      if (it.type === 'material') mat += a;
-      else if (it.type === 'labor') lab += a;
+      if (it.type === 'material') mat += itemAmount(it);
+      else if (it.type === 'labor') lab += parseFloat(it.amount) || 0;
+      else if (it.type === 'credit') credit += Math.abs(parseFloat(it.amount) || 0);
     }
   }
   const tax = Math.round(mat * MA_TAX_RATE * 100) / 100;
-  const total = Math.round((mat + tax + lab) * 100) / 100;
-  return { mat, tax, lab, total };
+  const total = Math.round((mat + tax + lab - credit) * 100) / 100;
+  return { mat, tax, lab, credit, total };
 }
 
 export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved }) {
@@ -209,6 +211,11 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
             showToast('Material items need a unit price greater than 0', 'error');
             return false;
           }
+        } else if (it.type === 'credit') {
+          if (!(parseFloat(it.amount) > 0)) {
+            showToast('Credit items need an amount greater than 0', 'error');
+            return false;
+          }
         } else {
           if (!(parseFloat(it.amount) > 0)) {
             showToast('Labor items need an amount greater than 0', 'error');
@@ -247,6 +254,13 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
               qty: parseFloat(it.qty) || 1,
               unit_price: parseFloat(it.unit_price) || 0,
               amount: amt,
+            };
+          }
+          if (it.type === 'credit') {
+            return {
+              type: 'credit',
+              description: it.description.trim(),
+              amount: -Math.abs(parseFloat(it.amount) || 0),
             };
           }
           return {
@@ -683,7 +697,7 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                           value={item.type}
                           onChange={(e) => {
                             updateItem(di, ii, 'type', e.target.value);
-                            if (e.target.value === 'labor') {
+                            if (e.target.value === 'labor' || e.target.value === 'credit') {
                               updateItem(di, ii, 'qty', '');
                               updateItem(di, ii, 'unit_price', '');
                             } else {
@@ -694,19 +708,32 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                             ...inp,
                             fontWeight: 600,
                             fontSize: 12,
-                            background: isMat ? '#fff3e0' : '#e8f5e9',
-                            color: isMat ? ORANGE : GREEN,
-                            borderColor: isMat ? '#fcd34d' : '#86efac',
+                            background: isMat
+                              ? '#fff3e0'
+                              : item.type === 'credit'
+                                ? '#fef2f2'
+                                : '#e8f5e9',
+                            color: isMat ? ORANGE : item.type === 'credit' ? RED : GREEN,
+                            borderColor: isMat
+                              ? '#fcd34d'
+                              : item.type === 'credit'
+                                ? '#fca5a5'
+                                : '#86efac',
                           }}
                         >
                           <option value="material">Material</option>
                           <option value="labor">Labor</option>
+                          <option value="credit">Credit</option>
                         </select>
                         <input
                           value={item.description}
                           onChange={(e) => updateItem(di, ii, 'description', e.target.value)}
                           placeholder={
-                            isMat ? 'e.g. Architectural shingles' : 'e.g. Installation labor'
+                            isMat
+                              ? 'e.g. Architectural shingles'
+                              : item.type === 'credit'
+                                ? 'e.g. Referral discount, return credit'
+                                : 'e.g. Installation labor'
                           }
                           style={{ ...inp, fontSize: 12 }}
                         />
@@ -753,8 +780,14 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                             step="0.01"
                             value={item.amount}
                             onChange={(e) => updateItem(di, ii, 'amount', e.target.value)}
-                            placeholder="Amount"
-                            style={{ ...inp, fontSize: 12, textAlign: 'right' }}
+                            placeholder={item.type === 'credit' ? 'Credit $' : 'Amount'}
+                            style={{
+                              ...inp,
+                              fontSize: 12,
+                              textAlign: 'right',
+                              borderColor: item.type === 'credit' ? '#fca5a5' : '#C8D4E4',
+                              color: item.type === 'credit' ? RED : 'inherit',
+                            }}
                           />
                         )}
                         {dept.items.length > 1 ? (
@@ -825,6 +858,9 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
             <TotalRow label="Materials Subtotal" value={`$${fmt(mat)}`} color={ORANGE} />
             <TotalRow label="MA Sales Tax (6.25%)" value={`$${fmt(tax)}`} color={ORANGE} dim />
             <TotalRow label="Labor Subtotal" value={`$${fmt(lab)}`} color={GREEN} />
+            {credit > 0 && (
+              <TotalRow label="Credits / Discounts" value={`- $${fmt(credit)}`} color={RED} />
+            )}
             <div style={{ borderTop: '2px solid #1B3A6B', marginTop: 8, paddingTop: 8 }}>
               <TotalRow label="Invoice Total" value={`$${fmt(total)}`} color={BLUE} bold />
             </div>
