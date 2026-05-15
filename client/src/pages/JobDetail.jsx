@@ -126,7 +126,7 @@ export default function JobDetail({ token, userName }) {
     if (!vendors.length) {
       fetch('/api/vendors', { headers: { 'x-auth-token': token } })
         .then((r) => r.json())
-        .then((d) => setVendors(d || []))
+        .then((d) => setVendors(d.vendors || []))
         .catch(() => {});
     }
     fetch(`/api/rfq/${id}`, { headers: { 'x-auth-token': token } })
