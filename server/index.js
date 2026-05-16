@@ -307,12 +307,21 @@ app.use(require('./routes/tradeSelect'));
 // ── SERVE REACT FRONTEND (production) ────────────────────────
 const clientBuild = path.join(__dirname, '../client/build');
 if (fs.existsSync(clientBuild)) {
-  app.use(express.static(clientBuild, { etag: false, maxAge: 0 }));
+  app.use(
+    express.static(clientBuild, {
+      etag: false,
+      maxAge: 0,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+        }
+      },
+    }),
+  );
   app.get('*', (req, res) => {
-    if (process.env.NODE_ENV !== 'production') {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-    }
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
     res.sendFile(path.join(clientBuild, 'index.html'));
   });
 }
