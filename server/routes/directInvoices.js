@@ -367,12 +367,28 @@ router.patch('/:id', requireAuth, (req, res) => {
 
   const { status, notes } = req.body;
   const newStatus = ['draft', 'sent', 'paid'].includes(status) ? status : inv.status;
-  const paidAt =
-    newStatus === 'paid' && inv.status !== 'paid' ? new Date().toISOString() : inv.paid_at;
+  const becomingPaid = newStatus === 'paid' && inv.status !== 'paid';
+  const paidAt = becomingPaid ? new Date().toISOString() : inv.paid_at;
 
   db.prepare(
     'UPDATE direct_invoices SET status=?, notes=?, paid_at=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
   ).run(newStatus, notes ?? inv.notes, paidAt, inv.id);
+
+  if (becomingPaid && inv.job_id) {
+    const today = new Date().toISOString().slice(0, 10);
+    db.prepare(
+      `INSERT INTO payments_received
+        (job_id, customer_name, amount, date_received, payment_type, credit_debit, recorded_by, notes)
+       VALUES (?, ?, ?, ?, 'invoice', 'credit', ?, ?)`,
+    ).run(
+      inv.job_id,
+      inv.to_name || null,
+      inv.total,
+      today,
+      req.session?.name || 'system',
+      `Auto-recorded from invoice ${inv.invoice_number}`,
+    );
+  }
 
   res.json({ invoice: db.prepare('SELECT * FROM direct_invoices WHERE id = ?').get(inv.id) });
 });
