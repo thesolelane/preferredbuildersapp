@@ -326,7 +326,8 @@ router.post('/', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Recipient name or email required' });
   }
 
-  const { materialsSubtotal, taxAmount, laborSubtotal, creditSubtotal, total } = computeTotals(line_items);
+  const { materialsSubtotal, taxAmount, laborSubtotal, creditSubtotal, total } =
+    computeTotals(line_items);
   const invNum = nextInvoiceNumber(db);
 
   const info = db

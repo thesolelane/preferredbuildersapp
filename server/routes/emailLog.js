@@ -99,6 +99,22 @@ router.get('/', requireAuth, (req, res) => {
   });
 });
 
+// GET /api/email-log/diag — quick table diagnostic
+// NOTE: must be declared before /:id/preview so Express doesn't treat "diag" as an id
+router.get('/diag', requireAuth, (req, res) => {
+  try {
+    const db = getDb();
+    const count = db.prepare('SELECT COUNT(*) as n FROM email_log').get();
+    const latest = db.prepare('SELECT * FROM email_log ORDER BY sent_at DESC LIMIT 5').all();
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+      .all();
+    res.json({ emailLogCount: count.n, latest, tables: tables.map((t) => t.name) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/email-log/:id/preview — return stored html_body for a single email
 router.get('/:id/preview', requireAuth, (req, res) => {
   try {
@@ -111,21 +127,6 @@ router.get('/:id/preview', requireAuth, (req, res) => {
         .json({ error: 'Preview not available — wiped after contract signing' });
     res.setHeader('Content-Type', 'text/html');
     res.send(row.html_body);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/email-log/diag — quick table diagnostic
-router.get('/diag', requireAuth, (req, res) => {
-  try {
-    const db = getDb();
-    const count = db.prepare('SELECT COUNT(*) as n FROM email_log').get();
-    const latest = db.prepare('SELECT * FROM email_log ORDER BY sent_at DESC LIMIT 5').all();
-    const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-      .all();
-    res.json({ emailLogCount: count.n, latest, tables: tables.map((t) => t.name) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

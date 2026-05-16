@@ -2280,10 +2280,16 @@ export default function Settings({ token, userRole }) {
 
   const loadEmailLog = async () => {
     setEmailLogLoading(true);
-    const res = await fetch('/api/email-log?limit=200', { headers: { 'x-auth-token': token } });
-    const data = await res.json();
-    setEmailLog(data);
-    setEmailLogLoading(false);
+    try {
+      const res = await fetch('/api/email-log?limit=200', { headers: { 'x-auth-token': token } });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const data = await res.json();
+      setEmailLog(data);
+    } catch (e) {
+      console.error('Email log fetch failed:', e.message);
+    } finally {
+      setEmailLogLoading(false);
+    }
   };
 
   const renderEmailLog = () => {
