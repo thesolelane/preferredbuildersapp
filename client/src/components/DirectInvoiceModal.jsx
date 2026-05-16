@@ -162,7 +162,7 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
     setToAddress(prefillAddress);
   };
 
-  const { mat, tax, lab, total } = computeTotals(depts);
+  const { mat, tax, lab, credit, total } = computeTotals(depts);
   const onlineFee = Math.round((total * ONLINE_FEE_PCT + ONLINE_FEE_FLAT) * 100) / 100;
   const onlineTotal = Math.round((total + onlineFee) * 100) / 100;
 
