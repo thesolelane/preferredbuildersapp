@@ -689,7 +689,7 @@ export default function JobDetail({ token, userName }) {
   const addLineItem = () => {
     setEditingLineItems((prev) => [
       ...prev,
-      { trade: '', baseCost: 0, description: '', scopeIncluded: [], scopeExcluded: [] },
+      { trade: '', baseCost: 0, description: '', note: '', scopeIncluded: [], scopeExcluded: [] },
     ]);
   };
 

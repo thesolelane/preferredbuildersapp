@@ -980,7 +980,21 @@ export default function JobActionPanel({
               <tbody>
                 {(job.proposal_data?.lineItems || []).map((li, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                    <td style={{ padding: '7px 8px', color: '#333' }}>{li.trade}</td>
+                    <td style={{ padding: '7px 8px', color: '#333' }}>
+                      {li.trade}
+                      {li.note && (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: '#92400e',
+                            fontStyle: 'italic',
+                            marginTop: 2,
+                          }}
+                        >
+                          📝 {li.note}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: '7px 8px', textAlign: 'right', color: '#777' }}>
                       ${(li.baseCost || 0).toLocaleString()}
                     </td>
@@ -1221,6 +1235,29 @@ export default function JobActionPanel({
                             >
                               ✕
                             </button>
+                          </td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <td colSpan={5} style={{ padding: '2px 4px 6px 4px' }}>
+                            <textarea
+                              value={li.note || ''}
+                              onChange={(e) => updateLineItem(i, 'note', e.target.value)}
+                              placeholder="📝 Add a note for this trade (appears in the proposal PDF)…"
+                              rows={2}
+                              style={{
+                                width: '100%',
+                                padding: '5px 8px',
+                                border: '1px solid #fcd34d',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                fontStyle: li.note ? 'italic' : 'normal',
+                                color: '#92400e',
+                                background: li.note ? '#fffbeb' : '#fffdf5',
+                                boxSizing: 'border-box',
+                                resize: 'vertical',
+                                lineHeight: 1.5,
+                              }}
+                            />
                           </td>
                         </tr>
                         {isExpanded && (

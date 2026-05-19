@@ -244,7 +244,8 @@ function buildScopeHTML(lineItems) {
       ${included.map((i) => `<li class="yes"><span class="label">${i}</span></li>`).join('')}
     </ul>`
         : ''
-    }`;
+    }
+    ${item.note ? `<div style="margin:8px 0 4px;padding:8px 12px;background:#FFF8F0;border-left:3px solid #E07B2A;border-radius:0 4px 4px 0;font-size:9.5pt;color:#5D3A00;line-height:1.6;font-style:italic;">📝 Note: ${item.note}</div>` : ''}`;
     })
     .join('');
 }
