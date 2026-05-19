@@ -328,6 +328,10 @@ if (fs.existsSync(clientBuild)) {
 
 // ── ERROR HANDLER ─────────────────────────────────────────────
 app.use((err, req, res, _next) => {
+  // Dropped upload connections — client navigated away mid-upload. Not a server fault.
+  if (err && err.message === 'Unexpected end of form') {
+    return res.status(400).json({ error: 'Upload incomplete — connection dropped' });
+  }
   console.error('Server error:', err.message || err, err.stack || '');
   res.status(500).json({ error: 'Internal server error', message: err.message });
 });
