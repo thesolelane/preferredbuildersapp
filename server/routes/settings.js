@@ -33,6 +33,36 @@ router.get('/', requireAdmin, (req, res) => {
   res.json(grouped);
 });
 
+// GET PM2 logs (last N lines of out + error log)
+// NOTE: must be declared before /:key so Express doesn't treat "logs" as a key param
+router.get('/logs', requireAdmin, (req, res) => {
+  const lines = Math.min(parseInt(req.query.lines) || 200, 1000);
+  const pm2Home = process.env.PM2_HOME || path.join(os.homedir(), '.pm2');
+  const logDir = path.join(pm2Home, 'logs');
+  const appName = 'preferred-builders';
+
+  const readTail = (filePath, n) => {
+    try {
+      if (!fs.existsSync(filePath)) return [];
+      const content = fs.readFileSync(filePath, 'utf8');
+      const all = content.split('\n').filter(Boolean);
+      return all.slice(-n);
+    } catch {
+      return [];
+    }
+  };
+
+  const outPath = path.join(logDir, `${appName}-out.log`);
+  const errPath = path.join(logDir, `${appName}-error.log`);
+
+  res.json({
+    out: readTail(outPath, lines),
+    error: readTail(errPath, lines),
+    paths: { out: outPath, error: errPath },
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // GET single setting
 router.get('/:key', requireAdmin, (req, res) => {
   const db = getDb();
@@ -170,35 +200,6 @@ router.delete('/security/allowed-ips/:ip', requireAdmin, (req, res) => {
   ).run(JSON.stringify(ips));
   invalidateIpCache();
   res.json({ success: true, ips });
-});
-
-// GET PM2 logs (last N lines of out + error log)
-router.get('/logs', requireAdmin, (req, res) => {
-  const lines = Math.min(parseInt(req.query.lines) || 200, 1000);
-  const pm2Home = process.env.PM2_HOME || path.join(os.homedir(), '.pm2');
-  const logDir = path.join(pm2Home, 'logs');
-  const appName = 'preferred-builders';
-
-  const readTail = (filePath, n) => {
-    try {
-      if (!fs.existsSync(filePath)) return [];
-      const content = fs.readFileSync(filePath, 'utf8');
-      const all = content.split('\n').filter(Boolean);
-      return all.slice(-n);
-    } catch {
-      return [];
-    }
-  };
-
-  const outPath = path.join(logDir, `${appName}-out.log`);
-  const errPath = path.join(logDir, `${appName}-error.log`);
-
-  res.json({
-    out: readTail(outPath, lines),
-    error: readTail(errPath, lines),
-    paths: { out: outPath, error: errPath },
-    timestamp: new Date().toISOString(),
-  });
 });
 
 module.exports = router;
