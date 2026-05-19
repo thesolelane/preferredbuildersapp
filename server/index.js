@@ -328,7 +328,7 @@ if (fs.existsSync(clientBuild)) {
 
 // ── ERROR HANDLER ─────────────────────────────────────────────
 app.use((err, req, res, _next) => {
-  console.error('Server error:', err);
+  console.error('Server error:', err.message || err, err.stack || '');
   res.status(500).json({ error: 'Internal server error', message: err.message });
 });
 

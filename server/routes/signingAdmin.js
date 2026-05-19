@@ -162,48 +162,49 @@ router.post('/api/signing/send-proposal/:jobId', requireAuth, async (req, res) =
 
 // ── POST /api/signing/send-contract/:jobId ────────────────────────────
 router.post('/api/signing/send-contract/:jobId', requireAuth, async (req, res) => {
-  const db = getDb();
-  const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(req.params.jobId);
-  if (!job) return res.status(404).json({ error: 'Job not found' });
-  if (!job.contract_pdf_path)
-    return res.status(400).json({ error: 'No contract PDF ready. Generate the contract first.' });
-  if (!job.customer_email) return res.status(400).json({ error: 'No customer email on file' });
+  try {
+    const db = getDb();
+    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(req.params.jobId);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (!job.contract_pdf_path)
+      return res.status(400).json({ error: 'No contract PDF ready. Generate the contract first.' });
+    if (!job.customer_email) return res.status(400).json({ error: 'No customer email on file' });
 
-  const token = uuidv4();
-  const base = baseURL(req);
-  const link = `${base}/sign/c/${token}`;
+    const token = uuidv4();
+    const base = baseURL(req);
+    const link = `${base}/sign/c/${token}`;
 
-  db.prepare(
-    `UPDATE signing_sessions SET status = 'superseded' WHERE job_id = ? AND doc_type = 'contract' AND status IN ('sent', 'opened')`,
-  ).run(job.id);
-  db.prepare(
-    `INSERT INTO signing_sessions (job_id, doc_type, token, email_sent_at, status) VALUES (?, 'contract', ?, CURRENT_TIMESTAMP, 'sent')`,
-  ).run(job.id, token);
-  db.prepare(
-    "UPDATE jobs SET status = 'contract_sent', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run(job.id);
-  logAudit(
-    job.id,
-    'contract_sent_for_signing',
-    `Contract signing link sent to ${job.customer_email}`,
-    'admin',
-  );
+    db.prepare(
+      `UPDATE signing_sessions SET status = 'superseded' WHERE job_id = ? AND doc_type = 'contract' AND status IN ('sent', 'opened')`,
+    ).run(job.id);
+    db.prepare(
+      `INSERT INTO signing_sessions (job_id, doc_type, token, email_sent_at, status) VALUES (?, 'contract', ?, CURRENT_TIMESTAMP, 'sent')`,
+    ).run(job.id, token);
+    db.prepare(
+      "UPDATE jobs SET status = 'contract_sent', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    ).run(job.id);
+    logAudit(
+      job.id,
+      'contract_sent_for_signing',
+      `Contract signing link sent to ${job.customer_email}`,
+      'admin',
+    );
 
-  const amount = job.total_value ? `$${Number(job.total_value).toLocaleString()}` : '';
-  const fs = require('fs');
-  const proposalAttachment =
-    job.proposal_pdf_path && fs.existsSync(job.proposal_pdf_path)
-      ? {
-          attachmentPath: job.proposal_pdf_path,
-          attachmentName: `Preferred-Builders-Proposal-${job.customer_name || job.id}.pdf`,
-        }
-      : {};
+    const amount = job.total_value ? `$${Number(job.total_value).toLocaleString()}` : '';
+    const fs = require('fs');
+    const proposalAttachment =
+      job.proposal_pdf_path && fs.existsSync(job.proposal_pdf_path)
+        ? {
+            attachmentPath: job.proposal_pdf_path,
+            attachmentName: `Preferred-Builders-Proposal-${job.customer_name || job.id}.pdf`,
+          }
+        : {};
 
-  await sendEmail({
-    to: job.customer_email,
-    subject: `Your Preferred Builders Contract is Ready to Sign`,
-    ...proposalAttachment,
-    html: `<div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto">
+    await sendEmail({
+      to: job.customer_email,
+      subject: `Your Preferred Builders Contract is Ready to Sign`,
+      ...proposalAttachment,
+      html: `<div style="font-family:Arial,sans-serif;max-width:580px;margin:0 auto">
       <div style="background:#1B3A6B;padding:20px 24px;color:white;border-radius:8px 8px 0 0">
         <div style="font-size:17px;font-weight:700">Preferred Builders General Services Inc.</div>
         <div style="font-size:12px;opacity:.8;margin-top:4px">HIC-197400 · CSL CS-121662 · 978-377-1784</div>
@@ -281,13 +282,17 @@ router.post('/api/signing/send-contract/:jobId', requireAuth, async (req, res) =
         Questions? Reply to this email or call us directly.
       </div>
     </div>`,
-    text: `Hi ${job.customer_name || 'there'},\n\nYour construction contract for ${job.project_address} is ready to sign. Your approved proposal scope is included.\n\nSign here: ${link}\n\nWhat happens next:\n1. Sign the contract\n2. Submit your deposit\n3. 3-business-day cancellation window (Massachusetts law)\n4. We break ground\n\nReferral: Send a friend our way — if they sign a contract you get $250 off your next project.\n\n— Preferred Builders General Services Inc.\n978-377-1784`,
-    emailType: 'contract',
-    jobId: job.id,
-  });
+      text: `Hi ${job.customer_name || 'there'},\n\nYour construction contract for ${job.project_address} is ready to sign. Your approved proposal scope is included.\n\nSign here: ${link}\n\nWhat happens next:\n1. Sign the contract\n2. Submit your deposit\n3. 3-business-day cancellation window (Massachusetts law)\n4. We break ground\n\nReferral: Send a friend our way — if they sign a contract you get $250 off your next project.\n\n— Preferred Builders General Services Inc.\n978-377-1784`,
+      emailType: 'contract',
+      jobId: job.id,
+    });
 
-  notifyClients('job_updated', { jobId: job.id, status: 'contract_sent' });
-  res.json({ success: true, message: `Contract signing link sent to ${job.customer_email}` });
+    notifyClients('job_updated', { jobId: job.id, status: 'contract_sent' });
+    res.json({ success: true, message: `Contract signing link sent to ${job.customer_email}` });
+  } catch (err) {
+    console.error('[send-contract] Error:', err.message);
+    res.status(500).json({ error: 'Failed to send contract: ' + err.message });
+  }
 });
 
 // ── GET /api/signing/status/:jobId ────────────────────────────────────
