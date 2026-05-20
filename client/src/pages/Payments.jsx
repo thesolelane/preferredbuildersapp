@@ -57,6 +57,7 @@ const EMPTY_OUT = {
 const EMPTY_ALLOC_G = { job_id: '', payment_class: 'contract', amount: '', notes: '' };
 
 export default function Payments({ token }) {
+  const defaultSplitGroup = new URLSearchParams(window.location.search).get('split') || null;
   const [tab, setTab] = useState('received');
   const [received, setReceived] = useState([]);
   const [made, setMade] = useState([]);
@@ -869,6 +870,7 @@ export default function Payments({ token }) {
       ) : tab === 'received' ? (
         <PaymentTable
           payments={received}
+          defaultExpandedGroup={defaultSplitGroup}
           columns={[
             {
               key: 'date',
@@ -889,7 +891,14 @@ export default function Payments({ token }) {
             {
               key: 'job',
               label: 'Job',
-              render: (p) => <span style={{ fontSize: 12 }}>{jobLabel(p)}</span>,
+              render: (p) => (
+                <a
+                  href={`/jobs/${p.job_id}`}
+                  style={{ fontSize: 12, color: BLUE, textDecoration: 'none', fontWeight: 500 }}
+                >
+                  {jobLabel(p)}
+                </a>
+              ),
             },
             { key: 'customer_name', label: 'From', render: (p) => p.customer_name || '—' },
             { key: 'check_number', label: 'Check #', render: (p) => p.check_number || '—' },
@@ -1105,7 +1114,83 @@ function JobSelect({ value, onChange, jobs }) {
   );
 }
 
-function PaymentTable({ payments, columns, onDelete, emptyMsg }) {
+const SPLIT_ACCENT = '#3B82F6';
+
+function buildSplitGroups(payments) {
+  const groupMap = new Map();
+  const order = [];
+  for (const p of payments) {
+    if (p.split_group_id) {
+      if (!groupMap.has(p.split_group_id)) {
+        groupMap.set(p.split_group_id, []);
+        order.push({ type: 'group', id: p.split_group_id });
+      }
+      groupMap.get(p.split_group_id).push(p);
+    } else {
+      order.push({ type: 'single', payment: p });
+    }
+  }
+  return { order, groupMap };
+}
+
+function SplitGroupHeader({ groupId, rows, expanded, onToggle, isTarget }) {
+  const total = rows.reduce((s, r) => {
+    const amt = Number(r.amount) || 0;
+    return s + (r.credit_debit === 'debit' ? -amt : amt);
+  }, 0);
+  const checkNum = rows[0]?.check_number;
+  return (
+    <tr
+      id={`split-group-${groupId}`}
+      style={{
+        background: isTarget ? '#dbeafe' : '#eff6ff',
+        borderLeft: `4px solid ${SPLIT_ACCENT}`,
+        cursor: 'pointer',
+      }}
+      onClick={onToggle}
+    >
+      <td colSpan={99} style={{ padding: '8px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span
+            style={{
+              fontSize: 10,
+              padding: '2px 8px',
+              borderRadius: 10,
+              background: SPLIT_ACCENT,
+              color: 'white',
+              fontWeight: 'bold',
+              letterSpacing: '.3px',
+            }}
+          >
+            SPLIT GROUP
+          </span>
+          <span style={{ fontWeight: 'bold', fontSize: 13, color: SPLIT_ACCENT }}>
+            {fmt(Math.abs(total))} total
+          </span>
+          {checkNum && <span style={{ fontSize: 12, color: '#555' }}>Check #{checkNum}</span>}
+          <span style={{ fontSize: 11, color: '#888' }}>
+            {rows.length} allocations across {rows.length} jobs
+          </span>
+          <span style={{ fontSize: 11, color: SPLIT_ACCENT, marginLeft: 'auto' }}>
+            {expanded ? '▲ Collapse' : '▼ Show allocations'}
+          </span>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function PaymentTable({ payments, columns, onDelete, emptyMsg, defaultExpandedGroup }) {
+  const [expandedGroups, setExpandedGroups] = useState(
+    () => new Set(defaultExpandedGroup ? [defaultExpandedGroup] : []),
+  );
+
+  useEffect(() => {
+    if (!defaultExpandedGroup) return;
+    const el = document.getElementById(`split-group-${defaultExpandedGroup}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [defaultExpandedGroup, payments]);
+
   if (payments.length === 0) {
     return (
       <div
@@ -1122,6 +1207,97 @@ function PaymentTable({ payments, columns, onDelete, emptyMsg }) {
       </div>
     );
   }
+
+  const { order, groupMap } = buildSplitGroups(payments);
+
+  const toggleGroup = (id) =>
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const rows = [];
+  for (const entry of order) {
+    if (entry.type === 'single') {
+      rows.push(
+        <tr key={entry.payment.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
+          {columns.map((c) => (
+            <td key={c.key} style={{ padding: '10px 12px', color: '#333' }}>
+              {c.render(entry.payment)}
+            </td>
+          ))}
+          <td style={{ padding: '10px 12px' }}>
+            <button
+              onClick={() => onDelete(entry.payment)}
+              style={{
+                padding: '4px 10px',
+                background: '#ff000011',
+                color: RED,
+                border: '1px solid #ff000022',
+                borderRadius: 5,
+                cursor: 'pointer',
+                fontSize: 11,
+              }}
+            >
+              Delete
+            </button>
+          </td>
+        </tr>,
+      );
+    } else {
+      const groupRows = groupMap.get(entry.id);
+      const expanded = expandedGroups.has(entry.id);
+      rows.push(
+        <SplitGroupHeader
+          key={`group-hdr-${entry.id}`}
+          groupId={entry.id}
+          rows={groupRows}
+          expanded={expanded}
+          onToggle={() => toggleGroup(entry.id)}
+          isTarget={entry.id === defaultExpandedGroup}
+        />,
+      );
+      if (expanded) {
+        for (const p of groupRows) {
+          rows.push(
+            <tr
+              key={p.id}
+              style={{
+                borderBottom: '1px solid #e8f0fe',
+                background: '#f8fbff',
+                borderLeft: `4px solid ${SPLIT_ACCENT}44`,
+              }}
+            >
+              {columns.map((c) => (
+                <td key={c.key} style={{ padding: '9px 12px', color: '#333' }}>
+                  {c.render(p)}
+                </td>
+              ))}
+              <td style={{ padding: '9px 12px' }}>
+                <button
+                  onClick={() => onDelete(p)}
+                  style={{
+                    padding: '4px 10px',
+                    background: '#ff000011',
+                    color: RED,
+                    border: '1px solid #ff000022',
+                    borderRadius: 5,
+                    cursor: 'pointer',
+                    fontSize: 11,
+                  }}
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>,
+          );
+        }
+      }
+    }
+  }
+
   return (
     <div
       style={{
@@ -1154,33 +1330,7 @@ function PaymentTable({ payments, columns, onDelete, emptyMsg }) {
             <th style={{ width: 60 }} />
           </tr>
         </thead>
-        <tbody>
-          {payments.map((p) => (
-            <tr key={p.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-              {columns.map((c) => (
-                <td key={c.key} style={{ padding: '10px 12px', color: '#333' }}>
-                  {c.render(p)}
-                </td>
-              ))}
-              <td style={{ padding: '10px 12px' }}>
-                <button
-                  onClick={() => onDelete(p)}
-                  style={{
-                    padding: '4px 10px',
-                    background: '#ff000011',
-                    color: RED,
-                    border: '1px solid #ff000022',
-                    borderRadius: 5,
-                    cursor: 'pointer',
-                    fontSize: 11,
-                  }}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+        <tbody>{rows}</tbody>
       </table>
     </div>
   );

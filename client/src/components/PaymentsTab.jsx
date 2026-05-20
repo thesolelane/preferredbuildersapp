@@ -1700,7 +1700,12 @@ export default function PaymentsTab({ jobId, token, job }) {
                     key={p.id}
                     style={{
                       borderBottom: '1px solid #f0f0f0',
-                      background: p.is_pass_through_reimbursement ? '#fffef0' : 'white',
+                      background: p.is_pass_through_reimbursement
+                        ? '#fffef0'
+                        : p.split_group_id
+                          ? '#f8fbff'
+                          : 'white',
+                      borderLeft: p.split_group_id ? '3px solid #3B82F6' : undefined,
                     }}
                   >
                     <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
@@ -1717,34 +1722,55 @@ export default function PaymentsTab({ jobId, token, job }) {
                       <TypeBadge type={p.payment_type} />
                     </td>
                     <td style={{ padding: '8px 10px' }}>
-                      {p.is_pass_through_reimbursement ? (
-                        <span
-                          style={{
-                            fontSize: 10,
-                            padding: '2px 6px',
-                            borderRadius: 8,
-                            background: '#fffbeb',
-                            color: '#92400e',
-                            fontWeight: 'bold',
-                            border: '1px solid #fbbf24',
-                          }}
-                        >
-                          Pass-Thru
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            fontSize: 10,
-                            padding: '2px 6px',
-                            borderRadius: 8,
-                            background: '#e8f5e9',
-                            color: GREEN,
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          Contract
-                        </span>
-                      )}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {p.is_pass_through_reimbursement ? (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              padding: '2px 6px',
+                              borderRadius: 8,
+                              background: '#fffbeb',
+                              color: '#92400e',
+                              fontWeight: 'bold',
+                              border: '1px solid #fbbf24',
+                            }}
+                          >
+                            Pass-Thru
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              padding: '2px 6px',
+                              borderRadius: 8,
+                              background: '#e8f5e9',
+                              color: GREEN,
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            Contract
+                          </span>
+                        )}
+                        {p.split_group_id && (
+                          <a
+                            href={`/payments?split=${p.split_group_id}`}
+                            title="This allocation is part of a split check — click to view all allocations in the global ledger"
+                            style={{
+                              fontSize: 10,
+                              padding: '2px 6px',
+                              borderRadius: 8,
+                              background: '#eff6ff',
+                              color: '#3B82F6',
+                              fontWeight: 'bold',
+                              border: '1px solid #bfdbfe',
+                              textDecoration: 'none',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            ↗ Split check
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '8px 10px' }}>
                       <CrDrBadge value={p.credit_debit} />
