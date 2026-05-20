@@ -183,7 +183,9 @@ export default function Invoices({ token }) {
           marginBottom: 20,
         }}
       >
-        <h2 style={{ color: BLUE, margin: 0, fontSize: 22 }}>Customer Invoices</h2>
+        <h2 style={{ color: BLUE, margin: 0, fontSize: 22 }}>
+          Accounts Receivable — Customer Invoices
+        </h2>
         <button
           onClick={() => setShowModal(true)}
           style={{
@@ -212,8 +214,8 @@ export default function Invoices({ token }) {
       >
         {[
           { label: 'Total Invoices', value: invoices.length, color: BLUE },
-          { label: 'Outstanding', value: fmt(totalPending), color: '#3B82F6' },
-          { label: 'Collected', value: fmt(totalPaid), color: GREEN },
+          { label: 'AR Outstanding', value: fmt(totalPending), color: '#3B82F6' },
+          { label: 'AR Collected', value: fmt(totalPaid), color: GREEN },
         ].map((c) => (
           <div
             key={c.label}

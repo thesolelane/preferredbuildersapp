@@ -461,7 +461,7 @@ export default function PaymentsTab({ jobId, token, job }) {
               fontSize: 12,
             }}
           >
-            + Check Received
+            + AR Entry
           </button>
           <button
             onClick={() => {
@@ -480,7 +480,7 @@ export default function PaymentsTab({ jobId, token, job }) {
               fontSize: 12,
             }}
           >
-            + Check Paid Out
+            + AP Entry
           </button>
         </div>
       </div>
@@ -496,7 +496,7 @@ export default function PaymentsTab({ jobId, token, job }) {
           fontSize: 13,
         }}
       >
-        {/* Received row */}
+        {/* AR row */}
         <div
           style={{
             display: 'flex',
@@ -509,21 +509,21 @@ export default function PaymentsTab({ jobId, token, job }) {
           }}
         >
           <ClassBreakdownCell
-            label="Contract Received"
+            label="AR — Contract"
             value={fmt(totalContractReceived)}
             color={GREEN}
             flex={2}
             borderRight
           />
           <ClassBreakdownCell
-            label="Pass-Through Reimbursed"
+            label="AR — Pass-Through Reimbursed"
             value={fmt(totalPtReceived)}
             color={TEAL}
             flex={2}
             borderRight
           />
           <ClassBreakdownCell
-            label="Total Received"
+            label="Total AR"
             value={fmt(summary.total_received)}
             color={GREEN}
             flex={1.5}
@@ -531,7 +531,7 @@ export default function PaymentsTab({ jobId, token, job }) {
           />
         </div>
 
-        {/* Paid row */}
+        {/* AP row */}
         <div
           style={{
             display: 'flex',
@@ -544,21 +544,21 @@ export default function PaymentsTab({ jobId, token, job }) {
           }}
         >
           <ClassBreakdownCell
-            label="Sub / Material Costs"
+            label="AP — Sub / Materials"
             value={fmt(totalContractPaid)}
             color={RED}
             flex={2}
             borderRight
           />
           <ClassBreakdownCell
-            label="Pass-Through Advances"
+            label="AP — Pass-Through Advances"
             value={fmt(totalPtPaid)}
             color={ORANGE}
             flex={2}
             borderRight
           />
           <ClassBreakdownCell
-            label="Total Paid Out"
+            label="Total AP"
             value={fmt(summary.total_paid_out)}
             color={RED}
             flex={1.5}
@@ -566,7 +566,7 @@ export default function PaymentsTab({ jobId, token, job }) {
           />
         </div>
 
-        {/* Net margin row */}
+        {/* Net cash position row */}
         <div
           style={{
             display: 'flex',
@@ -579,9 +579,9 @@ export default function PaymentsTab({ jobId, token, job }) {
           }}
         >
           <span style={{ color: '#555', fontWeight: 600, fontSize: 12 }}>
-            Net Margin
+            Net Cash Position
             <span style={{ fontWeight: 400, color: '#888', marginLeft: 6, fontSize: 11 }}>
-              (Contract Received − Sub/Material Costs — pass-throughs excluded)
+              (AR Contract − AP Sub/Materials — pass-throughs excluded)
             </span>
           </span>
           <span
@@ -908,7 +908,7 @@ export default function PaymentsTab({ jobId, token, job }) {
           );
         })()}
 
-      {/* Check Received Form */}
+      {/* AR Entry Form */}
       {showIn && (
         <div
           style={{
@@ -920,7 +920,7 @@ export default function PaymentsTab({ jobId, token, job }) {
           }}
         >
           <div style={{ fontWeight: 'bold', color: GREEN, marginBottom: 12, fontSize: 13 }}>
-            Record Check Received (Credit)
+            Record AR Payment — Check Received (Credit)
           </div>
           <div
             style={{
@@ -1280,7 +1280,7 @@ export default function PaymentsTab({ jobId, token, job }) {
           }}
         >
           <div style={{ fontWeight: 'bold', color: RED, marginBottom: 12, fontSize: 13 }}>
-            Record Check Paid Out (Debit)
+            Record AP Payment — Check Paid Out (Debit)
           </div>
           <div
             style={{
@@ -1621,7 +1621,7 @@ export default function PaymentsTab({ jobId, token, job }) {
         </div>
       )}
 
-      {/* Checks Received */}
+      {/* AR — Accounts Receivable */}
       <div style={{ marginBottom: 24 }}>
         <div
           style={{
@@ -1634,14 +1634,32 @@ export default function PaymentsTab({ jobId, token, job }) {
             gap: 8,
           }}
         >
-          Checks Received
+          Accounts Receivable (AR)
           <span style={{ fontSize: 12, fontWeight: 'normal', color: '#888' }}>
             ({received.length})
           </span>
         </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+          {['Deposit', 'Progress', 'Final', 'Other'].map((lbl) => (
+            <span
+              key={lbl}
+              style={{
+                fontSize: 10,
+                padding: '2px 9px',
+                borderRadius: 10,
+                background: '#e8f5e9',
+                color: GREEN,
+                fontWeight: 600,
+                border: `1px solid ${GREEN}33`,
+              }}
+            >
+              {lbl}
+            </span>
+          ))}
+        </div>
         {received.length === 0 ? (
           <div style={{ color: '#aaa', fontSize: 13, padding: '12px 0' }}>
-            No checks received recorded yet.
+            No AR entries recorded yet.
           </div>
         ) : (
           <div style={{ overflow: 'auto' }}>
@@ -1770,7 +1788,7 @@ export default function PaymentsTab({ jobId, token, job }) {
         )}
       </div>
 
-      {/* Checks Paid Out */}
+      {/* AP — Accounts Payable */}
       <div style={{ marginBottom: 24 }}>
         <div
           style={{
@@ -1783,12 +1801,30 @@ export default function PaymentsTab({ jobId, token, job }) {
             gap: 8,
           }}
         >
-          Checks Paid Out
+          Accounts Payable (AP)
           <span style={{ fontSize: 12, fontWeight: 'normal', color: '#888' }}>({made.length})</span>
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
+          {['Subcontractor', 'Materials', 'Permits', 'Other'].map((lbl) => (
+            <span
+              key={lbl}
+              style={{
+                fontSize: 10,
+                padding: '2px 9px',
+                borderRadius: 10,
+                background: '#fff0f0',
+                color: RED,
+                fontWeight: 600,
+                border: `1px solid ${RED}33`,
+              }}
+            >
+              {lbl}
+            </span>
+          ))}
         </div>
         {made.length === 0 ? (
           <div style={{ color: '#aaa', fontSize: 13, padding: '12px 0' }}>
-            No outgoing checks recorded yet.
+            No AP entries recorded yet.
           </div>
         ) : (
           <div style={{ overflow: 'auto' }}>
@@ -2132,10 +2168,10 @@ export default function PaymentsTab({ jobId, token, job }) {
                 flexWrap: 'wrap',
               }}
             >
-              <SummaryItem label="All Received" value={fmt(summary.total_received)} color={GREEN} />
-              <SummaryItem label="All Paid Out" value={fmt(summary.total_paid_out)} color={RED} />
+              <SummaryItem label="Total AR" value={fmt(summary.total_received)} color={GREEN} />
+              <SummaryItem label="Total AP" value={fmt(summary.total_paid_out)} color={RED} />
               <SummaryItem
-                label="Net Balance"
+                label="Net Cash Position"
                 value={fmt(summary.balance)}
                 color={summary.balance >= 0 ? BLUE : RED}
               />

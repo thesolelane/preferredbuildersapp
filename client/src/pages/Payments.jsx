@@ -272,7 +272,7 @@ export default function Payments({ token }) {
             Payment Ledger
           </h1>
           <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-            Track checks received and paid out per job
+            Accounts Receivable (AR) &amp; Accounts Payable (AP) ledger
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -292,7 +292,7 @@ export default function Payments({ token }) {
               fontSize: 13,
             }}
           >
-            + Check In
+            + AR Entry
           </button>
           <button
             onClick={() => {
@@ -310,7 +310,7 @@ export default function Payments({ token }) {
               fontSize: 13,
             }}
           >
-            + Check Out
+            + AP Entry
           </button>
         </div>
       </div>
@@ -323,14 +323,18 @@ export default function Payments({ token }) {
           marginBottom: 24,
         }}
       >
-        <SummaryCard label="Total Received" value={fmt(totalReceived)} color={GREEN} />
-        <SummaryCard label="Total Paid Out" value={fmt(totalMade)} color={RED} />
-        <SummaryCard label="Net Balance" value={fmt(balance)} color={balance >= 0 ? BLUE : RED} />
+        <SummaryCard label="Total AR" value={fmt(totalReceived)} color={GREEN} />
+        <SummaryCard label="Total AP" value={fmt(totalMade)} color={RED} />
+        <SummaryCard
+          label="Net Cash Position"
+          value={fmt(balance)}
+          color={balance >= 0 ? BLUE : RED}
+        />
       </div>
 
       {showFormIn && (
         <PaymentForm
-          title="Record Check Received (Credit)"
+          title="Record AR Payment — Check Received (Credit)"
           color={GREEN}
           onCancel={() => {
             setShowFormIn(false);
@@ -624,7 +628,7 @@ export default function Payments({ token }) {
 
       {showFormOut && (
         <PaymentForm
-          title="Record Check Paid Out (Debit)"
+          title="Record AP Payment — Check Paid Out (Debit)"
           color={RED}
           onCancel={() => setShowFormOut(false)}
           onSubmit={submitOut}
@@ -800,10 +804,10 @@ export default function Payments({ token }) {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid #eee', marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid #eee', marginBottom: 0 }}>
         {[
-          ['received', 'Checks Received'],
-          ['made', 'Checks Paid Out'],
+          ['received', 'Accounts Receivable (AR)'],
+          ['made', 'Accounts Payable (AP)'],
         ].map(([v, l]) => (
           <button
             key={v}
@@ -823,6 +827,41 @@ export default function Payments({ token }) {
             {l}
           </button>
         ))}
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '8px 4px 12px' }}>
+        {tab === 'received'
+          ? ['Deposit', 'Progress', 'Final', 'Other'].map((lbl) => (
+              <span
+                key={lbl}
+                style={{
+                  fontSize: 10,
+                  padding: '2px 9px',
+                  borderRadius: 10,
+                  background: '#e8f5e9',
+                  color: GREEN,
+                  fontWeight: 600,
+                  border: `1px solid ${GREEN}33`,
+                }}
+              >
+                {lbl}
+              </span>
+            ))
+          : ['Subcontractor', 'Materials', 'Permits', 'Other'].map((lbl) => (
+              <span
+                key={lbl}
+                style={{
+                  fontSize: 10,
+                  padding: '2px 9px',
+                  borderRadius: 10,
+                  background: '#fff0f0',
+                  color: RED,
+                  fontWeight: 600,
+                  border: `1px solid ${RED}33`,
+                }}
+              >
+                {lbl}
+              </span>
+            ))}
       </div>
 
       {loading ? (
@@ -889,7 +928,7 @@ export default function Payments({ token }) {
             },
           ]}
           onDelete={deleteReceived}
-          emptyMsg="No checks received yet."
+          emptyMsg="No AR entries recorded yet."
         />
       ) : (
         <PaymentTable
@@ -953,7 +992,7 @@ export default function Payments({ token }) {
             },
           ]}
           onDelete={deleteMade}
-          emptyMsg="No checks paid out yet."
+          emptyMsg="No AP entries recorded yet."
         />
       )}
     </div>
