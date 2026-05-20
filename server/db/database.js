@@ -411,6 +411,10 @@ async function initDatabase() {
   // Migrations: payments + session columns
   addColIfMissing('signing_sessions', 'decline_reason', 'TEXT');
   addColIfMissing('signing_sessions', 'followup_sms_at', 'DATETIME');
+  addColIfMissing('signing_sessions', 'consent_accepted', 'INTEGER DEFAULT 0');
+  addColIfMissing('signing_sessions', 'signer_user_agent', 'TEXT');
+  addColIfMissing('signing_sessions', 'signer_email', 'TEXT');
+  addColIfMissing('signing_sessions', 'document_hash', 'TEXT');
   addColIfMissing('payments_received', 'time_received', 'TEXT');
   addColIfMissing('payments_received', 'credit_debit', "TEXT NOT NULL DEFAULT 'credit'");
   addColIfMissing('payments_received', 'recorded_by', 'TEXT');

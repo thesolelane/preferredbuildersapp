@@ -108,6 +108,52 @@ async function generatePDF(data, type, jobId) {
   return outputPath;
 }
 
+async function generateSignedPDF(data, docType, jobId, appendHtml) {
+  let baseHtml;
+  if (docType === 'proposal') {
+    baseHtml = buildProposalHTML(data);
+  } else {
+    baseHtml = buildContractHTMLNew(adaptToContractSchema(data));
+  }
+
+  const html = baseHtml.includes('</body>')
+    ? baseHtml.replace('</body>', `${appendHtml}\n</body>`)
+    : baseHtml + appendHtml;
+
+  const filename = `PB_${docType === 'proposal' ? 'Proposal' : 'Contract'}_${jobId.slice(0, 8)}_signed_${Date.now()}.pdf`;
+  const outputPath = path.join(OUTPUT_DIR, filename);
+
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    executablePath: CHROMIUM_PATH,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.pdf({
+      path: outputPath,
+      format: 'Letter',
+      margin: { top: '0.8in', right: '1in', bottom: '0.8in', left: '1in' },
+      printBackground: true,
+      displayHeaderFooter: true,
+      headerTemplate: `<div style="font-size:7.5px;color:#aaa;width:100%;text-align:center;font-family:Arial,sans-serif;padding-top:6px;letter-spacing:0.3px;">
+        Preferred Builders General Services Inc. &nbsp;|&nbsp; LIC# HIC-197400 &nbsp;|&nbsp; 978-377-1784
+      </div>`,
+      footerTemplate: `<div style="width:100%;font-family:Arial,sans-serif;font-size:8px;color:#555;display:flex;justify-content:space-between;align-items:center;padding:0 72px;box-sizing:border-box;">
+        <span style="color:#888;">Preferred Builders General Services Inc.</span>
+        <span style="font-weight:bold;color:#1B3A6B;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+        <span style="color:#888;">${docType === 'proposal' ? 'PROPOSAL' : 'CONTRACT'} — SIGNED</span>
+      </div>`,
+    });
+  } finally {
+    await browser.close();
+  }
+
+  return outputPath;
+}
+
 async function generateBlankContractDocx() {
   const HTMLtoDOCX = require('html-to-docx');
 
@@ -156,6 +202,7 @@ async function generatePDFFromHTML(html, filenameBase) {
 
 module.exports = {
   generatePDF,
+  generateSignedPDF,
   generatePDFFromHTML,
   generateBlankContractDocx,
   buildNoticeOfContractHTML,

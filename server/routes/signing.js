@@ -9,6 +9,12 @@ const { logActivity } = require('./activityLog');
 const { sendEmail } = require('../services/emailService');
 const { notifyClients } = require('../services/sseManager');
 const { autoCreateDepositInvoice } = require('../services/autoDepositInvoice');
+const {
+  buildSignatureBlockHTML,
+  buildCertificatePageHTML,
+  hashFile,
+} = require('../services/signingCertificate');
+const { generateSignedPDF } = require('../services/pdfService');
 
 const router = express.Router();
 
@@ -377,7 +383,7 @@ ${
       const res = await fetch('/api/signing/signed/${session.token}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ signer_name: name, signature_data: sigData })
+        body: JSON.stringify({ signer_name: name, signature_data: sigData, user_agent: navigator.userAgent, consent_accepted: true })
       });
       const data = await res.json();
       if (res.ok) {
@@ -617,16 +623,35 @@ router.post('/api/signing/signed/:token', requireFields(['signer_name']), async 
       error: 'This signing link has expired. Please contact Preferred Builders for a new link.',
     });
 
-  const { signer_name, signature_data } = req.body;
+  const { signer_name, signature_data, user_agent, consent_accepted } = req.body;
   if (!signer_name || !signature_data)
     return res.status(400).json({ error: 'Missing name or signature' });
 
-  const ip = clientIP(req);
-  db.prepare(
-    `UPDATE signing_sessions SET signed_at = CURRENT_TIMESTAMP, signed_ip = ?, signer_name = ?, signature_data = ?, status = 'signed' WHERE token = ?`,
-  ).run(ip, signer_name, signature_data, req.params.token);
-
   const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(session.job_id);
+
+  const ip = clientIP(req);
+  const docPdfPath =
+    session.doc_type === 'proposal' ? job?.proposal_pdf_path : job?.contract_pdf_path;
+  const docHash = hashFile(docPdfPath);
+  const signerEmail = job?.customer_email || '';
+  const signerUA = user_agent || req.headers['user-agent'] || '';
+
+  db.prepare(
+    `UPDATE signing_sessions SET
+       signed_at = CURRENT_TIMESTAMP, signed_ip = ?, signer_name = ?, signature_data = ?,
+       status = 'signed', consent_accepted = ?, signer_user_agent = ?,
+       signer_email = ?, document_hash = ?
+     WHERE token = ?`,
+  ).run(
+    ip,
+    signer_name,
+    signature_data,
+    consent_accepted ? 1 : 0,
+    signerUA,
+    signerEmail,
+    docHash,
+    req.params.token,
+  );
 
   if (session.doc_type === 'proposal') {
     db.prepare(
@@ -690,8 +715,31 @@ router.post('/api/signing/signed/:token', requireFields(['signer_name']), async 
       }
     });
 
-    // Auto-generate contract in background
+    // Auto-generate contract in background (+ embed signature in proposal PDF first)
     setImmediate(async () => {
+      // Embed drawn signature + certificate into the proposal PDF before auto-generating contract
+      try {
+        const updatedSession = db
+          .prepare('SELECT * FROM signing_sessions WHERE token = ?')
+          .get(req.params.token);
+        const appendHtml =
+          buildSignatureBlockHTML(updatedSession) + buildCertificatePageHTML(updatedSession, job);
+        const proposalData =
+          typeof job.proposal_data === 'string' ? JSON.parse(job.proposal_data) : job.proposal_data;
+        const signedProposalPath = await generateSignedPDF(
+          proposalData,
+          'proposal',
+          job.id,
+          appendHtml,
+        );
+        db.prepare('UPDATE jobs SET proposal_pdf_path = ? WHERE id = ?').run(
+          signedProposalPath,
+          job.id,
+        );
+      } catch (signErr) {
+        console.warn('[SignedPDF] Failed to embed signature in proposal PDF:', signErr.message);
+      }
+
       try {
         const { generateContract } = require('../services/claudeService');
         const { generatePDF } = require('../services/pdfService');
@@ -777,6 +825,38 @@ router.post('/api/signing/signed/:token', requireFields(['signer_name']), async 
     // Email signed confirmation to customer — attach merged proposal + signed contract PDF
     try {
       if (job?.customer_email) {
+        // Embed drawn signature + certificate into the contract PDF before merging
+        let signedContractPath = job.contract_pdf_path;
+        let signedProposalPath = job.proposal_pdf_path;
+        try {
+          const updatedSession = db
+            .prepare('SELECT * FROM signing_sessions WHERE token = ?')
+            .get(req.params.token);
+          const appendHtml =
+            buildSignatureBlockHTML(updatedSession) + buildCertificatePageHTML(updatedSession, job);
+          const contractData =
+            typeof job.contract_data === 'string'
+              ? JSON.parse(job.contract_data)
+              : job.contract_data;
+          signedContractPath = await generateSignedPDF(
+            contractData,
+            'contract',
+            job.id,
+            appendHtml,
+          );
+          db.prepare('UPDATE jobs SET contract_pdf_path = ? WHERE id = ?').run(
+            signedContractPath,
+            job.id,
+          );
+          // Re-fetch proposal path in case it was updated when the proposal was signed
+          const refreshed = db
+            .prepare('SELECT proposal_pdf_path FROM jobs WHERE id = ?')
+            .get(job.id);
+          signedProposalPath = refreshed?.proposal_pdf_path || job.proposal_pdf_path;
+        } catch (signErr) {
+          console.warn('[SignedPDF] Failed to embed signature in contract PDF:', signErr.message);
+        }
+
         const signedWhen = new Date().toLocaleString('en-US', {
           dateStyle: 'long',
           timeStyle: 'short',
@@ -790,12 +870,12 @@ router.post('/api/signing/signed/:token', requireFields(['signer_name']), async 
         let mergedPdfName = `Preferred-Builders-Signed-Contract-${safeName}.pdf`;
         try {
           mergedPdfPath = await mergePDFs(
-            [job.proposal_pdf_path, job.contract_pdf_path],
+            [signedProposalPath, signedContractPath],
             `pb-signed-${job.id}.pdf`,
           );
         } catch (mergeErr) {
           console.warn('[MergePDF] Merge failed, falling back to contract only:', mergeErr.message);
-          mergedPdfPath = job.contract_pdf_path;
+          mergedPdfPath = signedContractPath;
         }
 
         // Save combined contract + addendum to signed contracts folder (Windows server)
