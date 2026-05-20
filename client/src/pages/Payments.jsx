@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { showToast } from '../utils/toast';
 import { showConfirm } from '../utils/confirm';
+import ClassBreakdownCell from '../components/ClassBreakdownCell';
 
 const BLUE = '#1B3A6B';
 const ORANGE = '#E07B2A';
 const GREEN = '#2E7D32';
 const RED = '#C62828';
+const TEAL = '#0D9488';
 
 const PAYMENT_TYPES = ['deposit', 'progress', 'final', 'other'];
 const CATEGORIES = ['subcontractor', 'material', 'permit', 'other'];
@@ -114,6 +116,31 @@ export default function Payments({ token }) {
     loadPayments();
   }, [loadPayments]);
 
+  const contractReceived = received.filter((r) => !r.is_pass_through_reimbursement);
+  const ptReceived = received.filter((r) => r.is_pass_through_reimbursement);
+  const contractPaid = made.filter((m) => m.payment_class === 'cost_of_revenue');
+  const ptPaid = made.filter(
+    (m) =>
+      (m.payment_class === 'pass_through' || m.is_pass_through) && m.paid_by !== 'customer_direct',
+  );
+
+  const totalContractReceived = contractReceived.reduce(
+    (s, r) => s + (r.credit_debit === 'debit' ? -1 : 1) * Number(r.amount || 0),
+    0,
+  );
+  const totalPtReceived = ptReceived.reduce(
+    (s, r) => s + (r.credit_debit === 'debit' ? -1 : 1) * Number(r.amount || 0),
+    0,
+  );
+  const totalContractPaid = contractPaid.reduce(
+    (s, m) => s + (m.credit_debit === 'credit' ? -1 : 1) * Number(m.amount || 0),
+    0,
+  );
+  const totalPtPaid = ptPaid.reduce(
+    (s, m) => s + (m.credit_debit === 'credit' ? -1 : 1) * Number(m.amount || 0),
+    0,
+  );
+
   const totalReceived = received.reduce((s, p) => {
     const amt = Number(p.amount) || 0;
     return s + (p.credit_debit === 'debit' ? -amt : amt);
@@ -123,6 +150,7 @@ export default function Payments({ token }) {
     return s + (p.credit_debit === 'credit' ? -amt : amt);
   }, 0);
   const balance = totalReceived - totalMade;
+  const grossMargin = totalContractReceived - totalContractPaid;
 
   const updateGAlloc = (i, field, val) =>
     setSplitAllocations((prev) => prev.map((a, idx) => (idx === i ? { ...a, [field]: val } : a)));
@@ -318,19 +346,113 @@ export default function Payments({ token }) {
 
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 16,
+          background: '#f8faff',
+          border: '1px solid #dce6f5',
+          borderRadius: 10,
+          padding: '14px 18px',
           marginBottom: 24,
+          fontSize: 13,
         }}
       >
-        <SummaryCard label="Total AR" value={fmt(totalReceived)} color={GREEN} />
-        <SummaryCard label="Total AP" value={fmt(totalMade)} color={RED} />
-        <SummaryCard
-          label="Net Cash Position"
-          value={fmt(balance)}
-          color={balance >= 0 ? BLUE : RED}
-        />
+        {/* Received row */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 0,
+            alignItems: 'stretch',
+            marginBottom: 8,
+            borderRadius: 7,
+            overflow: 'hidden',
+            border: `1px solid ${GREEN}30`,
+          }}
+        >
+          <ClassBreakdownCell
+            label="Contract Received"
+            value={fmt(totalContractReceived)}
+            color={GREEN}
+            flex={2}
+            borderRight
+          />
+          <ClassBreakdownCell
+            label="Pass-Through Reimbursed"
+            value={fmt(totalPtReceived)}
+            color={TEAL}
+            flex={2}
+            borderRight
+          />
+          <ClassBreakdownCell
+            label="Total Received"
+            value={fmt(totalReceived)}
+            color={GREEN}
+            flex={1.5}
+            bold
+          />
+        </div>
+
+        {/* Paid row */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 0,
+            alignItems: 'stretch',
+            marginBottom: 8,
+            borderRadius: 7,
+            overflow: 'hidden',
+            border: `1px solid ${RED}30`,
+          }}
+        >
+          <ClassBreakdownCell
+            label="Sub / Material Costs"
+            value={fmt(totalContractPaid)}
+            color={RED}
+            flex={2}
+            borderRight
+          />
+          <ClassBreakdownCell
+            label="Pass-Through Advances"
+            value={fmt(totalPtPaid)}
+            color={ORANGE}
+            flex={2}
+            borderRight
+          />
+          <ClassBreakdownCell
+            label="Total Paid Out"
+            value={fmt(totalMade)}
+            color={RED}
+            flex={1.5}
+            bold
+          />
+        </div>
+
+        {/* Net margin row */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: grossMargin >= 0 ? '#f0fdf4' : '#fff1f1',
+            border: `1px solid ${grossMargin >= 0 ? GREEN : RED}40`,
+            borderRadius: 7,
+            padding: '9px 16px',
+          }}
+        >
+          <span style={{ color: '#555', fontWeight: 600, fontSize: 12 }}>
+            Net Margin
+            <span style={{ fontWeight: 400, color: '#888', marginLeft: 6, fontSize: 11 }}>
+              (Contract Received − Sub/Material Costs — pass-throughs excluded)
+            </span>
+          </span>
+          <span
+            style={{
+              fontWeight: 700,
+              fontSize: 15,
+              color: grossMargin >= 0 ? GREEN : RED,
+              letterSpacing: '-0.3px',
+            }}
+          >
+            {fmt(grossMargin)}
+          </span>
+        </div>
       </div>
 
       {showFormIn && (
@@ -1004,23 +1126,6 @@ export default function Payments({ token }) {
           emptyMsg="No AP entries recorded yet."
         />
       )}
-    </div>
-  );
-}
-
-function SummaryCard({ label, value, color }) {
-  return (
-    <div
-      style={{
-        background: 'white',
-        borderRadius: 10,
-        padding: '16px 20px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-        borderTop: `3px solid ${color}`,
-      }}
-    >
-      <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 'bold', color }}>{value}</div>
     </div>
   );
 }
