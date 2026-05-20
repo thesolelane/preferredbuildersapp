@@ -17,7 +17,7 @@ const BASE_TABS = [
 
 export default function Settings({ token, userRole }) {
   const TABS =
-    userRole === 'system_admin' ? [...BASE_TABS, 'Secrets', 'Status', 'Logs'] : BASE_TABS;
+    userRole === 'system_admin' ? [...BASE_TABS, 'Secrets', 'Status', 'Logs', 'Deploy'] : BASE_TABS;
 
   const [settings, setSettings] = useState({});
   const [activeTab, setActiveTab] = useState('Markup');
@@ -52,6 +52,11 @@ export default function Settings({ token, userRole }) {
   const [logsError, setLogsError] = useState(null);
   const [logsPanel, setLogsPanel] = useState('error');
   const [logsLines, setLogsLines] = useState(200);
+
+  const [deployCommit, setDeployCommit] = useState(null);
+  const [deployCommitLoading, setDeployCommitLoading] = useState(false);
+  const [deployRunning, setDeployRunning] = useState(false);
+  const [deployResult, setDeployResult] = useState(null);
 
   const [printerName, setPrinterName] = useState('');
   const [printerSaving, setPrinterSaving] = useState(false);
@@ -127,6 +132,15 @@ export default function Settings({ token, userRole }) {
     }
     if (activeTab === 'Logs') {
       loadLogs(200);
+    }
+    if (activeTab === 'Deploy') {
+      setDeployCommitLoading(true);
+      setDeployResult(null);
+      fetch('/api/remote-update/commit', { headers: { 'x-auth-token': token } })
+        .then((r) => r.json())
+        .then((d) => setDeployCommit(d.error ? null : d))
+        .catch(() => {})
+        .finally(() => setDeployCommitLoading(false));
     }
   }, [activeTab]);
 
@@ -3401,6 +3415,223 @@ export default function Settings({ token, userRole }) {
     );
   };
 
+  const renderDeploy = () => {
+    const loadCommit = () => {
+      setDeployCommitLoading(true);
+      fetch('/api/remote-update/commit', { headers: { 'x-auth-token': token } })
+        .then((r) => r.json())
+        .then((d) => setDeployCommit(d.error ? null : d))
+        .catch(() => {})
+        .finally(() => setDeployCommitLoading(false));
+    };
+
+    const runDeploy = async () => {
+      setDeployRunning(true);
+      setDeployResult(null);
+      try {
+        const r = await fetch('/api/remote-update/deploy', {
+          method: 'POST',
+          headers: { 'x-auth-token': token },
+        });
+        const data = await r.json();
+        setDeployResult(data);
+      } catch (e) {
+        setDeployResult({ ok: false, message: e.message, steps: [] });
+      } finally {
+        setDeployRunning(false);
+      }
+    };
+
+    return (
+      <div style={{ maxWidth: 600 }}>
+        <h3 style={{ color: BLUE, marginTop: 0, marginBottom: 4 }}>🚀 Remote Deploy</h3>
+        <p style={{ fontSize: 13, color: '#666', marginBottom: 24 }}>
+          Pulls the latest code from GitHub, runs <code>npm install</code>, and restarts the server.
+          The page will go offline for ~15 seconds during restart.
+        </p>
+
+        {/* Current commit card */}
+        <div
+          style={{
+            background: '#f5f7fa',
+            border: '1px solid #dde',
+            borderRadius: 8,
+            padding: '14px 18px',
+            marginBottom: 24,
+            fontSize: 13,
+          }}
+        >
+          <div style={{ fontWeight: 'bold', color: BLUE, marginBottom: 8 }}>
+            📌 Currently Running
+          </div>
+          {deployCommitLoading ? (
+            <div style={{ color: '#888' }}>Loading…</div>
+          ) : deployCommit ? (
+            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <tbody>
+                {[
+                  ['Branch', deployCommit.branch],
+                  ['Commit', deployCommit.commit],
+                  ['Message', deployCommit.message],
+                  ['Date', deployCommit.date],
+                  ['Platform', deployCommit.platform],
+                ].map(([label, val]) => (
+                  <tr key={label}>
+                    <td
+                      style={{
+                        color: '#888',
+                        paddingRight: 12,
+                        paddingBottom: 4,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {label}
+                    </td>
+                    <td
+                      style={{
+                        color: '#222',
+                        paddingBottom: 4,
+                        fontFamily: label === 'Commit' ? 'monospace' : 'inherit',
+                      }}
+                    >
+                      {val}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ color: '#888' }}>
+              Could not load commit info (git may not be available).
+            </div>
+          )}
+          <button
+            onClick={loadCommit}
+            disabled={deployCommitLoading}
+            style={{
+              marginTop: 10,
+              padding: '5px 14px',
+              background: 'white',
+              border: `1.5px solid ${BLUE}`,
+              borderRadius: 6,
+              color: BLUE,
+              fontSize: 12,
+              cursor: 'pointer',
+            }}
+          >
+            🔄 Refresh
+          </button>
+        </div>
+
+        {/* Deploy button */}
+        <button
+          onClick={runDeploy}
+          disabled={deployRunning}
+          style={{
+            padding: '12px 32px',
+            background: deployRunning ? '#888' : ORANGE,
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            fontWeight: 'bold',
+            fontSize: 14,
+            cursor: deployRunning ? 'not-allowed' : 'pointer',
+            marginBottom: 20,
+          }}
+        >
+          {deployRunning ? '⏳ Deploying…' : '⬆ Pull & Restart'}
+        </button>
+
+        {/* Result output */}
+        {deployResult && (
+          <div
+            style={{
+              background: deployResult.ok ? '#f0fdf4' : '#fff5f5',
+              border: `1px solid ${deployResult.ok ? '#86efac' : '#fca5a5'}`,
+              borderRadius: 8,
+              padding: '14px 18px',
+              fontSize: 13,
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 'bold',
+                color: deployResult.ok ? '#166534' : '#991b1b',
+                marginBottom: 10,
+              }}
+            >
+              {deployResult.ok ? '✅ ' : '❌ '}
+              {deployResult.message}
+            </div>
+            {(deployResult.steps || []).map((s, i) => (
+              <div
+                key={i}
+                style={{
+                  marginBottom: 10,
+                  padding: '8px 12px',
+                  background: 'rgba(0,0,0,0.04)',
+                  borderRadius: 6,
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    marginBottom: 4,
+                    color: s.ok ? '#166534' : '#991b1b',
+                  }}
+                >
+                  {s.ok ? '✅' : '❌'} {s.step}
+                </div>
+                {s.stdout && (
+                  <pre
+                    style={{
+                      margin: 0,
+                      fontSize: 11,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all',
+                      color: '#444',
+                      maxHeight: 200,
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {s.stdout.slice(-1500)}
+                  </pre>
+                )}
+                {s.error && (
+                  <pre
+                    style={{ margin: 0, fontSize: 11, color: '#991b1b', whiteSpace: 'pre-wrap' }}
+                  >
+                    {s.error}
+                  </pre>
+                )}
+              </div>
+            ))}
+            {deployResult.ok && (
+              <div style={{ marginTop: 10, fontSize: 12, color: '#555' }}>
+                Wait ~15 seconds, then{' '}
+                <button
+                  onClick={loadCommit}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: BLUE,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    fontSize: 12,
+                    padding: 0,
+                  }}
+                >
+                  refresh commit info
+                </button>{' '}
+                to confirm the new version is running.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="pb-page">
       <div
@@ -3432,7 +3663,7 @@ export default function Settings({ token, userRole }) {
           >
             ⬇ Blank Contract
           </a>
-          {activeTab !== 'Secrets' && activeTab !== 'Status' && (
+          {activeTab !== 'Secrets' && activeTab !== 'Status' && activeTab !== 'Deploy' && (
             <button
               onClick={save}
               style={{
@@ -3506,6 +3737,7 @@ export default function Settings({ token, userRole }) {
         {activeTab === 'Secrets' && renderSecrets()}
         {activeTab === 'Status' && renderStatus()}
         {activeTab === 'Logs' && renderLogs()}
+        {activeTab === 'Deploy' && renderDeploy()}
       </div>
 
       {/* Email preview modal */}
