@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { showToast } from '../utils/toast';
 import { showConfirm } from '../utils/confirm';
 import ClassBreakdownCell from './ClassBreakdownCell';
@@ -93,6 +93,8 @@ export default function PaymentsTab({ jobId, token, job }) {
   ]);
   const [allJobs, setAllJobs] = useState([]);
   const [sendingInvoice, setSendingInvoice] = useState(null);
+  const [expandedSplits, setExpandedSplits] = useState(new Set());
+  const [splitSiblings, setSplitSiblings] = useState({});
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
@@ -117,6 +119,28 @@ export default function PaymentsTab({ jobId, token, job }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const toggleSplitPanel = (splitGroupId) => {
+    setExpandedSplits((prev) => {
+      const next = new Set(prev);
+      if (next.has(splitGroupId)) {
+        next.delete(splitGroupId);
+      } else {
+        next.add(splitGroupId);
+        if (!splitSiblings[splitGroupId]) {
+          fetch(`/api/payments/split-siblings/${splitGroupId}`, {
+            headers: { 'x-auth-token': token },
+          })
+            .then((r) => r.json())
+            .then((d) =>
+              setSplitSiblings((prev) => ({ ...prev, [splitGroupId]: d.siblings || [] })),
+            )
+            .catch(() => setSplitSiblings((prev) => ({ ...prev, [splitGroupId]: [] })));
+        }
+      }
+      return next;
+    });
+  };
 
   const toggleSplitIn = (on) => {
     setSplitIn(on);
@@ -1697,117 +1721,204 @@ export default function PaymentsTab({ jobId, token, job }) {
               </thead>
               <tbody>
                 {received.map((p) => (
-                  <tr
-                    key={p.id}
-                    style={{
-                      borderBottom: '1px solid #f0f0f0',
-                      background: p.is_pass_through_reimbursement
-                        ? '#fffef0'
-                        : p.split_group_id
-                          ? '#f8fbff'
-                          : 'white',
-                      borderLeft: p.split_group_id ? '3px solid #3B82F6' : undefined,
-                    }}
-                  >
-                    <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
-                      {fmtDate(p.date_received)}
-                      {p.time_received && (
-                        <span style={{ color: '#888', marginLeft: 6, fontSize: 11 }}>
-                          {p.time_received}
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>{p.customer_name || '—'}</td>
-                    <td style={{ padding: '8px 10px', color: '#888' }}>{p.check_number || '—'}</td>
-                    <td style={{ padding: '8px 10px' }}>
-                      <TypeBadge type={p.payment_type} />
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                        {p.is_pass_through_reimbursement ? (
-                          <span
-                            style={{
-                              fontSize: 10,
-                              padding: '2px 6px',
-                              borderRadius: 8,
-                              background: '#fffbeb',
-                              color: '#92400e',
-                              fontWeight: 'bold',
-                              border: '1px solid #fbbf24',
-                            }}
-                          >
-                            Pass-Thru
-                          </span>
-                        ) : (
-                          <span
-                            style={{
-                              fontSize: 10,
-                              padding: '2px 6px',
-                              borderRadius: 8,
-                              background: '#e8f5e9',
-                              color: GREEN,
-                              fontWeight: 'bold',
-                            }}
-                          >
-                            Contract
-                          </span>
-                        )}
-                        {p.split_group_id && (
-                          <a
-                            href={`/payments?split=${p.split_group_id}`}
-                            title="This allocation is part of a split check — click to view all allocations in the global ledger"
-                            style={{
-                              fontSize: 10,
-                              padding: '2px 6px',
-                              borderRadius: 8,
-                              background: '#eff6ff',
-                              color: '#3B82F6',
-                              fontWeight: 'bold',
-                              border: '1px solid #bfdbfe',
-                              textDecoration: 'none',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            ↗ Split check
-                          </a>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      <CrDrBadge value={p.credit_debit} />
-                    </td>
-                    <td
+                  <Fragment key={p.id}>
+                    <tr
                       style={{
-                        padding: '8px 10px',
-                        fontWeight: 'bold',
-                        color: p.credit_debit === 'debit' ? RED : GREEN,
+                        borderBottom: expandedSplits.has(p.split_group_id)
+                          ? 'none'
+                          : '1px solid #f0f0f0',
+                        background: p.is_pass_through_reimbursement
+                          ? '#fffef0'
+                          : p.split_group_id
+                            ? '#f8fbff'
+                            : 'white',
+                        borderLeft: p.split_group_id ? '3px solid #3B82F6' : undefined,
                       }}
                     >
-                      {fmt(p.amount)}
-                    </td>
-                    <td style={{ padding: '8px 10px', color: '#888', fontSize: 11 }}>
-                      {p.recorded_by || '—'}
-                    </td>
-                    <td style={{ padding: '8px 10px', color: '#888', fontSize: 12 }}>
-                      {p.notes || ''}
-                    </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      <button
-                        onClick={() => deleteReceived(p)}
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                        {fmtDate(p.date_received)}
+                        {p.time_received && (
+                          <span style={{ color: '#888', marginLeft: 6, fontSize: 11 }}>
+                            {p.time_received}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>{p.customer_name || '—'}</td>
+                      <td style={{ padding: '8px 10px', color: '#888' }}>
+                        {p.check_number || '—'}
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <TypeBadge type={p.payment_type} />
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {p.is_pass_through_reimbursement ? (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                padding: '2px 6px',
+                                borderRadius: 8,
+                                background: '#fffbeb',
+                                color: '#92400e',
+                                fontWeight: 'bold',
+                                border: '1px solid #fbbf24',
+                              }}
+                            >
+                              Pass-Thru
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                padding: '2px 6px',
+                                borderRadius: 8,
+                                background: '#e8f5e9',
+                                color: GREEN,
+                                fontWeight: 'bold',
+                              }}
+                            >
+                              Contract
+                            </span>
+                          )}
+                          {p.split_group_id && (
+                            <button
+                              onClick={() => toggleSplitPanel(p.split_group_id)}
+                              title="Click to see all allocations from this split check"
+                              style={{
+                                fontSize: 10,
+                                padding: '2px 6px',
+                                borderRadius: 8,
+                                background: expandedSplits.has(p.split_group_id)
+                                  ? '#3B82F6'
+                                  : '#eff6ff',
+                                color: expandedSplits.has(p.split_group_id) ? 'white' : '#3B82F6',
+                                fontWeight: 'bold',
+                                border: '1px solid #bfdbfe',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {expandedSplits.has(p.split_group_id)
+                                ? '▲ Split check'
+                                : '▼ Split check'}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <CrDrBadge value={p.credit_debit} />
+                      </td>
+                      <td
                         style={{
-                          padding: '3px 8px',
-                          background: '#ff000011',
-                          color: RED,
-                          border: '1px solid #ff000022',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          fontSize: 11,
+                          padding: '8px 10px',
+                          fontWeight: 'bold',
+                          color: p.credit_debit === 'debit' ? RED : GREEN,
                         }}
                       >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
+                        {fmt(p.amount)}
+                      </td>
+                      <td style={{ padding: '8px 10px', color: '#888', fontSize: 11 }}>
+                        {p.recorded_by || '—'}
+                      </td>
+                      <td style={{ padding: '8px 10px', color: '#888', fontSize: 12 }}>
+                        {p.notes || ''}
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <button
+                          onClick={() => deleteReceived(p)}
+                          style={{
+                            padding: '3px 8px',
+                            background: '#ff000011',
+                            color: RED,
+                            border: '1px solid #ff000022',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            fontSize: 11,
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                    {p.split_group_id && expandedSplits.has(p.split_group_id) && (
+                      <tr
+                        style={{
+                          background: '#e8f0fe',
+                          borderBottom: '1px solid #f0f0f0',
+                          borderLeft: '3px solid #3B82F6',
+                        }}
+                      >
+                        <td colSpan={10} style={{ padding: '10px 14px' }}>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: '#1e3a8a',
+                              fontWeight: 600,
+                              marginBottom: 6,
+                            }}
+                          >
+                            All allocations from this check:
+                          </div>
+                          {!splitSiblings[p.split_group_id] ? (
+                            <div style={{ fontSize: 12, color: '#888' }}>Loading…</div>
+                          ) : splitSiblings[p.split_group_id].length === 0 ? (
+                            <div style={{ fontSize: 12, color: '#888' }}>
+                              No sibling allocations found.
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {splitSiblings[p.split_group_id].map((s) => {
+                                const isThisRow = s.id === p.id;
+                                return (
+                                  <div
+                                    key={s.id}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 10,
+                                      padding: '5px 10px',
+                                      borderRadius: 6,
+                                      background: isThisRow ? '#dbeafe' : 'white',
+                                      border: isThisRow ? '1px solid #93c5fd' : '1px solid #e5e7eb',
+                                      fontSize: 12,
+                                    }}
+                                  >
+                                    <span
+                                      style={{ fontWeight: 700, color: '#1e3a8a', minWidth: 72 }}
+                                    >
+                                      {fmt(s.amount)}
+                                    </span>
+                                    <span style={{ color: '#555', flex: 1 }}>
+                                      {s.job_customer || '—'}
+                                      {s.project_address ? (
+                                        <span style={{ color: '#888', marginLeft: 6 }}>
+                                          · {s.project_address}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                    {isThisRow && (
+                                      <span
+                                        style={{
+                                          fontSize: 10,
+                                          padding: '1px 6px',
+                                          borderRadius: 6,
+                                          background: '#3B82F6',
+                                          color: 'white',
+                                          fontWeight: 'bold',
+                                        }}
+                                      >
+                                        this job
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

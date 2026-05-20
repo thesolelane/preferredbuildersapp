@@ -152,6 +152,23 @@ router.get('/job/:jobId', requireAuth, (req, res) => {
   res.json({ received, made, summary: jobSummary(db, jobId) });
 });
 
+router.get('/split-siblings/:splitGroupId', requireAuth, (req, res) => {
+  const db = getDb();
+  const { splitGroupId } = req.params;
+  const siblings = db
+    .prepare(
+      `SELECT r.id, r.job_id, r.amount, r.credit_debit, r.payment_class,
+              r.is_pass_through_reimbursement, r.notes,
+              j.customer_name AS job_customer, j.project_address
+       FROM payments_received r
+       LEFT JOIN jobs j ON j.id = r.job_id
+       WHERE r.split_group_id = ?
+       ORDER BY r.amount DESC`,
+    )
+    .all(splitGroupId);
+  res.json({ siblings });
+});
+
 router.get('/contact/:contactId', requireAuth, (req, res) => {
   const db = getDb();
   const { contactId } = req.params;
