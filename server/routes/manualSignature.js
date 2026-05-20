@@ -12,6 +12,7 @@ const { requireAuth } = require('../middleware/auth');
 const { getDb } = require('../db/database');
 const { notifyJobUpdate } = require('../services/realtimeService');
 const { logAudit } = require('../services/auditService');
+const { autoCreateDepositInvoice } = require('../services/autoDepositInvoice');
 
 const UPLOAD_ROOT = path.resolve(__dirname, '../../uploads/manual_signatures');
 
@@ -56,6 +57,9 @@ router.post('/:jobId', requireAuth, async (req, res) => {
       newStatus,
       jobId,
     );
+    if (newStatus === 'contract_signed') {
+      autoCreateDepositInvoice(jobId, db);
+    }
   }
 
   // Audit log

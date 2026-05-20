@@ -54,6 +54,8 @@ const EMPTY_OUT = {
   notes: '',
 };
 
+const EMPTY_ALLOC_G = { job_id: '', payment_class: 'contract', amount: '', notes: '' };
+
 export default function Payments({ token }) {
   const [tab, setTab] = useState('received');
   const [received, setReceived] = useState([]);
@@ -69,6 +71,11 @@ export default function Payments({ token }) {
   const [formIn, setFormIn] = useState(EMPTY_IN);
   const [formOut, setFormOut] = useState(EMPTY_OUT);
   const [saving, setSaving] = useState(false);
+  const [splitIn, setSplitIn] = useState(false);
+  const [splitAllocations, setSplitAllocations] = useState([
+    { ...EMPTY_ALLOC_G },
+    { ...EMPTY_ALLOC_G },
+  ]);
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
@@ -116,6 +123,12 @@ export default function Payments({ token }) {
   }, 0);
   const balance = totalReceived - totalMade;
 
+  const updateGAlloc = (i, field, val) =>
+    setSplitAllocations((prev) => prev.map((a, idx) => (idx === i ? { ...a, [field]: val } : a)));
+  const addGAlloc = () => setSplitAllocations((prev) => [...prev, { ...EMPTY_ALLOC_G }]);
+  const removeGAlloc = (i) =>
+    setSplitAllocations((prev) => (prev.length > 2 ? prev.filter((_, idx) => idx !== i) : prev));
+
   const submitIn = async () => {
     if (!formIn.job_id) return showToast('Select a job', 'error');
     if (!formIn.amount) return showToast('Enter an amount', 'error');
@@ -134,6 +147,57 @@ export default function Payments({ token }) {
       showToast('Payment recorded');
     } else {
       showToast(data.error || 'Failed to save', 'error');
+    }
+    setSaving(false);
+  };
+
+  const submitSplitIn = async () => {
+    if (!formIn.amount) return showToast('Enter total amount', 'error');
+    if (!formIn.date_received) return showToast('Enter a date', 'error');
+    for (const a of splitAllocations) {
+      if (!a.job_id) return showToast('Select a job for each allocation', 'error');
+      if (!a.amount || Number(a.amount) <= 0)
+        return showToast('Enter a positive amount for each allocation', 'error');
+    }
+    const total = parseFloat(formIn.amount) || 0;
+    const allocSum = splitAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+    if (Math.abs(allocSum - total) > 0.02) {
+      return showToast(
+        `Allocation total ($${allocSum.toFixed(2)}) must equal payment total ($${total.toFixed(2)})`,
+        'error',
+      );
+    }
+    setSaving(true);
+    const body = {
+      total_amount: total,
+      date_received: formIn.date_received,
+      time_received: formIn.time_received,
+      check_number: formIn.check_number,
+      customer_name: formIn.customer_name,
+      payment_type: formIn.payment_type,
+      credit_debit: formIn.credit_debit,
+      allocations: splitAllocations.map((a) => ({
+        job_id: a.job_id,
+        payment_class: a.payment_class,
+        amount: parseFloat(a.amount),
+        notes: a.notes,
+      })),
+    };
+    const res = await fetch('/api/payments/received/split', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setFormIn({ ...EMPTY_IN, date_received: today(), time_received: nowTime() });
+      setSplitAllocations([{ ...EMPTY_ALLOC_G }, { ...EMPTY_ALLOC_G }]);
+      setSplitIn(false);
+      setShowFormIn(false);
+      loadPayments();
+      showToast(`Split payment recorded across ${data.payments.length} jobs`);
+    } else {
+      showToast(data.error || 'Failed to save split payment', 'error');
     }
     setSaving(false);
   };
@@ -268,9 +332,14 @@ export default function Payments({ token }) {
         <PaymentForm
           title="Record Check Received (Credit)"
           color={GREEN}
-          onCancel={() => setShowFormIn(false)}
-          onSubmit={submitIn}
+          onCancel={() => {
+            setShowFormIn(false);
+            setSplitIn(false);
+            setSplitAllocations([{ ...EMPTY_ALLOC_G }, { ...EMPTY_ALLOC_G }]);
+          }}
+          onSubmit={splitIn ? submitSplitIn : submitIn}
           saving={saving}
+          submitLabel={splitIn ? 'Save Split Payment' : undefined}
         >
           <FormGrid>
             <FormField label="Job *">
@@ -356,6 +425,200 @@ export default function Payments({ token }) {
               style={{ ...inputStyle, resize: 'vertical', width: '100%' }}
             />
           </FormField>
+
+          {formIn.payment_type !== 'deposit' && (
+            <div style={{ marginTop: 12, marginBottom: 4 }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={splitIn}
+                  onChange={(e) => setSplitIn(e.target.checked)}
+                />
+                <span>
+                  <strong>Split across multiple jobs</strong> — one check covers multiple contracts
+                  or pass-throughs
+                </span>
+              </label>
+              {!splitIn && (
+                <div style={{ fontSize: 11, color: '#888', marginTop: 4, marginLeft: 22 }}>
+                  Tip: if you received two separate checks from this customer, enter them
+                  individually (each gets its own check number). Use Split only when one check
+                  covers multiple jobs.
+                </div>
+              )}
+            </div>
+          )}
+
+          {splitIn && (
+            <div
+              style={{
+                background: '#f0f9ff',
+                border: '1.5px solid #3B82F6',
+                borderRadius: 8,
+                padding: 14,
+                marginTop: 12,
+              }}
+            >
+              <div style={{ fontWeight: 'bold', color: '#1D4ED8', fontSize: 13, marginBottom: 10 }}>
+                Allocate Split Payment
+              </div>
+              {(() => {
+                const allocTotal = splitAllocations.reduce(
+                  (s, a) => s + (parseFloat(a.amount) || 0),
+                  0,
+                );
+                const enteredTotal = parseFloat(formIn.amount) || 0;
+                const remaining = Math.round((enteredTotal - allocTotal) * 100) / 100;
+                const balanced = Math.abs(remaining) < 0.02;
+                return (
+                  <>
+                    <div style={{ overflowX: 'auto', marginBottom: 8 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: '#1B3A6B', color: 'white' }}>
+                            {['Job', 'Class', 'Amount', 'Notes', ''].map((h) => (
+                              <th
+                                key={h}
+                                style={{
+                                  padding: '6px 8px',
+                                  textAlign: 'left',
+                                  fontWeight: 600,
+                                  fontSize: 11,
+                                }}
+                              >
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {splitAllocations.map((a, i) => (
+                            <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                              <td style={{ padding: '4px 6px', minWidth: 160 }}>
+                                <select
+                                  value={a.job_id}
+                                  onChange={(e) => updateGAlloc(i, 'job_id', e.target.value)}
+                                  style={{ ...inputStyle, fontSize: 11, padding: '5px 6px' }}
+                                >
+                                  <option value="">— Select job —</option>
+                                  {jobs.map((j) => (
+                                    <option key={j.id} value={j.id}>
+                                      {j.project_address || j.customer_name || j.id.slice(0, 8)}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td style={{ padding: '4px 6px', minWidth: 140 }}>
+                                <select
+                                  value={a.payment_class}
+                                  onChange={(e) => updateGAlloc(i, 'payment_class', e.target.value)}
+                                  style={{ ...inputStyle, fontSize: 11, padding: '5px 6px' }}
+                                >
+                                  <option value="contract">Contract</option>
+                                  <option value="pass_through_reimbursement">
+                                    Pass-Through Reimbursement
+                                  </option>
+                                </select>
+                              </td>
+                              <td style={{ padding: '4px 6px', minWidth: 90 }}>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={a.amount}
+                                  onChange={(e) => updateGAlloc(i, 'amount', e.target.value)}
+                                  placeholder="0.00"
+                                  style={{
+                                    ...inputStyle,
+                                    fontSize: 11,
+                                    padding: '5px 6px',
+                                    textAlign: 'right',
+                                  }}
+                                />
+                              </td>
+                              <td style={{ padding: '4px 6px', minWidth: 120 }}>
+                                <input
+                                  value={a.notes}
+                                  onChange={(e) => updateGAlloc(i, 'notes', e.target.value)}
+                                  placeholder="Optional"
+                                  style={{ ...inputStyle, fontSize: 11, padding: '5px 6px' }}
+                                />
+                              </td>
+                              <td style={{ padding: '4px 4px' }}>
+                                <button
+                                  onClick={() => removeGAlloc(i)}
+                                  disabled={splitAllocations.length <= 2}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor:
+                                      splitAllocations.length <= 2 ? 'not-allowed' : 'pointer',
+                                    color: splitAllocations.length <= 2 ? '#ccc' : '#C62828',
+                                    fontSize: 15,
+                                    padding: '2px 4px',
+                                  }}
+                                >
+                                  ✕
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <button
+                      onClick={addGAlloc}
+                      style={{
+                        background: 'none',
+                        border: '1px dashed #3B82F6',
+                        color: '#1D4ED8',
+                        borderRadius: 6,
+                        padding: '4px 12px',
+                        cursor: 'pointer',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        marginBottom: 10,
+                      }}
+                    >
+                      + Add Allocation
+                    </button>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        background: balanced ? '#f0fdf4' : '#fff5f5',
+                        border: `1px solid ${balanced ? '#86efac' : '#fca5a5'}`,
+                        fontSize: 12,
+                      }}
+                    >
+                      <span style={{ color: '#555' }}>
+                        Allocated: <strong>{fmt(allocTotal)}</strong> of{' '}
+                        <strong>{fmt(enteredTotal)}</strong>
+                      </span>
+                      <span style={{ fontWeight: 'bold', color: balanced ? '#166534' : '#991b1b' }}>
+                        {balanced
+                          ? '✓ Balanced'
+                          : remaining > 0
+                            ? `$${remaining.toFixed(2)} unallocated`
+                            : `$${Math.abs(remaining).toFixed(2)} over`}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
         </PaymentForm>
       )}
 
@@ -714,7 +977,7 @@ function SummaryCard({ label, value, color }) {
   );
 }
 
-function PaymentForm({ title, color, onCancel, onSubmit, saving, children }) {
+function PaymentForm({ title, color, onCancel, onSubmit, saving, children, submitLabel }) {
   return (
     <div
       style={{
@@ -743,7 +1006,7 @@ function PaymentForm({ title, color, onCancel, onSubmit, saving, children }) {
             fontSize: 13,
           }}
         >
-          {saving ? 'Saving...' : 'Save Payment'}
+          {saving ? 'Saving...' : submitLabel || 'Save Payment'}
         </button>
         <button
           onClick={onCancel}

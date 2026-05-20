@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { getDb } = require('../db/database');
+const { autoCreateDepositInvoice } = require('../services/autoDepositInvoice');
 const path = require('path');
 const fs = require('fs');
 
@@ -112,6 +113,10 @@ router.post('/attach/:jobId', requireAuth, (req, res) => {
       db.prepare(
         `UPDATE jobs SET status = ?, ${pdfCol} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       ).run(newStatus, destPath, req.params.jobId);
+
+      if (newStatus === 'contract_signed') {
+        autoCreateDepositInvoice(req.params.jobId, db);
+      }
 
       db.prepare(
         'INSERT INTO job_photos (job_id, filename, original_name, caption) VALUES (?, ?, ?, ?)',

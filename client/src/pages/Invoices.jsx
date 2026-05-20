@@ -17,6 +17,8 @@ const fmtDate = (d) =>
 
 const STATUS_COLOR = { draft: '#888', sent: '#3B82F6', paid: GREEN };
 
+const EMPTY_INV_ALLOC = { job_id: '', payment_class: 'contract', amount: '', notes: '' };
+
 export default function Invoices({ token }) {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +26,10 @@ export default function Invoices({ token }) {
   const [filterStatus, setFilterStatus] = useState('');
   const [search, setSearch] = useState('');
   const [sending, setSending] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const [splitPayInv, setSplitPayInv] = useState(null);
+  const [splitAllocs, setSplitAllocs] = useState([{ ...EMPTY_INV_ALLOC }, { ...EMPTY_INV_ALLOC }]);
+  const [savingSplit, setSavingSplit] = useState(false);
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
@@ -40,6 +46,13 @@ export default function Invoices({ token }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadJobs = () => {
+    if (jobs.length > 0) return;
+    fetch('/api/jobs', { headers: { 'x-auth-token': token } })
+      .then((r) => r.json())
+      .then((d) => setJobs((d.jobs || []).filter((j) => !j.archived)));
+  };
 
   const sendInvoice = async (inv) => {
     if (!inv.to_email) return showToast('No email on this invoice', 'error');
@@ -69,6 +82,55 @@ export default function Invoices({ token }) {
       load();
       showToast('Invoice marked paid');
     }
+  };
+
+  const openSplitPay = (inv) => {
+    loadJobs();
+    setSplitPayInv(inv);
+    setSplitAllocs([{ ...EMPTY_INV_ALLOC }, { ...EMPTY_INV_ALLOC }]);
+  };
+
+  const updateInvAlloc = (i, field, val) =>
+    setSplitAllocs((prev) => prev.map((a, idx) => (idx === i ? { ...a, [field]: val } : a)));
+
+  const submitSplitPay = async () => {
+    if (!splitPayInv) return;
+    for (const a of splitAllocs) {
+      if (!a.job_id) return showToast('Select a job for each allocation', 'error');
+      if (!a.amount || Number(a.amount) <= 0)
+        return showToast('Enter a positive amount for each allocation', 'error');
+    }
+    const total = Number(splitPayInv.total) || 0;
+    const allocSum = splitAllocs.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+    if (Math.abs(allocSum - total) > 0.02) {
+      return showToast(
+        `Allocation total ($${allocSum.toFixed(2)}) must equal invoice total ($${total.toFixed(2)})`,
+        'error',
+      );
+    }
+    setSavingSplit(true);
+    const res = await fetch(`/api/direct-invoices/${splitPayInv.id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
+        status: 'paid',
+        allocations: splitAllocs.map((a) => ({
+          job_id: a.job_id,
+          payment_class: a.payment_class,
+          amount: parseFloat(a.amount),
+          notes: a.notes,
+        })),
+      }),
+    });
+    if (res.ok) {
+      setSplitPayInv(null);
+      load();
+      showToast(`Split payment recorded across ${splitAllocs.length} jobs`);
+    } else {
+      const d = await res.json();
+      showToast(d.error || 'Failed to record split payment', 'error');
+    }
+    setSavingSplit(false);
   };
 
   const deleteInv = async (inv) => {
@@ -230,129 +292,406 @@ export default function Invoices({ token }) {
           {filtered.map((inv) => {
             const sc = STATUS_COLOR[inv.status] || '#888';
             return (
-              <div
-                key={inv.id}
-                style={{
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 9,
-                  padding: '12px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 10,
-                }}
-              >
+              <div key={inv.id}>
                 <div
                   style={{
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: '#4F46E5',
-                    minWidth: 160,
+                    background: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 9,
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 10,
+                    borderBottomLeftRadius: splitPayInv?.id === inv.id ? 0 : 9,
+                    borderBottomRightRadius: splitPayInv?.id === inv.id ? 0 : 9,
                   }}
                 >
-                  {inv.invoice_number}
-                </div>
-                <div style={{ flex: 1, minWidth: 120 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>
-                    {inv.to_name || inv.to_email || '—'}
-                  </div>
-                  {inv.to_email && inv.to_name && (
-                    <div style={{ fontSize: 11, color: '#888' }}>{inv.to_email}</div>
-                  )}
-                </div>
-                <div style={{ fontSize: 13, color: '#555' }}>{fmtDate(inv.created_at)}</div>
-                <div
-                  style={{
-                    fontWeight: 800,
-                    fontSize: 15,
-                    color: '#4F46E5',
-                    minWidth: 90,
-                    textAlign: 'right',
-                  }}
-                >
-                  {fmt(inv.total)}
-                </div>
-                <span
-                  style={{
-                    fontSize: 10,
-                    padding: '2px 9px',
-                    borderRadius: 10,
-                    background: sc + '22',
-                    color: sc,
-                    fontWeight: 700,
-                    minWidth: 44,
-                    textAlign: 'center',
-                  }}
-                >
-                  {(inv.status || 'draft').toUpperCase()}
-                </span>
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                  <a
-                    href={`/api/direct-invoices/${inv.id}/pdf?token=${encodeURIComponent(token || '')}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <div
                     style={{
-                      fontSize: 11,
-                      padding: '4px 10px',
-                      background: '#4F46E511',
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      fontWeight: 700,
                       color: '#4F46E5',
-                      border: '1px solid #4F46E522',
-                      borderRadius: 5,
-                      textDecoration: 'none',
+                      minWidth: 160,
                     }}
                   >
-                    PDF
-                  </a>
-                  {inv.to_email && inv.status !== 'paid' && (
-                    <button
-                      onClick={() => sendInvoice(inv)}
-                      disabled={sending === inv.id}
-                      style={{
-                        fontSize: 11,
-                        padding: '4px 10px',
-                        background: '#3B82F611',
-                        color: '#3B82F6',
-                        border: '1px solid #3B82F622',
-                        borderRadius: 5,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {sending === inv.id ? 'Sending…' : inv.status === 'sent' ? 'Resend' : 'Send'}
-                    </button>
-                  )}
-                  {inv.status !== 'paid' && (
-                    <button
-                      onClick={() => markPaid(inv)}
-                      style={{
-                        fontSize: 11,
-                        padding: '4px 10px',
-                        background: '#2E7D3211',
-                        color: GREEN,
-                        border: '1px solid #2E7D3222',
-                        borderRadius: 5,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Mark Paid
-                    </button>
-                  )}
-                  <button
-                    onClick={() => deleteInv(inv)}
+                    {inv.invoice_number}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 120 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>
+                      {inv.to_name || inv.to_email || '—'}
+                    </div>
+                    {inv.to_email && inv.to_name && (
+                      <div style={{ fontSize: 11, color: '#888' }}>{inv.to_email}</div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#555' }}>{fmtDate(inv.created_at)}</div>
+                  <div
                     style={{
-                      fontSize: 11,
-                      padding: '4px 10px',
-                      background: '#ff000011',
-                      color: RED,
-                      border: '1px solid #ff000022',
-                      borderRadius: 5,
-                      cursor: 'pointer',
+                      fontWeight: 800,
+                      fontSize: 15,
+                      color: '#4F46E5',
+                      minWidth: 90,
+                      textAlign: 'right',
                     }}
                   >
-                    Delete
-                  </button>
+                    {fmt(inv.total)}
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      padding: '2px 9px',
+                      borderRadius: 10,
+                      background: sc + '22',
+                      color: sc,
+                      fontWeight: 700,
+                      minWidth: 44,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {(inv.status || 'draft').toUpperCase()}
+                  </span>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    <a
+                      href={`/api/direct-invoices/${inv.id}/pdf?token=${encodeURIComponent(token || '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        fontSize: 11,
+                        padding: '4px 10px',
+                        background: '#4F46E511',
+                        color: '#4F46E5',
+                        border: '1px solid #4F46E522',
+                        borderRadius: 5,
+                        textDecoration: 'none',
+                      }}
+                    >
+                      PDF
+                    </a>
+                    {inv.to_email && inv.status !== 'paid' && (
+                      <button
+                        onClick={() => sendInvoice(inv)}
+                        disabled={sending === inv.id}
+                        style={{
+                          fontSize: 11,
+                          padding: '4px 10px',
+                          background: '#3B82F611',
+                          color: '#3B82F6',
+                          border: '1px solid #3B82F622',
+                          borderRadius: 5,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {sending === inv.id
+                          ? 'Sending…'
+                          : inv.status === 'sent'
+                            ? 'Resend'
+                            : 'Send'}
+                      </button>
+                    )}
+                    {inv.status !== 'paid' && (
+                      <>
+                        <button
+                          onClick={() => markPaid(inv)}
+                          style={{
+                            fontSize: 11,
+                            padding: '4px 10px',
+                            background: '#2E7D3211',
+                            color: GREEN,
+                            border: '1px solid #2E7D3222',
+                            borderRadius: 5,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Mark Paid
+                        </button>
+                        <button
+                          onClick={() =>
+                            splitPayInv?.id === inv.id ? setSplitPayInv(null) : openSplitPay(inv)
+                          }
+                          style={{
+                            fontSize: 11,
+                            padding: '4px 10px',
+                            background: splitPayInv?.id === inv.id ? '#3B82F6' : '#3B82F611',
+                            color: splitPayInv?.id === inv.id ? 'white' : '#3B82F6',
+                            border: '1px solid #3B82F622',
+                            borderRadius: 5,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Split Paid
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => deleteInv(inv)}
+                      style={{
+                        fontSize: 11,
+                        padding: '4px 10px',
+                        background: '#ff000011',
+                        color: RED,
+                        border: '1px solid #ff000022',
+                        borderRadius: 5,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
+                {splitPayInv?.id === inv.id && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      background: '#f0f9ff',
+                      border: '1.5px solid #3B82F6',
+                      borderRadius: 8,
+                      padding: 14,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 'bold',
+                        color: '#1D4ED8',
+                        fontSize: 13,
+                        marginBottom: 10,
+                      }}
+                    >
+                      Split Payment — Allocate {fmt(inv.total)}
+                    </div>
+                    {(() => {
+                      const allocTotal = splitAllocs.reduce(
+                        (s, a) => s + (parseFloat(a.amount) || 0),
+                        0,
+                      );
+                      const total = Number(inv.total) || 0;
+                      const remaining = Math.round((total - allocTotal) * 100) / 100;
+                      const balanced = Math.abs(remaining) < 0.02;
+                      return (
+                        <>
+                          <div style={{ overflowX: 'auto', marginBottom: 8 }}>
+                            <table
+                              style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}
+                            >
+                              <thead>
+                                <tr style={{ background: '#1B3A6B', color: 'white' }}>
+                                  {['Job', 'Class', 'Amount', 'Notes', ''].map((h) => (
+                                    <th
+                                      key={h}
+                                      style={{
+                                        padding: '6px 8px',
+                                        textAlign: 'left',
+                                        fontWeight: 600,
+                                        fontSize: 11,
+                                      }}
+                                    >
+                                      {h}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {splitAllocs.map((a, i) => (
+                                  <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                    <td style={{ padding: '4px 6px', minWidth: 160 }}>
+                                      <select
+                                        value={a.job_id}
+                                        onChange={(e) =>
+                                          updateInvAlloc(i, 'job_id', e.target.value)
+                                        }
+                                        style={{
+                                          width: '100%',
+                                          padding: '5px 6px',
+                                          border: '1px solid #ddd',
+                                          borderRadius: 4,
+                                          fontSize: 11,
+                                        }}
+                                      >
+                                        <option value="">— Select job —</option>
+                                        {jobs.map((j) => (
+                                          <option key={j.id} value={j.id}>
+                                            {j.project_address ||
+                                              j.customer_name ||
+                                              j.id.slice(0, 8)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    <td style={{ padding: '4px 6px', minWidth: 140 }}>
+                                      <select
+                                        value={a.payment_class}
+                                        onChange={(e) =>
+                                          updateInvAlloc(i, 'payment_class', e.target.value)
+                                        }
+                                        style={{
+                                          width: '100%',
+                                          padding: '5px 6px',
+                                          border: '1px solid #ddd',
+                                          borderRadius: 4,
+                                          fontSize: 11,
+                                        }}
+                                      >
+                                        <option value="contract">Contract</option>
+                                        <option value="pass_through_reimbursement">
+                                          Pass-Through
+                                        </option>
+                                      </select>
+                                    </td>
+                                    <td style={{ padding: '4px 6px', minWidth: 90 }}>
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={a.amount}
+                                        onChange={(e) =>
+                                          updateInvAlloc(i, 'amount', e.target.value)
+                                        }
+                                        placeholder="0.00"
+                                        style={{
+                                          width: '100%',
+                                          padding: '5px 6px',
+                                          border: '1px solid #ddd',
+                                          borderRadius: 4,
+                                          fontSize: 11,
+                                          textAlign: 'right',
+                                        }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '4px 6px', minWidth: 120 }}>
+                                      <input
+                                        value={a.notes}
+                                        onChange={(e) => updateInvAlloc(i, 'notes', e.target.value)}
+                                        placeholder="Optional"
+                                        style={{
+                                          width: '100%',
+                                          padding: '5px 6px',
+                                          border: '1px solid #ddd',
+                                          borderRadius: 4,
+                                          fontSize: 11,
+                                        }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '4px 4px' }}>
+                                      <button
+                                        onClick={() =>
+                                          setSplitAllocs((prev) =>
+                                            prev.length > 2
+                                              ? prev.filter((_, idx) => idx !== i)
+                                              : prev,
+                                          )
+                                        }
+                                        disabled={splitAllocs.length <= 2}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          cursor:
+                                            splitAllocs.length <= 2 ? 'not-allowed' : 'pointer',
+                                          color: splitAllocs.length <= 2 ? '#ccc' : '#C62828',
+                                          fontSize: 15,
+                                          padding: '2px 4px',
+                                        }}
+                                      >
+                                        ✕
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 10,
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <button
+                              onClick={() =>
+                                setSplitAllocs((prev) => [...prev, { ...EMPTY_INV_ALLOC }])
+                              }
+                              style={{
+                                background: 'none',
+                                border: '1px dashed #3B82F6',
+                                color: '#1D4ED8',
+                                borderRadius: 6,
+                                padding: '4px 12px',
+                                cursor: 'pointer',
+                                fontSize: 11,
+                                fontWeight: 600,
+                              }}
+                            >
+                              + Add Row
+                            </button>
+                            <div
+                              style={{
+                                flex: 1,
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '6px 10px',
+                                borderRadius: 6,
+                                background: balanced ? '#f0fdf4' : '#fff5f5',
+                                border: `1px solid ${balanced ? '#86efac' : '#fca5a5'}`,
+                                fontSize: 12,
+                                minWidth: 160,
+                              }}
+                            >
+                              <span style={{ color: '#555' }}>
+                                Allocated: <strong>{fmt(allocTotal)}</strong> of{' '}
+                                <strong>{fmt(total)}</strong>
+                              </span>
+                              <span
+                                style={{
+                                  fontWeight: 'bold',
+                                  color: balanced ? '#166534' : '#991b1b',
+                                }}
+                              >
+                                {balanced
+                                  ? '✓ Balanced'
+                                  : remaining > 0
+                                    ? `$${remaining.toFixed(2)} left`
+                                    : `$${Math.abs(remaining).toFixed(2)} over`}
+                              </span>
+                            </div>
+                            <button
+                              onClick={submitSplitPay}
+                              disabled={savingSplit || !balanced}
+                              style={{
+                                padding: '7px 16px',
+                                background: balanced ? GREEN : '#ccc',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 6,
+                                cursor: balanced ? 'pointer' : 'not-allowed',
+                                fontWeight: 'bold',
+                                fontSize: 12,
+                              }}
+                            >
+                              {savingSplit ? 'Saving…' : 'Save Split & Mark Paid'}
+                            </button>
+                            <button
+                              onClick={() => setSplitPayInv(null)}
+                              style={{
+                                padding: '7px 12px',
+                                background: 'none',
+                                border: '1px solid #ddd',
+                                borderRadius: 6,
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                color: '#888',
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             );
           })}

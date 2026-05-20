@@ -189,6 +189,132 @@ router.get('/contact/:contactId', requireAuth, (req, res) => {
   });
 });
 
+router.post('/received/split', requireAuth, (req, res) => {
+  const db = getDb();
+  const {
+    total_amount,
+    date_received,
+    time_received,
+    check_number,
+    customer_name,
+    payment_type,
+    credit_debit,
+    allocations,
+  } = req.body;
+
+  if (payment_type === 'deposit') {
+    return res.status(400).json({ error: 'Deposit payments cannot be split across jobs' });
+  }
+  if (!Array.isArray(allocations) || allocations.length < 2) {
+    return res
+      .status(400)
+      .json({ error: 'At least 2 allocations are required for a split payment' });
+  }
+  if (!date_received) {
+    return res.status(400).json({ error: 'date_received is required' });
+  }
+
+  const parsedTotal = validateAmount(total_amount);
+  if (parsedTotal === null) {
+    return res.status(400).json({ error: 'total_amount must be a positive number' });
+  }
+
+  const allocSum =
+    Math.round(allocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0) * 100) / 100;
+  if (Math.abs(allocSum - parsedTotal) > 0.02) {
+    return res.status(400).json({
+      error: `Allocation total ($${allocSum.toFixed(2)}) does not match payment total ($${parsedTotal.toFixed(2)})`,
+    });
+  }
+
+  for (const alloc of allocations) {
+    if (!alloc.job_id) return res.status(400).json({ error: 'Each allocation must have a job_id' });
+    const job = db.prepare('SELECT id FROM jobs WHERE id = ?').get(alloc.job_id);
+    if (!job) return res.status(404).json({ error: `Job not found: ${alloc.job_id}` });
+    const allocAmt = parseFloat(alloc.amount) || 0;
+    if (allocAmt <= 0)
+      return res.status(400).json({ error: 'Each allocation amount must be positive' });
+  }
+
+  const pType = VALID_PAYMENT_TYPES.includes(payment_type) ? payment_type : 'progress';
+  const crDr = VALID_CREDIT_DEBIT.includes(credit_debit) ? credit_debit : 'credit';
+  const recorder = req.session?.name || 'Unknown';
+  const timeVal = time_received || currentTime();
+  const { randomUUID } = require('crypto');
+  const splitGroupId = randomUUID();
+
+  const paidDateLabel = new Date(date_received + 'T12:00:00').toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  const insertStmt = db.prepare(
+    `INSERT INTO payments_received
+      (job_id, customer_name, check_number, amount, date_received, time_received,
+       payment_type, credit_debit, recorded_by, notes, payment_class,
+       is_pass_through_reimbursement, split_group_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+
+  const results = db.transaction(() => {
+    const rows = [];
+    for (const alloc of allocations) {
+      const allocAmt = Math.round((parseFloat(alloc.amount) || 0) * 100) / 100;
+      const isPTR = alloc.payment_class === 'pass_through_reimbursement' ? 1 : 0;
+      const pClass = isPTR ? 'pass_through_reimbursement' : 'contract';
+      const splitNote =
+        `Split payment — $${parsedTotal.toLocaleString()} received ${paidDateLabel}, ` +
+        `$${allocAmt.toLocaleString('en-US', { minimumFractionDigits: 2 })} allocated here` +
+        (alloc.notes ? '. ' + alloc.notes : '');
+      const info = insertStmt.run(
+        alloc.job_id,
+        customer_name || null,
+        check_number || null,
+        allocAmt,
+        date_received,
+        timeVal,
+        pType,
+        crDr,
+        recorder,
+        splitNote,
+        pClass,
+        isPTR,
+        splitGroupId,
+      );
+      rows.push(
+        db.prepare('SELECT * FROM payments_received WHERE id = ?').get(info.lastInsertRowid),
+      );
+    }
+    return rows;
+  })();
+
+  for (const row of results) {
+    const rowJob = db.prepare('SELECT contact_id FROM jobs WHERE id = ?').get(row.job_id);
+    const contact = rowJob?.contact_id
+      ? db.prepare('SELECT pb_customer_number FROM contacts WHERE id = ?').get(rowJob.contact_id)
+      : null;
+    logAudit(
+      row.job_id,
+      'payment_received',
+      `Split check: $${row.amount} of $${parsedTotal} total (${pType})${check_number ? ' check #' + check_number : ''} recorded by ${recorder}`,
+      recorder,
+    );
+    logActivity({
+      customer_number: contact?.pb_customer_number || null,
+      job_id: row.job_id,
+      event_type: 'PAYMENT_RECEIVED',
+      description:
+        `Split payment: $${row.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ` +
+        `of $${parsedTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })} total allocated here (${pType})` +
+        (check_number ? ' check #' + check_number : ''),
+      recorded_by: recorder,
+    });
+  }
+
+  res.json({ success: true, payments: results, split_group_id: splitGroupId });
+});
+
 router.post(
   '/received',
   requireAuth,

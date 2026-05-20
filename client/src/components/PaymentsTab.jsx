@@ -69,6 +69,8 @@ const inputStyle = {
   boxSizing: 'border-box',
 };
 
+const EMPTY_ALLOC = { job_id: '', payment_class: 'contract', amount: '', notes: '' };
+
 export default function PaymentsTab({ jobId, token, job }) {
   const [received, setReceived] = useState([]);
   const [made, setMade] = useState([]);
@@ -83,6 +85,13 @@ export default function PaymentsTab({ jobId, token, job }) {
   const [formInv, setFormInv] = useState(EMPTY_INV);
   const [saving, setSaving] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [splitIn, setSplitIn] = useState(false);
+  const [splitAllocations, setSplitAllocations] = useState([
+    { ...EMPTY_ALLOC, job_id: jobId },
+    { ...EMPTY_ALLOC },
+  ]);
+  const [allJobs, setAllJobs] = useState([]);
+  const [sendingInvoice, setSendingInvoice] = useState(null);
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
@@ -107,6 +116,23 @@ export default function PaymentsTab({ jobId, token, job }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const toggleSplitIn = (on) => {
+    setSplitIn(on);
+    if (on && allJobs.length === 0) {
+      fetch('/api/jobs', { headers: { 'x-auth-token': token } })
+        .then((r) => r.json())
+        .then((d) => setAllJobs((d.jobs || []).filter((j) => !j.archived)));
+    }
+  };
+
+  const updateAlloc = (i, field, val) =>
+    setSplitAllocations((prev) => prev.map((a, idx) => (idx === i ? { ...a, [field]: val } : a)));
+
+  const addAlloc = () => setSplitAllocations((prev) => [...prev, { ...EMPTY_ALLOC }]);
+
+  const removeAlloc = (i) =>
+    setSplitAllocations((prev) => (prev.length > 2 ? prev.filter((_, idx) => idx !== i) : prev));
 
   const submitIn = async () => {
     if (!formIn.amount) return showToast('Enter an amount', 'error');
@@ -134,6 +160,79 @@ export default function PaymentsTab({ jobId, token, job }) {
       showToast(data.error || 'Failed to save', 'error');
     }
     setSaving(false);
+  };
+
+  const submitSplitIn = async () => {
+    if (!formIn.amount) return showToast('Enter total amount', 'error');
+    if (!formIn.date_received) return showToast('Enter a date', 'error');
+    for (const a of splitAllocations) {
+      if (!a.job_id) return showToast('Select a job for each allocation', 'error');
+      if (!a.amount || Number(a.amount) <= 0)
+        return showToast('Enter a positive amount for each allocation', 'error');
+    }
+    const total = parseFloat(formIn.amount) || 0;
+    const allocSum = splitAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+    if (Math.abs(allocSum - total) > 0.02) {
+      return showToast(
+        `Allocation total ($${allocSum.toFixed(2)}) must equal payment total ($${total.toFixed(2)})`,
+        'error',
+      );
+    }
+    setSaving(true);
+    const body = {
+      total_amount: total,
+      date_received: formIn.date_received,
+      time_received: formIn.time_received,
+      check_number: formIn.check_number,
+      customer_name: formIn.customer_name,
+      payment_type: formIn.payment_type,
+      credit_debit: formIn.credit_debit,
+      allocations: splitAllocations.map((a) => ({
+        job_id: a.job_id,
+        payment_class: a.payment_class,
+        amount: parseFloat(a.amount),
+        notes: a.notes,
+      })),
+    };
+    const res = await fetch('/api/payments/received/split', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setFormIn({
+        ...EMPTY_IN,
+        customer_name: job?.customer_name || '',
+        date_received: today(),
+        time_received: nowTime(),
+      });
+      setSplitAllocations([{ ...EMPTY_ALLOC, job_id: jobId }, { ...EMPTY_ALLOC }]);
+      setSplitIn(false);
+      setShowIn(false);
+      load();
+      showToast(`Split payment recorded across ${data.payments.length} jobs`);
+    } else {
+      showToast(data.error || 'Failed to save split payment', 'error');
+    }
+    setSaving(false);
+  };
+
+  const sendDepositInvoice = async (inv) => {
+    if (!job?.customer_email) return showToast('No customer email on file', 'error');
+    setSendingInvoice(inv.id);
+    const res = await fetch(`/api/invoices/${inv.id}/email`, {
+      method: 'POST',
+      headers,
+    });
+    const d = await res.json();
+    if (res.ok) {
+      showToast(`Invoice 1 sent to ${job.customer_email}`);
+      load();
+    } else {
+      showToast(d.error || 'Failed to send invoice', 'error');
+    }
+    setSendingInvoice(null);
   };
 
   const submitOut = async () => {
@@ -835,9 +934,209 @@ export default function PaymentsTab({ jobId, token, job }) {
               </span>
             </label>
           </Field>
+
+          {formIn.payment_type !== 'deposit' && (
+            <div style={{ marginBottom: 12 }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={splitIn}
+                  onChange={(e) => toggleSplitIn(e.target.checked)}
+                />
+                <span>
+                  <strong>Split across multiple jobs</strong> — one check covers multiple contracts
+                  or pass-throughs
+                </span>
+              </label>
+              {!splitIn && (
+                <div style={{ fontSize: 11, color: '#888', marginTop: 4, marginLeft: 22 }}>
+                  Tip: if you received two separate checks from this customer, enter them
+                  individually (each gets its own check number). Use Split only when one check
+                  covers multiple jobs.
+                </div>
+              )}
+            </div>
+          )}
+
+          {splitIn && (
+            <div
+              style={{
+                background: '#f0f9ff',
+                border: '1.5px solid #3B82F6',
+                borderRadius: 8,
+                padding: 14,
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ fontWeight: 'bold', color: '#1D4ED8', fontSize: 13, marginBottom: 10 }}>
+                Allocate Split Payment
+              </div>
+              {(() => {
+                const allocTotal = splitAllocations.reduce(
+                  (s, a) => s + (parseFloat(a.amount) || 0),
+                  0,
+                );
+                const enteredTotal = parseFloat(formIn.amount) || 0;
+                const remaining = Math.round((enteredTotal - allocTotal) * 100) / 100;
+                const balanced = Math.abs(remaining) < 0.02;
+                return (
+                  <>
+                    <div style={{ overflowX: 'auto', marginBottom: 8 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: '#1B3A6B', color: 'white' }}>
+                            {['Job', 'Class', 'Amount', 'Notes', ''].map((h) => (
+                              <th
+                                key={h}
+                                style={{
+                                  padding: '6px 8px',
+                                  textAlign: 'left',
+                                  fontWeight: 600,
+                                  fontSize: 11,
+                                }}
+                              >
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {splitAllocations.map((a, i) => (
+                            <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                              <td style={{ padding: '4px 6px', minWidth: 160 }}>
+                                <select
+                                  value={a.job_id}
+                                  onChange={(e) => updateAlloc(i, 'job_id', e.target.value)}
+                                  style={{ ...inputStyle, fontSize: 11, padding: '5px 6px' }}
+                                >
+                                  <option value="">— Select job —</option>
+                                  {allJobs.map((j) => (
+                                    <option key={j.id} value={j.id}>
+                                      {j.project_address || j.customer_name || j.id.slice(0, 8)}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td style={{ padding: '4px 6px', minWidth: 140 }}>
+                                <select
+                                  value={a.payment_class}
+                                  onChange={(e) => updateAlloc(i, 'payment_class', e.target.value)}
+                                  style={{ ...inputStyle, fontSize: 11, padding: '5px 6px' }}
+                                >
+                                  <option value="contract">Contract</option>
+                                  <option value="pass_through_reimbursement">
+                                    Pass-Through Reimbursement
+                                  </option>
+                                </select>
+                              </td>
+                              <td style={{ padding: '4px 6px', minWidth: 90 }}>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={a.amount}
+                                  onChange={(e) => updateAlloc(i, 'amount', e.target.value)}
+                                  placeholder="0.00"
+                                  style={{
+                                    ...inputStyle,
+                                    fontSize: 11,
+                                    padding: '5px 6px',
+                                    textAlign: 'right',
+                                  }}
+                                />
+                              </td>
+                              <td style={{ padding: '4px 6px', minWidth: 120 }}>
+                                <input
+                                  value={a.notes}
+                                  onChange={(e) => updateAlloc(i, 'notes', e.target.value)}
+                                  placeholder="Optional"
+                                  style={{ ...inputStyle, fontSize: 11, padding: '5px 6px' }}
+                                />
+                              </td>
+                              <td style={{ padding: '4px 4px' }}>
+                                <button
+                                  onClick={() => removeAlloc(i)}
+                                  disabled={splitAllocations.length <= 2}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor:
+                                      splitAllocations.length <= 2 ? 'not-allowed' : 'pointer',
+                                    color: splitAllocations.length <= 2 ? '#ccc' : '#C62828',
+                                    fontSize: 15,
+                                    padding: '2px 4px',
+                                  }}
+                                >
+                                  ✕
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <button
+                      onClick={addAlloc}
+                      style={{
+                        background: 'none',
+                        border: '1px dashed #3B82F6',
+                        color: '#1D4ED8',
+                        borderRadius: 6,
+                        padding: '4px 12px',
+                        cursor: 'pointer',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        marginBottom: 10,
+                      }}
+                    >
+                      + Add Allocation
+                    </button>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        background: balanced ? '#f0fdf4' : '#fff5f5',
+                        border: `1px solid ${balanced ? '#86efac' : '#fca5a5'}`,
+                        fontSize: 12,
+                      }}
+                    >
+                      <span style={{ color: '#555' }}>
+                        Allocated: <strong>{fmt(allocTotal)}</strong> of{' '}
+                        <strong>{fmt(enteredTotal)}</strong>
+                      </span>
+                      <span
+                        style={{
+                          fontWeight: 'bold',
+                          color: balanced ? '#166534' : '#991b1b',
+                        }}
+                      >
+                        {balanced
+                          ? '✓ Balanced'
+                          : remaining > 0
+                            ? `$${remaining.toFixed(2)} unallocated`
+                            : `$${Math.abs(remaining).toFixed(2)} over`}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 8 }}>
             <button
-              onClick={submitIn}
+              onClick={splitIn ? submitSplitIn : submitIn}
               disabled={saving}
               style={{
                 padding: '8px 16px',
@@ -850,10 +1149,14 @@ export default function PaymentsTab({ jobId, token, job }) {
                 fontSize: 12,
               }}
             >
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? 'Saving...' : splitIn ? 'Save Split Payment' : 'Save'}
             </button>
             <button
-              onClick={() => setShowIn(false)}
+              onClick={() => {
+                setShowIn(false);
+                setSplitIn(false);
+                setSplitAllocations([{ ...EMPTY_ALLOC, job_id: jobId }, { ...EMPTY_ALLOC }]);
+              }}
               style={{
                 padding: '8px 12px',
                 background: 'none',
@@ -1082,6 +1385,83 @@ export default function PaymentsTab({ jobId, token, job }) {
           </div>
         </div>
       )}
+
+      {/* Invoice 1 draft prompt card */}
+      {(() => {
+        const draftDeposit = invoices.find(
+          (i) => i.invoice_type === 'contract_invoice' && i.status === 'draft',
+        );
+        const hasDepositPayment = received.some(
+          (r) => r.payment_type === 'deposit' && r.credit_debit === 'credit',
+        );
+        if (!draftDeposit || hasDepositPayment) return null;
+        const invTotal = Number(draftDeposit.amount || 0);
+        return (
+          <div
+            style={{
+              background: '#fffbeb',
+              border: '2px solid #f59e0b',
+              borderRadius: 10,
+              padding: '14px 18px',
+              marginBottom: 20,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ fontSize: 22 }}>🧾</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 'bold', color: '#92400e', fontSize: 14, marginBottom: 2 }}>
+                Invoice 1 ready — {fmt(invTotal)}
+              </div>
+              <div style={{ fontSize: 12, color: '#78350f' }}>
+                Contract deposit invoice auto-created on signing.{' '}
+                <span style={{ fontFamily: 'monospace' }}>{draftDeposit.invoice_number}</span> — not
+                yet sent.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => sendDepositInvoice(draftDeposit)}
+                disabled={sendingInvoice === draftDeposit.id || !job?.customer_email}
+                style={{
+                  padding: '7px 16px',
+                  background: '#f59e0b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: job?.customer_email ? 'pointer' : 'not-allowed',
+                  fontWeight: 'bold',
+                  fontSize: 12,
+                  opacity: sendingInvoice === draftDeposit.id ? 0.7 : 1,
+                }}
+                title={!job?.customer_email ? 'No customer email on file' : ''}
+              >
+                {sendingInvoice === draftDeposit.id ? 'Sending...' : '📧 Send to Customer'}
+              </button>
+              <a
+                href={`/api/invoices/${draftDeposit.id}/pdf?token=${token}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  padding: '7px 14px',
+                  background: 'white',
+                  color: '#92400e',
+                  border: '1px solid #f59e0b',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: 12,
+                  textDecoration: 'none',
+                }}
+              >
+                👁 View PDF
+              </a>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Invoices Section */}
       {invoices.length > 0 && (

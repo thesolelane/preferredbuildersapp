@@ -362,35 +362,94 @@ router.post('/', requireAuth, (req, res) => {
 });
 
 router.patch('/:id', requireAuth, (req, res) => {
+  const { randomUUID } = require('crypto');
   const db = getDb();
   const inv = db.prepare('SELECT * FROM direct_invoices WHERE id = ?').get(req.params.id);
   if (!inv) return res.status(404).json({ error: 'Not found' });
 
-  const { status, notes } = req.body;
+  const { status, notes, allocations } = req.body;
   const newStatus = ['draft', 'sent', 'paid'].includes(status) ? status : inv.status;
   const becomingPaid = newStatus === 'paid' && inv.status !== 'paid';
   const paidAt = becomingPaid ? new Date().toISOString() : inv.paid_at;
 
-  db.prepare(
-    'UPDATE direct_invoices SET status=?, notes=?, paid_at=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
-  ).run(newStatus, notes ?? inv.notes, paidAt, inv.id);
-
-  if (becomingPaid && inv.job_id) {
-    const today = new Date().toISOString().slice(0, 10);
-    db.prepare(
-      `INSERT INTO payments_received
-        (job_id, customer_name, amount, date_received, payment_type, credit_debit, recorded_by, notes)
-       VALUES (?, ?, ?, ?, 'invoice', 'credit', ?, ?)`,
-    ).run(
-      inv.job_id,
-      inv.to_name || null,
-      inv.total,
-      today,
-      req.session?.name || 'system',
-      `Auto-recorded from invoice ${inv.invoice_number}`,
-    );
+  // Validate split allocations BEFORE touching the DB
+  if (becomingPaid && Array.isArray(allocations) && allocations.length >= 2) {
+    const invTotal = Number(inv.total) || 0;
+    const allocSum = allocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+    if (Math.abs(allocSum - invTotal) > 0.02) {
+      return res.status(400).json({
+        error: `Allocation total ($${allocSum.toFixed(2)}) must equal invoice total ($${invTotal.toFixed(2)})`,
+      });
+    }
+    if (allocations.some((a) => !a.job_id || !(parseFloat(a.amount) > 0))) {
+      return res
+        .status(400)
+        .json({ error: 'Each allocation must have a job and a positive amount' });
+    }
+    // Verify each job_id exists
+    const jobCheck = db.prepare('SELECT id FROM jobs WHERE id = ?');
+    for (const alloc of allocations) {
+      if (!jobCheck.get(alloc.job_id)) {
+        return res.status(400).json({ error: `Job ${alloc.job_id} not found` });
+      }
+    }
   }
 
+  // All-or-nothing: update invoice status + insert payment rows in one transaction
+  const applyUpdate = db.transaction(() => {
+    db.prepare(
+      'UPDATE direct_invoices SET status=?, notes=?, paid_at=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+    ).run(newStatus, notes ?? inv.notes, paidAt, inv.id);
+
+    if (!becomingPaid) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const recorder = req.session?.name || 'system';
+
+    if (Array.isArray(allocations) && allocations.length >= 2) {
+      const splitGroupId = randomUUID();
+      const VALID_CLASSES = ['contract', 'pass_through_reimbursement'];
+      const insertSplit = db.prepare(
+        `INSERT INTO payments_received
+          (job_id, customer_name, amount, date_received, payment_type, credit_debit,
+           recorded_by, notes, split_group_id, payment_class, is_pass_through_reimbursement)
+         VALUES (?, ?, ?, ?, 'invoice', 'credit', ?, ?, ?, ?, ?)`,
+      );
+      for (const alloc of allocations) {
+        const payClass = VALID_CLASSES.includes(alloc.payment_class)
+          ? alloc.payment_class
+          : 'contract';
+        insertSplit.run(
+          alloc.job_id,
+          inv.to_name || null,
+          parseFloat(alloc.amount),
+          today,
+          recorder,
+          alloc.notes ||
+            `Split from invoice ${inv.invoice_number} — $${Number(inv.total).toFixed(2)} total`,
+          splitGroupId,
+          payClass,
+          payClass === 'pass_through_reimbursement' ? 1 : 0,
+        );
+      }
+    } else if (inv.job_id) {
+      // Single auto-record (existing behavior)
+      db.prepare(
+        `INSERT INTO payments_received
+          (job_id, customer_name, amount, date_received, payment_type, credit_debit, recorded_by, notes)
+         VALUES (?, ?, ?, ?, 'invoice', 'credit', ?, ?)`,
+      ).run(
+        inv.job_id,
+        inv.to_name || null,
+        inv.total,
+        today,
+        recorder,
+        `Auto-recorded from invoice ${inv.invoice_number}`,
+      );
+    }
+  });
+
+  applyUpdate();
   res.json({ invoice: db.prepare('SELECT * FROM direct_invoices WHERE id = ?').get(inv.id) });
 });
 

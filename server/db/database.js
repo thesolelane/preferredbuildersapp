@@ -553,6 +553,7 @@ async function initDatabase() {
   );
   addColIfMissing('payments_received', 'invoice_id', 'INTEGER');
   addColIfMissing('payments_received', 'line_item_ref', 'TEXT');
+  addColIfMissing('payments_received', 'split_group_id', 'TEXT');
 
   // ── Field photos — lead link ──────────────────────────────────────────────────
   addColIfMissing('field_photos', 'lead_id', 'INTEGER');
