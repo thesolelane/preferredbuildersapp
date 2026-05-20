@@ -30,3 +30,9 @@ id = "DaDRQQF9JOdWfqGqRZ8N4"
 uri = "file://PB_Contract_CORRECTED.docx"
 type = "word_document"
 title = "PB Contract — TOLF Corrected (DOCX)"
+
+[[outputs]]
+id = "UdPxltykZrtBPMog0fd4V"
+uri = "file://docs/suggested-tasks.md"
+type = "text"
+title = "Suggested Tasks Backlog"
