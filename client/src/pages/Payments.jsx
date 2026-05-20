@@ -991,8 +991,10 @@ export default function Payments({ token }) {
         <div style={{ color: '#888', textAlign: 'center', padding: 40 }}>Loading...</div>
       ) : tab === 'received' ? (
         <PaymentTable
+          key="received-table"
           payments={received}
           defaultExpandedGroup={defaultSplitGroup}
+          storageKey="pb_ledger_expanded_received"
           columns={[
             {
               key: 'date',
@@ -1063,7 +1065,9 @@ export default function Payments({ token }) {
         />
       ) : (
         <PaymentTable
+          key="made-table"
           payments={made}
+          storageKey="pb_ledger_expanded_made"
           columns={[
             {
               key: 'date',
@@ -1285,10 +1289,28 @@ function SplitGroupHeader({ groupId, rows, expanded, onToggle, isTarget }) {
   );
 }
 
-function PaymentTable({ payments, columns, onDelete, emptyMsg, defaultExpandedGroup }) {
-  const [expandedGroups, setExpandedGroups] = useState(
-    () => new Set(defaultExpandedGroup ? [defaultExpandedGroup] : []),
-  );
+function PaymentTable({ payments, columns, onDelete, emptyMsg, defaultExpandedGroup, storageKey }) {
+  const [expandedGroups, setExpandedGroups] = useState(() => {
+    const seed = defaultExpandedGroup ? [defaultExpandedGroup] : [];
+    if (storageKey) {
+      try {
+        const stored = JSON.parse(sessionStorage.getItem(storageKey) || '[]');
+        return new Set([...stored, ...seed]);
+      } catch {
+        // ignore parse errors
+      }
+    }
+    return new Set(seed);
+  });
+
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify([...expandedGroups]));
+    } catch {
+      // ignore storage errors
+    }
+  }, [expandedGroups, storageKey]);
 
   useEffect(() => {
     if (!defaultExpandedGroup) return;
