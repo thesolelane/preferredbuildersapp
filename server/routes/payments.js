@@ -21,14 +21,39 @@ function signedSum(rows, amountCol, defaultSign) {
 
 function jobSummary(db, jobId) {
   const recRows = db
-    .prepare('SELECT amount, credit_debit FROM payments_received WHERE job_id = ?')
+    .prepare(
+      'SELECT amount, credit_debit, is_pass_through_reimbursement FROM payments_received WHERE job_id = ?',
+    )
     .all(jobId);
   const paidRows = db
-    .prepare('SELECT amount, credit_debit FROM payments_made     WHERE job_id = ?')
+    .prepare('SELECT amount, credit_debit, payment_class FROM payments_made WHERE job_id = ?')
     .all(jobId);
-  const totalIn = signedSum(recRows, 'amount', 'credit');
-  const totalOut = signedSum(paidRows, 'amount', 'debit');
-  return { total_received: totalIn, total_paid_out: totalOut, balance: totalIn - totalOut };
+
+  const contractRecRows = recRows.filter((r) => !r.is_pass_through_reimbursement);
+  const ptRecRows = recRows.filter((r) => r.is_pass_through_reimbursement);
+  const costRows = paidRows.filter((r) => r.payment_class === 'cost_of_revenue');
+  const ptOutRows = paidRows.filter((r) => r.payment_class === 'pass_through');
+
+  const contractReceived = signedSum(contractRecRows, 'amount', 'credit');
+  const ptReimbursed = signedSum(ptRecRows, 'amount', 'credit');
+  const totalIn = contractReceived + ptReimbursed;
+
+  const subMaterialCosts = signedSum(costRows, 'amount', 'debit');
+  const ptAdvances = signedSum(ptOutRows, 'amount', 'debit');
+  const totalOut = subMaterialCosts + ptAdvances;
+
+  const netMargin = contractReceived - subMaterialCosts;
+
+  return {
+    total_received: totalIn,
+    total_paid_out: totalOut,
+    balance: totalIn - totalOut,
+    contract_received: contractReceived,
+    pt_reimbursed: ptReimbursed,
+    sub_material_costs: subMaterialCosts,
+    pt_advances: ptAdvances,
+    net_margin: netMargin,
+  };
 }
 
 function validateAmount(amount) {

@@ -485,21 +485,116 @@ export default function PaymentsTab({ jobId, token, job }) {
         </div>
       </div>
 
+      {/* Financial summary — class breakdown */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 12,
+          background: '#f8faff',
+          border: '1px solid #dce6f5',
+          borderRadius: 10,
+          padding: '14px 18px',
           marginBottom: 20,
+          fontSize: 13,
         }}
       >
-        <SummaryCard label="Total Received" value={fmt(summary.total_received)} color={GREEN} />
-        <SummaryCard label="Total Paid Out" value={fmt(summary.total_paid_out)} color={RED} />
-        <SummaryCard
-          label="Balance"
-          value={fmt(summary.balance)}
-          color={summary.balance >= 0 ? BLUE : RED}
-        />
+        {/* Received row */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 0,
+            alignItems: 'stretch',
+            marginBottom: 8,
+            borderRadius: 7,
+            overflow: 'hidden',
+            border: `1px solid ${GREEN}30`,
+          }}
+        >
+          <ClassBreakdownCell
+            label="Contract Received"
+            value={fmt(totalContractReceived)}
+            color={GREEN}
+            flex={2}
+            borderRight
+          />
+          <ClassBreakdownCell
+            label="Pass-Through Reimbursed"
+            value={fmt(totalPtReceived)}
+            color={TEAL}
+            flex={2}
+            borderRight
+          />
+          <ClassBreakdownCell
+            label="Total Received"
+            value={fmt(summary.total_received)}
+            color={GREEN}
+            flex={1.5}
+            bold
+          />
+        </div>
+
+        {/* Paid row */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 0,
+            alignItems: 'stretch',
+            marginBottom: 8,
+            borderRadius: 7,
+            overflow: 'hidden',
+            border: `1px solid ${RED}30`,
+          }}
+        >
+          <ClassBreakdownCell
+            label="Sub / Material Costs"
+            value={fmt(totalContractPaid)}
+            color={RED}
+            flex={2}
+            borderRight
+          />
+          <ClassBreakdownCell
+            label="Pass-Through Advances"
+            value={fmt(totalPtPaid)}
+            color={ORANGE}
+            flex={2}
+            borderRight
+          />
+          <ClassBreakdownCell
+            label="Total Paid Out"
+            value={fmt(summary.total_paid_out)}
+            color={RED}
+            flex={1.5}
+            bold
+          />
+        </div>
+
+        {/* Net margin row */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: grossMargin >= 0 ? '#f0fdf4' : '#fff1f1',
+            border: `1px solid ${grossMargin >= 0 ? GREEN : RED}40`,
+            borderRadius: 7,
+            padding: '9px 16px',
+          }}
+        >
+          <span style={{ color: '#555', fontWeight: 600, fontSize: 12 }}>
+            Net Margin
+            <span style={{ fontWeight: 400, color: '#888', marginLeft: 6, fontSize: 11 }}>
+              (Contract Received − Sub/Material Costs — pass-throughs excluded)
+            </span>
+          </span>
+          <span
+            style={{
+              fontWeight: 700,
+              fontSize: 15,
+              color: grossMargin >= 0 ? GREEN : RED,
+              letterSpacing: '-0.3px',
+            }}
+          >
+            {fmt(grossMargin)}
+          </span>
+        </div>
       </div>
 
       {/* Invoice Form */}
@@ -2285,6 +2380,24 @@ function SummaryCard({ label, value, color }) {
     >
       <div style={{ fontSize: 10, color: '#888', marginBottom: 3 }}>{label}</div>
       <div style={{ fontSize: 18, fontWeight: 'bold', color }}>{value}</div>
+    </div>
+  );
+}
+
+function ClassBreakdownCell({ label, value, color, flex = 1, borderRight = false, bold = false }) {
+  return (
+    <div
+      style={{
+        flex,
+        padding: '9px 14px',
+        background: color + '0d',
+        borderRight: borderRight ? `1px solid ${color}25` : 'none',
+      }}
+    >
+      <div style={{ fontSize: 10, color: '#777', marginBottom: 2, whiteSpace: 'nowrap' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: bold ? 14 : 13, fontWeight: bold ? 700 : 600, color }}>{value}</div>
     </div>
   );
 }
