@@ -10,6 +10,7 @@ export default function JobAssessmentTab({
   setFollowUpTask,
   openRfqModal,
   headers,
+  paymentSummary,
 }) {
   const pd = job.proposal_data;
   const lineItems = pd?.lineItems || [];
@@ -603,7 +604,7 @@ export default function JobAssessmentTab({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3,1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
               gap: 12,
               marginBottom: 20,
             }}
@@ -746,6 +747,51 @@ export default function JobAssessmentTab({
                 </div>
               )}
             </div>
+            {/* Cash Margin to Date */}
+            {(() => {
+              const netMargin = paymentSummary?.net_margin ?? 0;
+              const hasPayments =
+                (paymentSummary?.contract_received || 0) !== 0 ||
+                (paymentSummary?.sub_material_costs || 0) !== 0;
+              const isPositive = netMargin > 0;
+              const isNegative = netMargin < 0;
+              const bgColor = !hasPayments ? '#f8f8f8' : isPositive ? '#f0fdf4' : '#fef2f2';
+              const textColor = !hasPayments ? '#aaa' : isPositive ? '#166534' : '#991b1b';
+              return (
+                <div
+                  style={{
+                    background: bgColor,
+                    borderRadius: 8,
+                    padding: 14,
+                    textAlign: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: '#666',
+                      textTransform: 'uppercase',
+                      letterSpacing: '.5px',
+                      marginBottom: 4,
+                    }}
+                  >
+                    Cash Margin to Date
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: textColor }}>
+                    {netMargin < 0 ? '-' : ''}${Math.abs(netMargin).toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: 10, color: textColor, marginTop: 2 }}>
+                    {!hasPayments
+                      ? 'No payments recorded yet'
+                      : isPositive
+                        ? '✅ Cash positive'
+                        : isNegative
+                          ? '⚠️ Costs exceed collections'
+                          : 'Break even'}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Pipeline Context */}

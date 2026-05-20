@@ -55,6 +55,7 @@ export default function JobDetail({ token, userName }) {
   const [marginData, setMarginData] = useState(null);
   const [marginLoading, setMarginLoading] = useState(false);
   const [pipelineCtx, setPipelineCtx] = useState(null);
+  const [paymentSummary, setPaymentSummary] = useState(null);
   const [followUpTask, setFollowUpTask] = useState(null);
   const [ptResp, setPtResp] = useState({
     permit_paid_by: 'pb',
@@ -356,6 +357,10 @@ export default function JobDetail({ token, userName }) {
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => setPipelineCtx(data))
       .catch(() => setPipelineCtx(null));
+    fetch(`/api/payments/summary/${id}`, { headers: { 'x-auth-token': token } })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setPaymentSummary(data))
+      .catch(() => setPaymentSummary(null));
     fetch(`/api/tasks?job_id=${id}`, { headers: { 'x-auth-token': token } })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => {
@@ -1119,6 +1124,7 @@ export default function JobDetail({ token, userName }) {
               setFollowUpTask={setFollowUpTask}
               openRfqModal={openRfqModal}
               headers={headers}
+              paymentSummary={paymentSummary}
             />
           )}
         </div>
