@@ -171,6 +171,23 @@ router.get('/security/allowed-ips', requireAdmin, (req, res) => {
   res.json({ ips });
 });
 
+// POST add the caller's own IP — session auth only (no IP check) so it works from anywhere
+router.post('/security/add-my-ip', requireAuth, requireRole('system_admin'), (req, res) => {
+  const ip = (req.ip || '').replace(/^::ffff:/, '');
+  if (!ip) return res.status(400).json({ error: 'Could not determine your IP' });
+  const db = getDb();
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'security.allowed_ips'").get();
+  const ips = row ? JSON.parse(row.value) : [];
+  if (!ips.includes(ip)) {
+    ips.push(ip);
+    db.prepare(
+      "INSERT OR REPLACE INTO settings (key, value, category, label) VALUES ('security.allowed_ips', ?, 'security', 'Allowed IP Addresses')",
+    ).run(JSON.stringify(ips));
+    invalidateIpCache();
+  }
+  res.json({ success: true, ip, ips });
+});
+
 // POST add an IP to the allowlist
 router.post('/security/allowed-ips', requireAdmin, (req, res) => {
   const { ip } = req.body;

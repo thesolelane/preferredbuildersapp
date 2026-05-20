@@ -34,4 +34,10 @@ router.get('/validate', requireAuth, (req, res) => {
   res.json({ ok: true, name: req.session.name, role: req.session.role });
 });
 
+// GET /api/auth/my-ip — returns caller's IP; no IP restriction so it works from anywhere
+router.get('/my-ip', requireAuth, (req, res) => {
+  const ip = (req.ip || '').replace(/^::ffff:/, '');
+  res.json({ ip });
+});
+
 module.exports = router;

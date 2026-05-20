@@ -58,6 +58,11 @@ export default function Settings({ token, userRole }) {
   const [deployRunning, setDeployRunning] = useState(false);
   const [deployResult, setDeployResult] = useState(null);
 
+  const [ipBlocked, setIpBlocked] = useState(false);
+  const [myIp, setMyIp] = useState(null);
+  const [addingMyIp, setAddingMyIp] = useState(false);
+  const [addMyIpMsg, setAddMyIpMsg] = useState(null);
+
   const [printerName, setPrinterName] = useState('');
   const [printerSaving, setPrinterSaving] = useState(false);
   const [printerSaved, setPrinterSaved] = useState(false);
@@ -161,7 +166,17 @@ export default function Settings({ token, userRole }) {
 
   useEffect(() => {
     fetch('/api/settings', { headers: { 'x-auth-token': token } })
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 403) {
+          setIpBlocked(true);
+          fetch('/api/auth/my-ip', { headers: { 'x-auth-token': token } })
+            .then((r2) => r2.json())
+            .then((d) => setMyIp(d.ip || null))
+            .catch(() => {});
+          return null;
+        }
+        return r.json();
+      })
       .then((data) => {
         if (data && !data.error) setSettings(data);
       });
@@ -3681,6 +3696,90 @@ export default function Settings({ token, userRole }) {
           )}
         </div>
       </div>
+
+      {/* IP blocked banner — shown when accessing from an unapproved network */}
+      {ipBlocked && (
+        <div
+          style={{
+            background: '#fff8e1',
+            border: '1.5px solid #f59e0b',
+            borderRadius: 8,
+            padding: '14px 20px',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontWeight: 'bold', color: '#92400e', fontSize: 14, marginBottom: 2 }}>
+              🔒 Settings restricted from this network
+            </div>
+            <div style={{ fontSize: 13, color: '#78350f' }}>
+              Your IP
+              {myIp ? (
+                <>
+                  {' '}
+                  (
+                  <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>
+                    {myIp}
+                  </code>
+                  )
+                </>
+              ) : (
+                ''
+              )}{' '}
+              is not on the approved list. Add it below to unlock Settings from this location.
+            </div>
+          </div>
+          {addMyIpMsg ? (
+            <div
+              style={{
+                fontSize: 13,
+                color: addMyIpMsg.ok ? '#166534' : '#991b1b',
+                fontWeight: 'bold',
+              }}
+            >
+              {addMyIpMsg.ok
+                ? `✅ ${myIp} added — reload to access Settings`
+                : `❌ ${addMyIpMsg.error}`}
+            </div>
+          ) : (
+            <button
+              disabled={addingMyIp}
+              onClick={async () => {
+                setAddingMyIp(true);
+                try {
+                  const r = await fetch('/api/settings/security/add-my-ip', {
+                    method: 'POST',
+                    headers: { 'x-auth-token': token },
+                  });
+                  const d = await r.json();
+                  setAddMyIpMsg(d.success ? { ok: true } : { ok: false, error: d.error });
+                } catch (e) {
+                  setAddMyIpMsg({ ok: false, error: e.message });
+                } finally {
+                  setAddingMyIp(false);
+                }
+              }}
+              style={{
+                padding: '9px 20px',
+                background: '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: 7,
+                fontWeight: 'bold',
+                fontSize: 13,
+                cursor: addingMyIp ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {addingMyIp ? '⏳ Adding…' : `➕ Add My IP${myIp ? ` (${myIp})` : ''}`}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Tabs — horizontally scrollable on mobile */}
       <div
