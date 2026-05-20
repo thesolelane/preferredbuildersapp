@@ -18,6 +18,18 @@ function classifyError(message, stack) {
   // Lowercase once; all patterns below must use lowercase literals only
   const text = ((message || '') + ' ' + (stack || '')).toLowerCase();
 
+  // ── Noise / client-fault errors — suppress alerts entirely ──
+
+  // Dropped file upload — client navigated away or lost connection mid-stream
+  if (/unexpected end of form/.test(text)) {
+    return {
+      type: 'user',
+      severity: 'info',
+      source: 'upload',
+      suggestedCause: 'Client dropped connection during file upload — no action needed.',
+    };
+  }
+
   // ── System-specific patterns — evaluated FIRST to avoid false suppression ──
 
   // Claude / Anthropic (check before generic auth patterns)
