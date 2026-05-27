@@ -1572,4 +1572,21 @@ function seedDepartments(db) {
   run();
 }
 
-module.exports = { getDb, initDatabase };
+function seedMarblismKey() {
+  const crypto = require('crypto');
+  const existing = db.prepare("SELECT value FROM settings WHERE key = 'marblism_api_key'").get();
+  if (!existing) {
+    const apiKey = crypto.randomBytes(32).toString('hex');
+    db.prepare(
+      "INSERT INTO settings (key, value, category, label) VALUES ('marblism_api_key', ?, 'integrations', 'Marblism Webhook API Key')",
+    ).run(apiKey);
+    console.log('\n' + '='.repeat(60));
+    console.log('MARBLISM WEBHOOK API KEY (shown once — stored in settings DB)');
+    console.log(`  Key: ${apiKey}`);
+    console.log('  Endpoint: POST /webhook/marblism/call');
+    console.log('  Header:   x-api-key: <key>');
+    console.log('='.repeat(60) + '\n');
+  }
+}
+
+module.exports = { getDb, initDatabase, seedMarblismKey };

@@ -26,7 +26,7 @@ const cors = require('cors');
 const fileUpload = require('express-fileupload');
 const fs = require('fs');
 const path = require('path');
-const { initDatabase } = require('./db/database');
+const { initDatabase, seedMarblismKey } = require('./db/database');
 const { requireAuth } = require('./middleware/auth');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
@@ -299,6 +299,7 @@ app.use(require('./routes/customerPortal'));
 app.use('/webhook/hearth', require('./routes/webhookHearth'));
 app.use('/webhook/email', require('./routes/webhookEmail'));
 app.use('/webhook/whatsapp', require('./routes/webhookWhatsapp'));
+app.use('/webhook/marblism', require('./routes/webhookMarblism'));
 app.use('/webhook', require('./routes/emailLog'));
 
 // ── TRADE SELECT (public — tokenized one-time mobile selection page) ──
@@ -362,6 +363,7 @@ function listenWithRetry(port, maxRetries = 5, delayMs = 2000) {
 async function start() {
   try {
     await initDatabase();
+    seedMarblismKey();
     console.log('✅ Database initialized');
 
     await listenWithRetry(PORT);

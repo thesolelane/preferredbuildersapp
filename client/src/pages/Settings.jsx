@@ -77,6 +77,9 @@ export default function Settings({ token, userRole }) {
   const [ipSaving, setIpSaving] = useState(false);
   const [ipMsg, setIpMsg] = useState(null);
 
+  const [marblismConfig, setMarblismConfig] = useState(null);
+  const [marblismKeyCopied, setMarblismKeyCopied] = useState(false);
+
   const [depts, setDepts] = useState([]);
   const [deptsLoading, setDeptsLoading] = useState(false);
   const [deptsDraft, setDeptsDraft] = useState({});
@@ -132,6 +135,12 @@ export default function Settings({ token, userRole }) {
         .then((r) => r.json())
         .then((data) => {
           if (data && Array.isArray(data.ips)) setAllowedIps(data.ips);
+        })
+        .catch(() => {});
+      fetch('/api/agents/marblism-config', { headers: { 'x-auth-token': token } })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.webhookUrl) setMarblismConfig(data);
         })
         .catch(() => {});
     }
@@ -1280,6 +1289,144 @@ export default function Settings({ token, userRole }) {
             <p style={{ fontSize: 11, color: '#666', margin: 0 }}>{svc.desc}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── Marblism AI Receptionist ────────────────────────── */}
+      <h3 style={{ marginTop: 32, marginBottom: 4, color: BLUE, fontSize: 15 }}>
+        Marblism — AI Receptionist
+      </h3>
+      <p style={{ color: '#888', fontSize: 13, marginBottom: 16 }}>
+        Configure Marblism to forward call summaries here. Each call automatically creates a lead
+        and a callback task.
+      </p>
+      <div
+        style={{
+          border: `2px solid ${marblismConfig ? '#2E7D32' : '#ddd'}`,
+          borderRadius: 10,
+          padding: 20,
+          background: marblismConfig ? '#f0fff4' : 'white',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <span style={{ fontWeight: 'bold', fontSize: 14, color: BLUE }}>Webhook Endpoint</span>
+          <span
+            style={{
+              background: marblismConfig ? '#2E7D32' : '#eee',
+              color: marblismConfig ? 'white' : '#888',
+              padding: '2px 10px',
+              borderRadius: 20,
+              fontSize: 11,
+            }}
+          >
+            {marblismConfig ? '● READY' : '○ LOADING…'}
+          </span>
+        </div>
+
+        {marblismConfig ? (
+          <>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 4, fontWeight: 600 }}>
+                Webhook URL — paste this into Marblism
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'center',
+                  background: '#f5f5f5',
+                  borderRadius: 6,
+                  padding: '8px 12px',
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  wordBreak: 'break-all',
+                }}
+              >
+                <span style={{ flex: 1 }}>{marblismConfig.webhookUrl}</span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(marblismConfig.webhookUrl);
+                  }}
+                  style={{
+                    padding: '4px 10px',
+                    background: BLUE,
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 4, fontWeight: 600 }}>
+                API Key — set as header{' '}
+                <code
+                  style={{ background: '#eee', padding: '1px 5px', borderRadius: 3, fontSize: 11 }}
+                >
+                  x-api-key
+                </code>{' '}
+                in Marblism
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'center',
+                  background: '#f5f5f5',
+                  borderRadius: 6,
+                  padding: '8px 12px',
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  wordBreak: 'break-all',
+                }}
+              >
+                <span style={{ flex: 1 }}>{marblismConfig.apiKey}</span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(marblismConfig.apiKey);
+                    setMarblismKeyCopied(true);
+                    setTimeout(() => setMarblismKeyCopied(false), 2000);
+                  }}
+                  style={{
+                    padding: '4px 10px',
+                    background: marblismKeyCopied ? '#2E7D32' : BLUE,
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {marblismKeyCopied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: 14,
+                background: '#fff8f0',
+                border: `1px solid ${ORANGE}`,
+                borderRadius: 6,
+                padding: '8px 12px',
+                fontSize: 11,
+                color: '#5D3A00',
+              }}
+            >
+              In Marblism: go to <strong>Settings → Integrations → Webhook</strong>, paste the URL
+              above, and add a custom header <code>x-api-key</code> with the key above. Marblism
+              will POST call data after each call ends.
+            </div>
+          </>
+        ) : (
+          <p style={{ color: '#aaa', fontSize: 12, margin: 0 }}>Loading configuration…</p>
+        )}
       </div>
 
       {/* Hardware — Printer & Scanner */}

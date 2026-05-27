@@ -252,6 +252,20 @@ router.post(
   },
 );
 
+// GET /api/agents/marblism-config — returns webhook URL + API key for Marblism setup
+router.get('/marblism-config', requireAuth, requireRole('admin', 'system_admin'), (req, res) => {
+  const db = getDb();
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'marblism_api_key'").get();
+  if (!row) {
+    return res.status(404).json({ error: 'Marblism API key not yet generated — restart the server.' });
+  }
+  const host = process.env.PUBLIC_URL || 'https://preferredbuilders.duckdns.org';
+  res.json({
+    webhookUrl: `${host}/webhook/marblism/call`,
+    apiKey: row.value,
+  });
+});
+
 // GET /api/agents/events — SSE stream for live agent messages
 router.get('/events', requireAuth, requireRole('admin', 'pm', 'system_admin'), (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
