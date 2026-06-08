@@ -1105,7 +1105,13 @@ export default function JobDetail({ token, userName }) {
           )}
 
           {activeTab === 'proposal' && (
-            <JobProposalTab proposalData={proposalData} job={job} token={token} />
+            <JobProposalTab
+              proposalData={proposalData}
+              job={job}
+              token={token}
+              userRole={userRole}
+              onJobUpdated={load}
+            />
           )}
 
           {activeTab === 'contract' && (
