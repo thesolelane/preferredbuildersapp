@@ -1307,7 +1307,14 @@ export default function Settings({ token, userRole }) {
           background: marblismConfig ? '#f0fff4' : 'white',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 14,
+          }}
+        >
           <span style={{ fontWeight: 'bold', fontSize: 14, color: BLUE }}>Webhook Endpoint</span>
           <span
             style={{

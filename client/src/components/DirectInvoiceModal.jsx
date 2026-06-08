@@ -163,14 +163,17 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
     if (!jobFinancials) return;
     const { remaining, pbNumber, scopeSummary, address, contractTotal, contractReceived } =
       jobFinancials;
-    const desc = [
-      'Final payment',
-      pbNumber ? `Contract ${pbNumber}` : '',
-      address || scopeSummary,
-    ]
+    const desc = ['Final payment', pbNumber ? `Contract ${pbNumber}` : '', address || scopeSummary]
       .filter(Boolean)
       .join(' — ');
-    setDepts([{ dept: 'General', items: [{ type: 'labor', description: desc, qty: '1', unit_price: '', amount: String(remaining) }] }]);
+    setDepts([
+      {
+        dept: 'General',
+        items: [
+          { type: 'labor', description: desc, qty: '1', unit_price: '', amount: String(remaining) },
+        ],
+      },
+    ]);
     setNotes(
       [
         pbNumber ? `Contract #${pbNumber}` : '',
@@ -613,16 +616,56 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                   <>
                     <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
                       <div>
-                        <div style={{ fontSize: 10, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Contract Total</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: BLUE }}>${fmt(jobFinancials.contractTotal)}</div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: '#888',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Contract Total
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: BLUE }}>
+                          ${fmt(jobFinancials.contractTotal)}
+                        </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 10, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Paid So Far</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: GREEN }}>${fmt(jobFinancials.contractReceived)}</div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: '#888',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Paid So Far
+                        </div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: GREEN }}>
+                          ${fmt(jobFinancials.contractReceived)}
+                        </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 10, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Balance Due</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: jobFinancials.remaining > 0 ? RED : GREEN }}>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: '#888',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Balance Due
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: jobFinancials.remaining > 0 ? RED : GREEN,
+                          }}
+                        >
                           ${fmt(jobFinancials.remaining)}
                         </div>
                       </div>
@@ -645,7 +688,9 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                     </button>
                   </>
                 ) : (
-                  <span style={{ fontSize: 12, color: '#aaa' }}>Could not load contract balance</span>
+                  <span style={{ fontSize: 12, color: '#aaa' }}>
+                    Could not load contract balance
+                  </span>
                 )}
               </div>
             )}

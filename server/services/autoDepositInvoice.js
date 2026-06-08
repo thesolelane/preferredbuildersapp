@@ -1,54 +1,87 @@
-// server/services/autoDepositInvoice.js
+'use strict';
 // Auto-creates Invoice 1 (draft deposit invoice) whenever a job moves to contract_signed.
-// Called from any status-transition path (e-sign, manual upload, scanner attach).
-// Safe to call multiple times — duplicate guards prevent double-creation.
+// Called from signing.js and any manual contract-signed status transition.
+// Safe to call multiple times — duplicate guard prevents double-creation.
 
 const { getDb } = require('../db/database');
 const { selectPreConAdvances } = require('./milestoneSelector');
 const { logActivity } = require('../routes/activityLog');
 
-function parseFee(str) {
-  if (!str) return 0;
-  const n = parseFloat(String(str).replace(/[^0-9.]/g, ''));
+const PAYMENT_TERMS = [
+  'PAYMENT TERMS',
+  '─────────────────────────────────────────',
+  '• Deposit is due within 5 business days of contract signing.',
+  '• Work does not begin until deposit is received.',
+  '• Permit and engineering fees are billed at cost and are due in full',
+  '  separately from the project deposit.',
+  '• Make checks payable to: Preferred Builders General Services Inc.',
+  '• Mail to: 37 Duck Mill Rd, Fitchburg MA 01420',
+  '• Questions? Call 978-377-1784',
+].join('\n');
+
+function parseFee(val) {
+  if (!val) return 0;
+  const n = parseFloat(String(val).replace(/[^0-9.]/g, ''));
   return isNaN(n) ? 0 : n;
 }
 
+function fmtAmt(n) {
+  return Number(n || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+// Generate a per-job deposit invoice number: <pb_number>-DEP or <jobId>-DEP,
+// with a sequence suffix if multiple are ever created for the same job.
+function nextDepositInvoiceNumber(db, jobId, pbNumber) {
+  db.prepare(
+    `
+    INSERT INTO invoice_counters (job_id, contract_seq) VALUES (?, 1)
+    ON CONFLICT(job_id) DO UPDATE SET contract_seq = contract_seq + 1
+  `,
+  ).run(jobId);
+  const { contract_seq } = db
+    .prepare('SELECT contract_seq FROM invoice_counters WHERE job_id = ?')
+    .get(jobId);
+  const base = pbNumber || String(jobId);
+  return contract_seq === 1 ? `${base}-DEP` : `${base}-DEP-${contract_seq}`;
+}
+
 /**
- * Attempt to auto-create a draft deposit invoice for the given job.
- * No-ops silently when:
- *   - A deposit payment is already recorded for the job
- *   - A draft contract_invoice already exists
- *   - The computed deposit amount is zero or negative
+ * Auto-create a draft deposit invoice when a contract is signed.
+ *
+ * Deposit math (matching the proposal pricing engine):
+ *   - Permit, engineer, and architect fees are tagged isSeparatelyBilled in
+ *     proposal_data.lineItems — they appear as their own line items on the
+ *     invoice but are NOT included in the 33% deposit base.
+ *   - depositBase   = contractTotal − separatelyBilledTotal
+ *   - depositAmount = depositBase × depositPct (default 33%)
+ *   - invoiceTotal  = depositAmount + separatelyBilledTotal
  *
  * @param {number|string} jobId
- * @param {object} [dbOverride]  Pass an existing db instance to avoid re-opening
+ * @param {object}        [dbOverride]  Reuse an open db instance (avoids re-open)
  */
 function autoCreateDepositInvoice(jobId, dbOverride) {
   const db = dbOverride || getDb();
 
   setImmediate(async () => {
     try {
-      const { nextInvoiceNumber } = require('../routes/invoices');
-
       const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(jobId);
       if (!job) return;
 
-      // Guard: deposit payment already recorded
-      const existingDeposit = db
+      // Guard: draft deposit invoice already exists for this job
+      const existing = db
         .prepare(
-          "SELECT id FROM payments_received WHERE job_id = ? AND payment_type = 'deposit' AND credit_debit = 'credit' LIMIT 1",
+          "SELECT id FROM invoices WHERE job_id = ? AND invoice_type = 'contract_invoice' LIMIT 1",
         )
         .get(jobId);
-      if (existingDeposit) return;
+      if (existing) {
+        console.log(`[AutoDepositInvoice] Invoice already exists for job ${jobId} — skipping`);
+        return;
+      }
 
-      // Guard: draft deposit invoice already exists
-      const existingInvoice = db
-        .prepare(
-          "SELECT id FROM invoices WHERE job_id = ? AND invoice_type = 'contract_invoice' AND status = 'draft' LIMIT 1",
-        )
-        .get(jobId);
-      if (existingInvoice) return;
-
+      // ── Pull pricing from stored proposal data ────────────────────────────────
       let proposalData = null;
       try {
         proposalData = job.proposal_data ? JSON.parse(job.proposal_data) : null;
@@ -56,89 +89,120 @@ function autoCreateDepositInvoice(jobId, dbOverride) {
         /* ignore malformed JSON */
       }
 
-      const fullContractValue = job.total_value || proposalData?.pricing?.totalContractPrice || 0;
-      const depositPct = proposalData?.pricing?.depositPercent || 33;
+      const pricing = proposalData?.pricing || {};
+      const lineItems = proposalData?.lineItems || [];
 
-      // Filter out customer_direct items — Article 3.3 requires those to be paid
-      // directly by the owner to the vendor; they must never appear on a PB invoice.
-      const preConAdvances = selectPreConAdvances(job).filter(
-        (a) => a.paid_by !== 'customer_direct',
-      );
+      const contractTotal = parseFloat(job.total_value) || pricing.totalContractPrice || 0;
+      const depositPct = pricing.depositPercent || 33;
 
-      const totalPT = preConAdvances.reduce((s, a) => s + parseFee(a.amount), 0);
-      const contractValueExclPT = Math.max(0, fullContractValue - totalPT);
-      const depositAmt = Math.round(contractValueExclPT * (depositPct / 100) * 100) / 100;
+      // ── Find separately billed items from pricing engine ─────────────────────
+      // applyPricing tags items matching /permit|remit|engineer/i as isSeparatelyBilled.
+      // Also check milestoneSelector for jobs that have explicit fee fields set.
+      let separateItems = lineItems
+        .filter((li) => li.isSeparatelyBilled && (li.finalPrice || 0) > 0)
+        .map((li) => ({ item: li.trade || 'Fee', amount: li.finalPrice }));
 
-      if (depositAmt <= 0) return;
+      // Supplement with explicit job fields if proposal data lacks them
+      if (separateItems.length === 0) {
+        const advances = selectPreConAdvances(job).filter((a) => a.paid_by !== 'customer_direct');
+        separateItems = advances
+          .map((a) => ({ item: a.item, amount: parseFee(a.amount) }))
+          .filter((a) => a.amount > 0);
+      }
 
-      // Invoice line items: deposit row first, then one row per PB-funded pre-con advance
+      const separateTotal = separateItems.reduce((s, a) => s + a.amount, 0);
+
+      // ── Compute deposit ───────────────────────────────────────────────────────
+      // Use pre-calculated value when available, otherwise compute from scratch
+      const depositBase = pricing.depositBase ?? Math.max(0, contractTotal - separateTotal);
+      const depositAmt =
+        pricing.depositAmount ?? Math.round(depositBase * (depositPct / 100) * 100) / 100;
+
+      if (depositAmt <= 0 && separateTotal <= 0) {
+        console.warn(`[AutoDepositInvoice] Zero deposit computed for job ${jobId} — skipping`);
+        return;
+      }
+
+      const invoiceTotal = depositAmt + separateTotal;
+
+      // ── Build line items for the invoice record ───────────────────────────────
+      const addrParts = [
+        job.project_address,
+        job.project_city ? job.project_city + ', MA' : '',
+      ].filter(Boolean);
+      const addrStr = addrParts.join(', ');
+      const pbNum = job.pb_number || '';
+
       const invLineItems = [
         {
-          description: `Project Deposit — ${depositPct}% of contract value ($${Number(contractValueExclPT).toLocaleString('en-US', { minimumFractionDigits: 2 })})`,
+          description: [
+            `Project deposit — ${depositPct}% of $${fmtAmt(depositBase)} construction cost`,
+            pbNum ? `Contract ${pbNum}` : '',
+            addrStr,
+          ]
+            .filter(Boolean)
+            .join(' | '),
           amount: depositAmt,
           type: 'contract',
-          pay_direct: false,
-          pay_direct_received: false,
         },
       ];
 
-      for (const adv of preConAdvances) {
-        const amt = parseFee(adv.amount);
-        if (amt > 0) {
-          invLineItems.push({
-            description: adv.item,
-            amount: amt,
-            type: 'pass_through',
-            pay_direct: false,
-            pay_direct_received: false,
-          });
-        }
+      for (const sep of separateItems) {
+        invLineItems.push({
+          description: `${sep.item}${addrStr ? ' — ' + addrStr : ''}`,
+          amount: sep.amount,
+          type: 'pass_through',
+        });
       }
 
-      const totalInvoiceAmt = invLineItems.reduce((s, li) => s + li.amount, 0);
-      const pbDueAmt = invLineItems
-        .filter((li) => !li.pay_direct)
-        .reduce((s, li) => s + li.amount, 0);
-      const ptStoredAmt = invLineItems
-        .filter((li) => li.type === 'pass_through')
-        .reduce((s, li) => s + li.amount, 0);
+      // ── Build notes with payment terms ────────────────────────────────────────
+      const noteLines = [
+        pbNum ? `Contract #${pbNum}` : '',
+        addrStr ? `Project: ${addrStr}` : '',
+        `Contract total: $${fmtAmt(contractTotal)}`,
+        `Deposit base (before separately billed fees): $${fmtAmt(depositBase)}`,
+      ];
+      if (separateItems.length > 0) {
+        noteLines.push('');
+        noteLines.push('Separately billed (due in full, not part of deposit base):');
+        for (const sep of separateItems) {
+          noteLines.push(`  • ${sep.item}: $${fmtAmt(sep.amount)}`);
+        }
+      }
+      noteLines.push('');
+      noteLines.push(PAYMENT_TERMS);
+      const notes = noteLines.filter((l) => l != null).join('\n');
 
-      const invNum = nextInvoiceNumber(db, jobId, 'contract_invoice', job.quote_number);
-      const contact = job.contact_id
-        ? db.prepare('SELECT * FROM contacts WHERE id = ?').get(job.contact_id)
-        : null;
+      // ── Insert invoice record ─────────────────────────────────────────────────
+      const invNum = nextDepositInvoiceNumber(db, jobId, pbNum);
 
       db.prepare(
-        `INSERT INTO invoices
-            (job_id, invoice_number, invoice_type, status, amount, contract_amount,
-             pass_through_amount, pb_due_amount, full_contract_value, line_items, notes)
-           VALUES (?, ?, 'contract_invoice', 'draft', ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(
-        jobId,
-        invNum,
-        totalInvoiceAmt,
-        depositAmt,
-        ptStoredAmt,
-        pbDueAmt,
-        fullContractValue,
-        JSON.stringify(invLineItems),
-        'Deposit invoice — auto-created on contract signing',
-      );
+        `
+        INSERT INTO invoices
+          (job_id, invoice_number, invoice_type, status, amount, line_items, notes)
+        VALUES (?, ?, 'contract_invoice', 'draft', ?, ?, ?)
+      `,
+      ).run(jobId, invNum, invoiceTotal, JSON.stringify(invLineItems), notes);
+
+      // ── Log activity ──────────────────────────────────────────────────────────
+      const contact = job.contact_id
+        ? db.prepare('SELECT pb_customer_number FROM contacts WHERE id = ?').get(job.contact_id)
+        : null;
 
       logActivity({
         customer_number: contact?.pb_customer_number || null,
         job_id: jobId,
         event_type: 'INVOICE_ISSUED',
-        description: `Deposit invoice ${invNum} created — $${totalInvoiceAmt.toLocaleString('en-US', { minimumFractionDigits: 2 })} total / $${pbDueAmt.toLocaleString('en-US', { minimumFractionDigits: 2 })} due to PB`,
+        description: `Deposit invoice ${invNum} created — $${fmtAmt(invoiceTotal)} total ($${fmtAmt(depositAmt)} deposit${separateItems.length ? ` + $${fmtAmt(separateTotal)} fees` : ''})`,
         document_ref: invNum,
         recorded_by: 'system',
       });
 
       console.log(
-        `[AutoDepositInvoice] Invoice ${invNum} created as draft for job ${jobId} — $${totalInvoiceAmt.toFixed(2)} total / $${pbDueAmt.toFixed(2)} due to PB`,
+        `[AutoDepositInvoice] ${invNum} created for job ${jobId} — deposit $${fmtAmt(depositAmt)} + fees $${fmtAmt(separateTotal)} = total $${fmtAmt(invoiceTotal)}`,
       );
-    } catch (e) {
-      console.warn('[AutoDepositInvoice]', e.message);
+    } catch (err) {
+      console.warn('[AutoDepositInvoice]', err.message);
     }
   });
 }

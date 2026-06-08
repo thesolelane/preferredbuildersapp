@@ -257,7 +257,9 @@ router.get('/marblism-config', requireAuth, requireRole('admin', 'system_admin')
   const db = getDb();
   const row = db.prepare("SELECT value FROM settings WHERE key = 'marblism_api_key'").get();
   if (!row) {
-    return res.status(404).json({ error: 'Marblism API key not yet generated — restart the server.' });
+    return res
+      .status(404)
+      .json({ error: 'Marblism API key not yet generated — restart the server.' });
   }
   const host = process.env.PUBLIC_URL || 'https://preferredbuilders.duckdns.org';
   res.json({

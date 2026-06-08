@@ -15,10 +15,7 @@ function getStoredApiKey(db) {
 }
 
 function remindAt(hours) {
-  return new Date(Date.now() + hours * 3600000)
-    .toISOString()
-    .replace('T', ' ')
-    .slice(0, 19);
+  return new Date(Date.now() + hours * 3600000).toISOString().replace('T', ' ').slice(0, 19);
 }
 
 // GET /webhook/marblism/ping — health check (no auth)
@@ -30,8 +27,7 @@ router.post('/call', (req, res) => {
   const storedKey = getStoredApiKey(db);
 
   const providedKey =
-    req.headers['x-api-key'] ||
-    (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
+    req.headers['x-api-key'] || (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
 
   if (!storedKey || providedKey !== storedKey) {
     return res.status(401).json({ error: 'Unauthorized' });
