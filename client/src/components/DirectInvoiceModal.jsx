@@ -88,6 +88,8 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
   const [contactJobs, setContactJobs] = useState([]);
   const [linkedJobId, setLinkedJobId] = useState(jobId || null);
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const [jobFinancials, setJobFinancials] = useState(null);
+  const [loadingFinancials, setLoadingFinancials] = useState(false);
 
   const [toName, setToName] = useState(prefillName);
   const [toEmail, setToEmail] = useState(prefillEmail);
@@ -124,6 +126,64 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
       })
       .finally(() => setLoadingJobs(false));
   }, [linkedContactId, token, jobId]);
+
+  // Fetch payment summary when a job is linked
+  useEffect(() => {
+    if (!linkedJobId) {
+      setJobFinancials(null);
+      return;
+    }
+    setLoadingFinancials(true);
+    fetch(`/api/payments/summary/${linkedJobId}`, { headers: { 'x-auth-token': token } })
+      .then((r) => r.json())
+      .then((summary) => {
+        const selectedJob =
+          job?.id === linkedJobId || String(job?.id) === String(linkedJobId)
+            ? job
+            : contactJobs.find((j) => String(j.id) === String(linkedJobId));
+        const contractTotal = parseFloat(selectedJob?.total_value) || 0;
+        const contractReceived = parseFloat(summary.contract_received) || 0;
+        const remaining = Math.max(0, Math.round((contractTotal - contractReceived) * 100) / 100);
+        setJobFinancials({
+          contractTotal,
+          contractReceived,
+          remaining,
+          pbNumber: selectedJob?.pb_number || '',
+          scopeSummary: selectedJob?.scope_summary || '',
+          address: [selectedJob?.project_address, selectedJob?.project_city]
+            .filter(Boolean)
+            .join(', '),
+        });
+      })
+      .catch(() => setJobFinancials(null))
+      .finally(() => setLoadingFinancials(false));
+  }, [linkedJobId, token, job, contactJobs]);
+
+  const prefillFromJob = () => {
+    if (!jobFinancials) return;
+    const { remaining, pbNumber, scopeSummary, address, contractTotal, contractReceived } =
+      jobFinancials;
+    const desc = [
+      'Final payment',
+      pbNumber ? `Contract ${pbNumber}` : '',
+      address || scopeSummary,
+    ]
+      .filter(Boolean)
+      .join(' — ');
+    setDepts([{ dept: 'General', items: [{ type: 'labor', description: desc, qty: '1', unit_price: '', amount: String(remaining) }] }]);
+    setNotes(
+      [
+        pbNumber ? `Contract #${pbNumber}` : '',
+        address ? `Project: ${address}` : '',
+        scopeSummary ? `Scope: ${scopeSummary}` : '',
+        `Contract total: $${fmt(contractTotal)}`,
+        `Payments received: $${fmt(contractReceived)}`,
+        `Balance due: $${fmt(remaining)}`,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    );
+  };
 
   const filteredContacts = contacts.filter((c) => {
     if (!contactSearch.trim()) return true;
@@ -527,6 +587,65 @@ export default function DirectInvoiceModal({ jobId, job, token, onClose, onSaved
                   <div style={{ fontSize: 11, color: '#2E7D32', marginTop: 4, fontWeight: 600 }}>
                     Invoice will be linked to this contract
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* Remaining balance banner */}
+            {linkedJobId && (
+              <div
+                style={{
+                  marginBottom: 14,
+                  background: loadingFinancials ? '#f9f9f9' : jobFinancials ? '#EFF6FF' : '#f9f9f9',
+                  border: `1px solid ${loadingFinancials ? '#eee' : jobFinancials ? '#BFDBFE' : '#eee'}`,
+                  borderRadius: 8,
+                  padding: '12px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                {loadingFinancials ? (
+                  <span style={{ fontSize: 12, color: '#aaa' }}>Loading contract balance…</span>
+                ) : jobFinancials ? (
+                  <>
+                    <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Contract Total</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: BLUE }}>${fmt(jobFinancials.contractTotal)}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Paid So Far</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: GREEN }}>${fmt(jobFinancials.contractReceived)}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Balance Due</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: jobFinancials.remaining > 0 ? RED : GREEN }}>
+                          ${fmt(jobFinancials.remaining)}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={prefillFromJob}
+                      style={{
+                        background: BLUE,
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '7px 16px',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ↓ Pre-fill Balance Due
+                    </button>
+                  </>
+                ) : (
+                  <span style={{ fontSize: 12, color: '#aaa' }}>Could not load contract balance</span>
                 )}
               </div>
             )}
