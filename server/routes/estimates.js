@@ -739,7 +739,7 @@ router.patch(
           'No editable estimate data found. This estimate was revised but has no stored line items — use the AI to regenerate the estimate from the original scope.',
       });
 
-    const { lineItems } = req.body;
+    const { lineItems, projectDescription } = req.body;
     if (!Array.isArray(lineItems))
       return res.status(400).json({ error: 'lineItems must be an array' });
     if (lineItems.length === 0) return res.status(400).json({ error: 'lineItems cannot be empty' });
@@ -834,6 +834,10 @@ router.patch(
     const prevTotal = proposalData.totalValue || 0;
 
     proposalData.lineItems = updatedItems;
+    if (projectDescription !== undefined) {
+      if (!proposalData.project) proposalData.project = {};
+      proposalData.project.description = projectDescription;
+    }
     proposalData.pricing = {
       markupMultiplier: Math.round(multiplier * 10000) / 10000,
       totalContractPrice: total,

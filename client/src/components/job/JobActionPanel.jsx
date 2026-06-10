@@ -74,6 +74,8 @@ export default function JobActionPanel({
   savePtResp,
   editingLineItems,
   setEditingLineItems,
+  editingProjectDesc,
+  setEditingProjectDesc,
   expandedRows,
   clarifications,
   clarAnswer,
@@ -1080,6 +1082,31 @@ export default function JobActionPanel({
           {/* Editable line items */}
           {editingLineItems && (
             <div>
+              <div style={{ marginBottom: 16 }}>
+                <label
+                  style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 5 }}
+                >
+                  Project Description (SOW Summary)
+                </label>
+                <textarea
+                  value={editingProjectDesc}
+                  onChange={(e) => setEditingProjectDesc(e.target.value)}
+                  rows={4}
+                  placeholder="Describe the scope of work — this appears in the proposal and contract documents…"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: '1px solid #d0d7e2',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                    background: 'white',
+                    lineHeight: 1.5,
+                  }}
+                />
+              </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #e5e7eb' }}>

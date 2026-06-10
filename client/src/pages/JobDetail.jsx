@@ -41,6 +41,7 @@ export default function JobDetail({ token, userName }) {
   const [selectedJobFiles, setSelectedJobFiles] = useState(new Set());
   const [activeTab, setActiveTab] = useState('overview');
   const [editingLineItems, setEditingLineItems] = useState(null);
+  const [editingProjectDesc, setEditingProjectDesc] = useState('');
   const [savingLineItems, setSavingLineItems] = useState(false);
   const [expandedRows, setExpandedRows] = useState(new Set());
 
@@ -683,6 +684,7 @@ export default function JobDetail({ token, userName }) {
   const startEditingLineItems = () => {
     const items = (job.proposal_data?.lineItems || []).map((li) => ({ ...li }));
     setEditingLineItems(items);
+    setEditingProjectDesc(job.proposal_data?.project?.description || '');
   };
 
   const updateLineItem = (idx, field, value) => {
@@ -759,7 +761,7 @@ export default function JobDetail({ token, userName }) {
     const res = await fetch(`/api/jobs/${id}/line-items`, {
       method: 'PATCH',
       headers,
-      body: JSON.stringify({ lineItems: editingLineItems }),
+      body: JSON.stringify({ lineItems: editingLineItems, projectDescription: editingProjectDesc }),
     });
     const data = await res.json();
     setSavingLineItems(false);
@@ -998,6 +1000,8 @@ export default function JobDetail({ token, userName }) {
           addIncludedItem={addIncludedItem}
           toggleRowExpanded={toggleRowExpanded}
           saveLineItems={saveLineItems}
+          editingProjectDesc={editingProjectDesc}
+          setEditingProjectDesc={setEditingProjectDesc}
           submitClarAnswer={submitClarAnswer}
         />
 
