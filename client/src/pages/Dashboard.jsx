@@ -585,18 +585,18 @@ export default function Dashboard({ token }) {
                   </button>
                   <button
                     onClick={() => openLeadEdit(job)}
-                    title="Edit lead details"
+                    title="Edit contact info"
                     style={{
                       background: 'none',
                       border: '1px solid #C8D4E4',
                       color: '#555',
                       cursor: 'pointer',
-                      fontSize: 13,
+                      fontSize: 11,
                       padding: '4px 8px',
                       borderRadius: 5,
                     }}
                   >
-                    ✏️
+                    ✏️ Contact
                   </button>
                   <Link
                     to={`/jobs/${job.id}`}
@@ -726,18 +726,18 @@ export default function Dashboard({ token }) {
                       </Link>
                       <button
                         onClick={() => openLeadEdit(job)}
-                        title="Edit lead details"
+                        title="Edit contact info"
                         style={{
                           background: 'none',
                           border: '1px solid #C8D4E4',
                           color: '#555',
                           cursor: 'pointer',
-                          fontSize: 12,
+                          fontSize: 11,
                           padding: '2px 7px',
                           borderRadius: 4,
                         }}
                       >
-                        ✏️
+                        ✏️ Contact
                       </button>
                       <button
                         onClick={() => openArchiveModal(job.id, job.customer_name, job.status)}
@@ -805,7 +805,7 @@ export default function Dashboard({ token }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <h3 style={{ margin: 0, fontSize: 16, color: '#1B3A6B' }}>Edit Lead</h3>
+              <h3 style={{ margin: 0, fontSize: 16, color: '#1B3A6B' }}>Edit Contact Info</h3>
               <button
                 onClick={() => setEditingLead(null)}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#888' }}
