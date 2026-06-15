@@ -44,6 +44,9 @@ export default function Dashboard({ token }) {
   const [dragOver, setDragOver] = useState(false);
   const [contactSuggestions, setContactSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [editingLead, setEditingLead] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [savingLead, setSavingLead] = useState(false);
   const suggestTimer = useRef(null);
   const esRef = useRef(null);
 
@@ -79,6 +82,36 @@ export default function Dashboard({ token }) {
     setShowSuggestions(false);
     setContactSuggestions([]);
   }
+
+  const openLeadEdit = (job) => {
+    setEditingLead(job);
+    setEditForm({
+      name: job.customer_name || '',
+      email: job.customer_email || '',
+      phone: job.customer_phone || '',
+      address: job.project_address || '',
+      city: job.project_city || '',
+    });
+  };
+
+  const saveLeadEdit = async () => {
+    if (!editingLead) return;
+    setSavingLead(true);
+    const res = await fetch(`/api/jobs/${editingLead.id}/customer`, {
+      method: 'PATCH',
+      headers: { 'x-auth-token': token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...editForm, updateContact: false }),
+    });
+    setSavingLead(false);
+    if (res.ok) {
+      showToast('Lead updated');
+      setEditingLead(null);
+      loadDashboard();
+    } else {
+      const d = await res.json();
+      showToast(d.error || 'Failed to save', 'error');
+    }
+  };
 
   const loadDashboard = () =>
     Promise.all([
@@ -506,10 +539,17 @@ export default function Dashboard({ token }) {
               </div>
               {/* Address */}
               {job.project_address && (
-                <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>
                   {job.project_address}
                 </div>
               )}
+              {/* Email */}
+              {job.customer_email && (
+                <div style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>
+                  {job.customer_email}
+                </div>
+              )}
+              {!job.project_address && !job.customer_email && <div style={{ marginBottom: 8 }} />}
               {/* Bottom row: value + date + actions */}
               <div
                 style={{
@@ -542,6 +582,21 @@ export default function Dashboard({ token }) {
                     }}
                   >
                     Archive
+                  </button>
+                  <button
+                    onClick={() => openLeadEdit(job)}
+                    title="Edit lead details"
+                    style={{
+                      background: 'none',
+                      border: '1px solid #C8D4E4',
+                      color: '#555',
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      padding: '4px 8px',
+                      borderRadius: 5,
+                    }}
+                  >
+                    ✏️
                   </button>
                   <Link
                     to={`/jobs/${job.id}`}
@@ -670,6 +725,21 @@ export default function Dashboard({ token }) {
                         View →
                       </Link>
                       <button
+                        onClick={() => openLeadEdit(job)}
+                        title="Edit lead details"
+                        style={{
+                          background: 'none',
+                          border: '1px solid #C8D4E4',
+                          color: '#555',
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          padding: '2px 7px',
+                          borderRadius: 4,
+                        }}
+                      >
+                        ✏️
+                      </button>
+                      <button
                         onClick={() => openArchiveModal(job.id, job.customer_name, job.status)}
                         style={{
                           background: 'none',
@@ -708,6 +778,103 @@ export default function Dashboard({ token }) {
           View Archived Jobs
         </button>
       </div>
+
+      {/* Edit lead modal */}
+      {editingLead && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+          }}
+          onClick={() => setEditingLead(null)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 12,
+              padding: 24,
+              width: '100%',
+              maxWidth: 420,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: '#1B3A6B' }}>Edit Lead</h3>
+              <button
+                onClick={() => setEditingLead(null)}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#888' }}
+              >×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { label: 'Customer Name', key: 'name', placeholder: 'John Smith' },
+                { label: 'Email', key: 'email', placeholder: 'john@email.com', type: 'email' },
+                { label: 'Phone', key: 'phone', placeholder: '+1 555 000 0000' },
+                { label: 'Project Address', key: 'address', placeholder: '123 Main St' },
+                { label: 'City', key: 'city', placeholder: 'Boston' },
+              ].map((f) => (
+                <div key={f.key}>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: '#555', display: 'block', marginBottom: 4 }}>
+                    {f.label}
+                  </label>
+                  <input
+                    type={f.type || 'text'}
+                    value={editForm[f.key] || ''}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      border: '1px solid #d0d7e2',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setEditingLead(null)}
+                style={{
+                  background: 'none',
+                  border: '1px solid #ddd',
+                  borderRadius: 6,
+                  padding: '8px 18px',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  color: '#555',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveLeadEdit}
+                disabled={savingLead}
+                style={{
+                  background: savingLead ? '#aaa' : '#1B3A6B',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '8px 22px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: savingLead ? 'default' : 'pointer',
+                }}
+              >
+                {savingLead ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Archived jobs modal */}
       {showArchived && (
