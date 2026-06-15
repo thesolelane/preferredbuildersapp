@@ -221,6 +221,62 @@ function AppointmentModal({ lead, onConfirm, onClose }) {
   );
 }
 
+// ── Edit lead modal ───────────────────────────────────────────────────────────
+function EditLeadModal({ lead, onConfirm, onClose }) {
+  const [form, setForm] = useState({
+    caller_name: lead.caller_name || '',
+    caller_phone: lead.caller_phone || '',
+    job_address: lead.job_address || '',
+    job_city: lead.job_city || '',
+    job_email: lead.job_email || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const submit = async () => {
+    if (!form.caller_name.trim()) return showToast('Name is required', 'error');
+    setSaving(true);
+    await onConfirm(form);
+    setSaving(false);
+  };
+
+  return (
+    <div style={overlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+        <div style={{ fontWeight: 700, color: BLUE, fontSize: 16, marginBottom: 16 }}>
+          ✏️ Edit Lead
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[
+            { label: 'Name *', key: 'caller_name', placeholder: 'John Smith' },
+            { label: 'Phone', key: 'caller_phone', placeholder: '+1 555 000 0000' },
+            { label: 'Email', key: 'job_email', placeholder: 'customer@email.com', type: 'email' },
+            { label: 'Job Address', key: 'job_address', placeholder: '123 Main St' },
+            { label: 'City', key: 'job_city', placeholder: 'Worcester' },
+          ].map((f) => (
+            <div key={f.key}>
+              <label style={labelStyle}>{f.label}</label>
+              <input
+                type={f.type || 'text'}
+                value={form[f.key]}
+                onChange={set(f.key)}
+                placeholder={f.placeholder}
+                style={inputStyle}
+              />
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+          <button onClick={onClose} style={btnSecondary}>Cancel</button>
+          <button onClick={submit} disabled={saving} style={btnPrimary()}>
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Archive modal ─────────────────────────────────────────────────────────────
 function ArchiveModal({ lead, onConfirm, onClose }) {
   const [reason, setReason] = useState('price');
@@ -282,6 +338,7 @@ export default function Leads({ token }) {
   // Active modal state
   const [apptModal, setApptModal] = useState(null); // lead
   const [archiveModal, setArchiveModal] = useState(null); // lead
+  const [editModal, setEditModal] = useState(null); // lead
   const [wizardLead, setWizardLead] = useState(null); // lead to open wizard for
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
@@ -362,6 +419,17 @@ export default function Leads({ token }) {
       updateLead(data.lead);
       const stg = STAGE_MAP[next];
       showToast(`${lead.caller_name} moved to ${stg?.label || next}`, 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const confirmEdit = async (fields) => {
+    try {
+      const data = await patchLead(editModal.id, fields);
+      updateLead(data.lead);
+      showToast('Lead updated');
+      setEditModal(null);
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -621,6 +689,7 @@ export default function Leads({ token }) {
                           onArchive={() => setArchiveModal(lead)}
                           onDelete={() => deleteLead(lead)}
                           onOpenWizard={() => setWizardLead(lead)}
+                          onEdit={() => setEditModal(lead)}
                         />
                       ))}
                     </div>
@@ -673,6 +742,13 @@ export default function Leads({ token }) {
           lead={archiveModal}
           onConfirm={confirmArchive}
           onClose={() => setArchiveModal(null)}
+        />
+      )}
+      {editModal && (
+        <EditLeadModal
+          lead={editModal}
+          onConfirm={confirmEdit}
+          onClose={() => setEditModal(null)}
         />
       )}
     </div>
@@ -809,7 +885,7 @@ function LeadPhotoThumb({ photo, token, onDelete }) {
 }
 
 // ── Lead Card ─────────────────────────────────────────────────────────────────
-function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard }) {
+function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard, onEdit }) {
   const [noteInput, setNoteInput] = useState('');
   const [notesList, setNotesList] = useState([]);
   const [notesExpanded, setNotesExpanded] = useState(false);
@@ -1712,6 +1788,21 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard })
                   📝 Open Proposal Wizard
                 </button>
               )}
+              <button
+                onClick={onEdit}
+                style={{
+                  background: '#fff',
+                  color: BLUE,
+                  border: `1px solid ${BLUE}`,
+                  borderRadius: 6,
+                  padding: '7px 12px',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                ✏️ Edit
+              </button>
               {!isSigned && (
                 <button
                   onClick={onArchive}
