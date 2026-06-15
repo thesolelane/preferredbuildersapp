@@ -32,7 +32,7 @@ System adds: `finalPrice`, `pricing`, `totalValue`, `depositAmount`, `validUntil
 - **Backend:** Express.js on port 5000
 - **Frontend:** React (Create React App), served as static build from `client/build`
 - **Database:** SQLite via `better-sqlite3` at `data/pb_system.db`
-- **AI:** Anthropic Claude (`claude-sonnet-4-20250514`) via `server/services/claudeService.js`
+- **AI:** Anthropic Claude (`claude-sonnet-4-5`) via `server/services/claudeService.js`
 - **PDF Generation:** Puppeteer via `server/services/pdfService.js`
 - **Email:** Mailgun via `server/services/emailService.js`
 - **WhatsApp:** Twilio sandbox + poller via `server/services/whatsappService.js` + `whatsappPoller.js`

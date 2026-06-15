@@ -371,7 +371,7 @@ async function runWithTools(systemPrompt, userMessage, maxToolCalls = 5, jobId =
     const response = await claudeWithRetry(
       client,
       {
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 8000,
         temperature: 0.1,
         system: systemPrompt,
@@ -432,7 +432,7 @@ async function runWithTools(systemPrompt, userMessage, maxToolCalls = 5, jobId =
     } else {
       logTokenUsage({
         service: 'claude',
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         inputTokens: totalInput,
         outputTokens: totalOutput,
         jobId,

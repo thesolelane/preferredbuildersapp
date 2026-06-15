@@ -39,7 +39,7 @@ async function runAssessment(db) {
     .join('\n\n');
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     max_tokens: 4000,
     temperature: 0,
     system: `You are a business strategy consultant specializing in the Massachusetts residential and commercial construction market.

@@ -291,7 +291,7 @@ router.post('/upload-estimate', requireAuth, async (req, res) => {
         }
         const base64 = fileBuffer.toString('base64');
         const response = await client.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-5',
           max_tokens: 3000,
           temperature: 0,
           messages: [

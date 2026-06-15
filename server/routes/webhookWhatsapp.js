@@ -176,7 +176,7 @@ async function handleIncomingWhatsApp(data) {
         const Anthropic = require('@anthropic-ai/sdk');
         const visionClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const visionRes = await visionClient.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-5',
           max_tokens: 3000,
           messages: [
             {
@@ -260,7 +260,7 @@ async function handleIncomingWhatsApp(data) {
           const base64 = buffer.toString('base64');
           const docMime = mediaContentType.includes('pdf') ? 'application/pdf' : mediaContentType;
           const visionRes = await docClient.messages.create({
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-sonnet-4-5',
             max_tokens: 4000,
             messages: [
               {

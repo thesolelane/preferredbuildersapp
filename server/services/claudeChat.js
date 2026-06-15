@@ -22,7 +22,7 @@ async function handleClarification(jobId, userMessage, conversationHistory, lang
   const response = await claudeWithRetry(
     client,
     {
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5',
       max_tokens: 2000,
       temperature: 0.1,
       system:
@@ -38,7 +38,7 @@ async function handleClarification(jobId, userMessage, conversationHistory, lang
 
   logTokenUsage({
     service: 'claude',
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     inputTokens: response.usage?.input_tokens,
     outputTokens: response.usage?.output_tokens,
     jobId,
@@ -572,7 +572,7 @@ IMPORTANT STYLE RULES:
     const response = await claudeWithRetry(
       client,
       {
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 2000,
         temperature: 0,
         system: systemPrompt,
@@ -595,7 +595,7 @@ IMPORTANT STYLE RULES:
 
     logTokenUsage({
       service: 'claude',
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5',
       inputTokens: response.usage?.input_tokens,
       outputTokens: response.usage?.output_tokens,
       context: 'admin_chat',
@@ -655,7 +655,7 @@ async function generateWizardQuestions(
   const response = await claudeWithRetry(
     client,
     {
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5',
       max_tokens: 2000,
       temperature: 0,
       system: `You are a construction estimating assistant helping a Massachusetts GC build accurate quotes. Your job is to read a scope of work and ask ONLY the most important clarifying questions — focusing especially on install-implies-demo trade pairings and ambiguous trade scopes.
@@ -715,7 +715,7 @@ RULES:
 
   logTokenUsage({
     service: 'claude',
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     inputTokens: response.usage?.input_tokens,
     outputTokens: response.usage?.output_tokens,
     context: 'wizard',

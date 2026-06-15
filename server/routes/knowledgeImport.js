@@ -17,7 +17,7 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 // ── EXTRACT structured info from a single invoice via Claude ──────────
 async function extractInvoiceData(rawText, filename) {
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     max_tokens: 3000,
     system: `You are an invoice analysis assistant for a Massachusetts general contractor. 
 Extract structured data from old invoices/proposals. Return ONLY valid JSON — no commentary.`,
@@ -175,7 +175,7 @@ router.post('/bulk-import', requireAuth, async (req, res) => {
           try {
             const base64Pdf = fileBuffer.toString('base64');
             const visionRes = await client.messages.create({
-              model: 'claude-sonnet-4-20250514',
+              model: 'claude-sonnet-4-5',
               max_tokens: 4000,
               messages: [
                 {
