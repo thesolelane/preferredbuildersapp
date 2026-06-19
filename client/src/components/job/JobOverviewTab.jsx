@@ -3,6 +3,40 @@ import { BLUE } from './constants';
 
 const TEAL = '#0D9488';
 
+const STAGE_RANK = {
+  new_lead: 0,
+  estimate_pending: 1,
+  received: 2,
+  processing: 3,
+  clarification: 4,
+  review_pending: 5,
+  proposal_ready: 10,
+  quote_draft: 10,
+  quote_sent: 20,
+  proposal_sent: 20,
+  follow_up_1: 21,
+  follow_up_2: 22,
+  proposal_declined: 23,
+  proposal_approved: 30,
+  customer_approved: 30,
+  site_visit_complete: 35,
+  appointment_booked: 35,
+  callback_done: 35,
+  contract_ready: 40,
+  contract_sent: 50,
+  contract_signed: 60,
+  signed: 60,
+  complete: 70,
+  completed: 70,
+};
+
+const INVOICE_STAGE_THRESHOLD = STAGE_RANK.proposal_ready;
+
+const isInvoiceEligible = (status) => {
+  const rank = STAGE_RANK[(status || '').toLowerCase()];
+  return rank === undefined || rank >= INVOICE_STAGE_THRESHOLD;
+};
+
 const fmtMoney = (n) =>
   `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -259,7 +293,9 @@ export default function JobOverviewTab({
   return (
     <div>
       <BalanceBar job={job} paymentSummary={paymentSummary} />
-      <InvoiceStatusPanel job={job} token={token} refreshKey={refreshKey} />
+      {isInvoiceEligible(job?.status) && (
+        <InvoiceStatusPanel job={job} token={token} refreshKey={refreshKey} />
+      )}
       <h3 style={{ color: BLUE, marginBottom: 16 }}>Project Details</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <tbody>
