@@ -267,7 +267,9 @@ function EditLeadModal({ lead, onConfirm, onClose }) {
           ))}
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-          <button onClick={onClose} style={btnSecondary}>Cancel</button>
+          <button onClick={onClose} style={btnSecondary}>
+            Cancel
+          </button>
           <button onClick={submit} disabled={saving} style={btnPrimary()}>
             {saving ? 'Saving…' : 'Save Changes'}
           </button>

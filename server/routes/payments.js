@@ -449,6 +449,25 @@ router.post(
       );
     }
 
+    // Sync: if a matching outstanding invoice exists for this job+amount, mark it paid
+    if (!isPTR && crDr === 'credit') {
+      try {
+        const matchingInv = db
+          .prepare(
+            "SELECT id, invoice_number FROM invoices WHERE job_id = ? AND status IN ('sent', 'pending_send') AND amount = ? LIMIT 1",
+          )
+          .get(job_id, parsedAmount);
+        if (matchingInv) {
+          db.prepare(
+            "UPDATE invoices SET status = 'paid', paid_at = CURRENT_TIMESTAMP, amount_paid = ? WHERE id = ?",
+          ).run(parsedAmount, matchingInv.id);
+          console.log(`[PaymentSync] Invoice ${matchingInv.invoice_number} auto-marked paid`);
+        }
+      } catch (syncErr) {
+        console.warn('[PaymentSync]', syncErr.message);
+      }
+    }
+
     res.json({ payment, summary: jobSummary(db, job_id) });
 
     // After responding, send deposit confirmation email if contract is signed

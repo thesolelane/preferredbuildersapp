@@ -5,8 +5,8 @@ const { requireAuth } = require('../middleware/auth');
 const { requireFields, validateEnum, validateNumber } = require('../middleware/validate');
 const { getDb } = require('../db/database');
 const { logActivity } = require('./activityLog');
-const { sendEmail } = require('../services/emailService');
 const { generatePDFFromHTML } = require('../services/pdfService');
+const { sendInvoiceEmail } = require('../services/invoiceEmailService');
 
 const VALID_TYPES = [
   'contract_invoice',
@@ -14,7 +14,7 @@ const VALID_TYPES = [
   'change_order',
   'combined_invoice',
 ];
-const VALID_STATUSES = ['draft', 'sent', 'paid', 'void'];
+const VALID_STATUSES = ['draft', 'sent', 'pending_send', 'paid', 'void'];
 
 function getOrCreateCounters(db, jobId) {
   let row = db.prepare('SELECT * FROM invoice_counters WHERE job_id = ?').get(jobId);
@@ -53,6 +53,85 @@ function nextDeptCode(db, jobId, quoteNumber) {
   db.prepare('UPDATE invoice_counters SET dept_seq = ? WHERE job_id = ?').run(seq, jobId);
   return `PB-${base}-D${String(seq).padStart(2, '0')}`;
 }
+
+// GET /all — unified list of all invoices (job + direct) sorted by date
+router.get('/all', requireAuth, (req, res) => {
+  const db = getDb();
+  const { status, job_id, date_from, date_to } = req.query;
+
+  const jobParams = [];
+  let jobWhere = '';
+  if (job_id) {
+    jobWhere += ' AND i.job_id = ?';
+    jobParams.push(job_id);
+  }
+  if (status) {
+    jobWhere += ' AND i.status = ?';
+    jobParams.push(status);
+  }
+  if (date_from) {
+    jobWhere += ' AND i.created_at >= ?';
+    jobParams.push(date_from);
+  }
+  if (date_to) {
+    jobWhere += ' AND i.created_at <= ?';
+    jobParams.push(date_to + 'T23:59:59');
+  }
+
+  const jobInvoices = db
+    .prepare(
+      `
+    SELECT i.id, i.invoice_number, i.invoice_type, i.status, i.amount,
+           i.issued_at, i.paid_at, i.created_at, i.job_id,
+           j.project_address, j.pb_number, j.customer_name, j.customer_email,
+           'job' AS source
+    FROM invoices i
+    LEFT JOIN jobs j ON j.id = i.job_id
+    WHERE 1=1 ${jobWhere}
+    ORDER BY i.created_at DESC
+  `,
+    )
+    .all(...jobParams);
+
+  let directInvoices = [];
+  if (!job_id) {
+    const dirParams = [];
+    let dirWhere = '';
+    if (status) {
+      dirWhere += ' AND d.status = ?';
+      dirParams.push(status);
+    }
+    if (date_from) {
+      dirWhere += ' AND d.created_at >= ?';
+      dirParams.push(date_from);
+    }
+    if (date_to) {
+      dirWhere += ' AND d.created_at <= ?';
+      dirParams.push(date_to + 'T23:59:59');
+    }
+
+    directInvoices = db
+      .prepare(
+        `
+      SELECT d.id, d.invoice_number, 'direct' AS invoice_type, d.status, d.total AS amount,
+             d.issued_at, d.paid_at, d.created_at, d.job_id,
+             j.project_address, j.pb_number, d.to_name AS customer_name, d.to_email AS customer_email,
+             'direct' AS source
+      FROM direct_invoices d
+      LEFT JOIN jobs j ON j.id = d.job_id
+      WHERE 1=1 ${dirWhere}
+      ORDER BY d.created_at DESC
+    `,
+      )
+      .all(...dirParams);
+  }
+
+  const all = [...jobInvoices, ...directInvoices].sort(
+    (a, b) => new Date(b.created_at) - new Date(a.created_at),
+  );
+
+  res.json({ invoices: all });
+});
 
 router.get('/job/:jobId', requireAuth, (req, res) => {
   const db = getDb();
@@ -192,6 +271,7 @@ router.patch(
       const contact = job?.contact_id
         ? db.prepare('SELECT pb_customer_number FROM contacts WHERE id = ?').get(job.contact_id)
         : null;
+
       logActivity({
         customer_number: contact?.pb_customer_number || null,
         job_id: inv.job_id,
@@ -203,6 +283,31 @@ router.patch(
         document_ref: inv.invoice_number,
         recorded_by: req.session?.name || 'staff',
       });
+
+      // Auto-create a payments_received record if one doesn't already exist for this invoice
+      if (inv.job_id) {
+        const existing = db
+          .prepare('SELECT id FROM payments_received WHERE invoice_id = ? LIMIT 1')
+          .get(inv.id);
+        if (!existing) {
+          const today = new Date().toISOString().slice(0, 10);
+          const recorder = req.session?.name || 'system';
+          db.prepare(
+            `INSERT INTO payments_received
+              (job_id, customer_name, amount, date_received, payment_type, credit_debit,
+               recorded_by, notes, invoice_id)
+             VALUES (?, ?, ?, ?, 'deposit', 'credit', ?, ?, ?)`,
+          ).run(
+            inv.job_id,
+            job?.customer_name || null,
+            newAmount,
+            today,
+            recorder,
+            `Auto-recorded from invoice ${inv.invoice_number} marked paid`,
+            inv.id,
+          );
+        }
+      }
     }
 
     const updated = db.prepare('SELECT * FROM invoices WHERE id = ?').get(inv.id);
@@ -467,126 +572,14 @@ router.post('/:id/pdf', requireAuth, (req, res) => {
   res.redirect(307, `/api/invoices/${req.params.id}/pdf?token=${encodeURIComponent(token)}`);
 });
 
-// POST /:id/email — email invoice PDF to customer
+// POST /:id/email — email invoice PDF to customer (uses shared invoiceEmailService)
 router.post('/:id/email', requireAuth, async (req, res) => {
   try {
     const db = getDb();
-    const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id);
+    const inv = db.prepare('SELECT id FROM invoices WHERE id = ?').get(req.params.id);
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
-
-    const job = inv.job_id ? db.prepare('SELECT * FROM jobs WHERE id = ?').get(inv.job_id) : null;
-    const contact = job?.contact_id
-      ? db.prepare('SELECT * FROM contacts WHERE id = ?').get(job.contact_id)
-      : null;
-
-    const customerEmail = contact?.email || job?.customer_email;
-    if (!customerEmail)
-      return res.status(400).json({ error: 'No customer email on file for this job' });
-
-    const typeLabels = {
-      contract_invoice: 'Contract Invoice',
-      pass_through_invoice: 'Pass-Through Invoice',
-      change_order: 'Change Order',
-    };
-    const typeLabel = typeLabels[inv.invoice_type] || 'Invoice';
-    const isPT = inv.invoice_type === 'pass_through_invoice';
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-  body{font-family:Arial,sans-serif;margin:0;padding:40px;color:#222}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px}
-  .logo-block h1{color:#1B3A6B;margin:0;font-size:22px}
-  .logo-block p{color:#888;margin:4px 0;font-size:12px}
-  .inv-meta{text-align:right}
-  .inv-num{font-size:20px;font-weight:bold;color:#1B3A6B}
-  .status{font-size:12px;color:#888}
-  .divider{border:none;border-top:2px solid #E07B2A;margin:16px 0}
-  .section{margin-bottom:24px}
-  .section h3{font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
-  .amount-box{background:#f8f9ff;border:2px solid #1B3A6B;border-radius:8px;padding:20px;text-align:center;margin:24px 0}
-  .amount-box .amt{font-size:36px;font-weight:bold;color:#1B3A6B}
-  .amount-box .lbl{font-size:12px;color:#888}
-  .pt-notice{background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;padding:12px;font-size:12px;color:#92400e;margin-bottom:16px}
-  .footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#888;text-align:center}
-</style></head><body>
-<div class="header">
-  <div class="logo-block">
-    <h1>PREFERRED BUILDERS</h1>
-    <p>General Services Inc.</p>
-    <p>978-377-1784 | Fitchburg, MA</p>
-    <p>License #CS-109171</p>
-  </div>
-  <div class="inv-meta">
-    <div class="inv-num">${inv.invoice_number}</div>
-    <div class="status">${typeLabel}</div>
-    <div class="status">Status: <strong>${(inv.status || 'draft').toUpperCase()}</strong></div>
-    <div class="status">Issued: ${inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}</div>
-  </div>
-</div>
-<hr class="divider">
-${isPT ? `<div class="pt-notice"><strong>PASS-THROUGH COST — NOT A REVENUE ITEM</strong><br>Billed for direct reimbursement only (permits, engineers, consultants, etc.)</div>` : ''}
-${
-  contact || job
-    ? `<div class="section"><h3>Billed To</h3>
-  ${contact?.pb_customer_number ? `<div style="font-family:monospace;font-size:11px;background:#e0e8ff;color:#1B3A6B;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:6px;font-weight:bold">${contact.pb_customer_number}</div><br>` : ''}
-  <strong>${contact?.name || job?.customer_name || '—'}</strong><br>
-  ${customerEmail}<br>
-  ${contact?.phone || job?.customer_phone || ''}
-</div>`
-    : ''
-}
-${
-  job
-    ? `<div class="section"><h3>Project</h3>
-  ${job.pb_number || job.quote_number ? `<strong>PB# ${job.pb_number || job.quote_number}</strong><br>` : ''}
-  ${job.project_address || ''}${job.project_city ? ', ' + job.project_city + ', MA' : ''}
-</div>`
-    : ''
-}
-<div class="amount-box">
-  <div class="lbl">Invoice Amount</div>
-  <div class="amt">$${Number(inv.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-  ${inv.amount_paid > 0 ? `<div class="lbl" style="margin-top:8px;color:#2E7D32">Paid: $${Number(inv.amount_paid).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>` : ''}
-</div>
-${inv.notes ? `<div class="section"><h3>Notes</h3><p style="font-size:13px">${inv.notes}</p></div>` : ''}
-<div class="footer">Preferred Builders General Services Inc. · MA License #CS-109171 · 978-377-1784<br>
-Please make checks payable to: <strong>Preferred Builders General Services Inc.</strong></div>
-</body></html>`;
-
-    const pdfPath = await generatePDFFromHTML(
-      html,
-      `invoice_${inv.invoice_number.replace(/[^a-zA-Z0-9-]/g, '_')}_email`,
-    );
-
-    const subject = `Invoice ${inv.invoice_number} from Preferred Builders${job ? ' — ' + (job.project_address || job.description || 'Your Project') : ''}`;
-    const emailBody = `<p>Dear ${contact?.name || job?.customer_name || 'Valued Customer'},</p>
-<p>Please find your invoice <strong>${inv.invoice_number}</strong> (${typeLabel}) attached for <strong>$${Number(inv.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>.</p>
-${isPT ? '<p><em>Note: This is a pass-through cost invoice billed for direct reimbursement of permits, engineering fees, or other third-party costs paid on your behalf.</em></p>' : ''}
-<p>If you have any questions, please don't hesitate to contact us.</p>
-<p>Thank you for choosing Preferred Builders.</p>
-<p>— Preferred Builders General Services Inc.<br>978-377-1784 | Fitchburg, MA</p>`;
-
-    await sendEmail({
-      to: customerEmail,
-      subject,
-      html: emailBody,
-      attachments: [{ path: pdfPath, filename: `${inv.invoice_number}.pdf` }],
-      emailType: 'invoice',
-      jobId: inv.job_id,
-      db,
-    });
-
-    db.prepare("UPDATE invoices SET status = 'sent' WHERE id = ? AND status = 'draft'").run(inv.id);
-
-    logActivity({
-      customer_number: contact?.pb_customer_number || null,
-      job_id: inv.job_id || null,
-      event_type: 'INVOICE_ISSUED',
-      description: `Invoice ${inv.invoice_number} emailed to ${customerEmail}`,
-      document_ref: inv.invoice_number,
-      recorded_by: req.session?.name || req.user?.name || 'system',
-    });
-
-    res.json({ success: true, to: customerEmail });
+    const result = await sendInvoiceEmail(inv.id, db, req.session?.name || 'staff');
+    res.json(result);
   } catch (err) {
     console.error('[Invoice Email]', err.message);
     res.status(500).json({ error: 'Failed to email invoice: ' + err.message });

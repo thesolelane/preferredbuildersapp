@@ -1084,7 +1084,13 @@ export default function JobActionPanel({
             <div>
               <div style={{ marginBottom: 16 }}>
                 <label
-                  style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 5 }}
+                  style={{
+                    display: 'block',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#555',
+                    marginBottom: 5,
+                  }}
                 >
                   Project Description (SOW Summary)
                 </label>

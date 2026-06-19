@@ -1078,6 +1078,7 @@ export default function JobDetail({ token, userName }) {
 
           {activeTab === 'overview' && (
             <JobOverviewTab
+              paymentSummary={paymentSummary}
               job={job}
               canEditCustomer={canEditCustomer}
               editingCustomer={editingCustomer}

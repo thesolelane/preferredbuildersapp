@@ -176,13 +176,17 @@ function autoCreateDepositInvoice(jobId, dbOverride) {
       // ── Insert invoice record ─────────────────────────────────────────────────
       const invNum = nextDepositInvoiceNumber(db, jobId, pbNum);
 
-      db.prepare(
-        `
+      const insertResult = db
+        .prepare(
+          `
         INSERT INTO invoices
           (job_id, invoice_number, invoice_type, status, amount, line_items, notes)
         VALUES (?, ?, 'contract_invoice', 'draft', ?, ?, ?)
       `,
-      ).run(jobId, invNum, invoiceTotal, JSON.stringify(invLineItems), notes);
+        )
+        .run(jobId, invNum, invoiceTotal, JSON.stringify(invLineItems), notes);
+
+      const invId = insertResult.lastInsertRowid;
 
       // ── Log activity ──────────────────────────────────────────────────────────
       const contact = job.contact_id
@@ -201,6 +205,18 @@ function autoCreateDepositInvoice(jobId, dbOverride) {
       console.log(
         `[AutoDepositInvoice] ${invNum} created for job ${jobId} — deposit $${fmtAmt(depositAmt)} + fees $${fmtAmt(separateTotal)} = total $${fmtAmt(invoiceTotal)}`,
       );
+
+      // ── Auto-send to customer ─────────────────────────────────────────────────
+      try {
+        const { sendInvoiceEmail } = require('./invoiceEmailService');
+        await sendInvoiceEmail(invId, db, 'system');
+        console.log(`[AutoDepositInvoice] ${invNum} emailed to customer`);
+      } catch (sendErr) {
+        db.prepare("UPDATE invoices SET status = 'pending_send' WHERE id = ?").run(invId);
+        console.warn(
+          `[AutoDepositInvoice] Email failed for ${invNum} — flagged pending_send: ${sendErr.message}`,
+        );
+      }
     } catch (err) {
       console.warn('[AutoDepositInvoice]', err.message);
     }

@@ -6,6 +6,7 @@ import { showConfirm } from '../utils/confirm';
 const BLUE = '#1B3A6B';
 const GREEN = '#2E7D32';
 const RED = '#C62828';
+const ORANGE = '#E07B2A';
 
 const fmt = (n) =>
   `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -15,7 +16,21 @@ const fmtDate = (d) =>
     ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : '—';
 
-const STATUS_COLOR = { draft: '#888', sent: '#3B82F6', paid: GREEN };
+const STATUS_COLOR = {
+  draft: '#888',
+  sent: '#3B82F6',
+  pending_send: ORANGE,
+  paid: GREEN,
+  void: '#aaa',
+};
+
+const TYPE_LABELS = {
+  contract_invoice: 'Deposit',
+  pass_through_invoice: 'Pass-Through',
+  change_order: 'Change Order',
+  combined_invoice: 'Combined',
+  direct: 'Direct',
+};
 
 const EMPTY_INV_ALLOC = { job_id: '', payment_class: 'contract', amount: '', notes: '' };
 
@@ -35,12 +50,13 @@ export default function Invoices({ token }) {
 
   const load = useCallback(() => {
     setLoading(true);
-    fetch('/api/direct-invoices', { headers: { 'x-auth-token': token } })
+    fetch('/api/invoices/all', { headers: { 'x-auth-token': token } })
       .then((r) => r.json())
       .then((data) => {
         setInvoices(data.invoices || []);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, [token]);
 
   useEffect(() => {
@@ -54,18 +70,31 @@ export default function Invoices({ token }) {
       .then((d) => setJobs((d.jobs || []).filter((j) => !j.archived)));
   };
 
-  const sendInvoice = async (inv) => {
-    if (!inv.to_email) return showToast('No email on this invoice', 'error');
+  const sendJobInvoice = async (inv) => {
+    setSending(inv.id);
+    const res = await fetch(`/api/invoices/${inv.id}/email`, { method: 'POST', headers });
+    const data = await res.json();
+    if (res.ok) {
+      load();
+      showToast('Invoice emailed to customer');
+    } else {
+      showToast(data.error || 'Send failed', 'error');
+    }
+    setSending(null);
+  };
+
+  const sendDirectInvoice = async (inv) => {
+    if (!inv.customer_email) return showToast('No email on this invoice', 'error');
     setSending(inv.id);
     const res = await fetch(`/api/direct-invoices/${inv.id}/send`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ to_email: inv.to_email }),
+      body: JSON.stringify({ to_email: inv.customer_email }),
     });
     const data = await res.json();
     if (res.ok) {
       load();
-      showToast(`Invoice sent to ${inv.to_email}`);
+      showToast(`Invoice sent to ${inv.customer_email}`);
     } else {
       showToast(data.error || 'Send failed', 'error');
     }
@@ -73,7 +102,8 @@ export default function Invoices({ token }) {
   };
 
   const markPaid = async (inv) => {
-    const res = await fetch(`/api/direct-invoices/${inv.id}`, {
+    const url = inv.source === 'job' ? `/api/invoices/${inv.id}` : `/api/direct-invoices/${inv.id}`;
+    const res = await fetch(url, {
       method: 'PATCH',
       headers,
       body: JSON.stringify({ status: 'paid' }),
@@ -81,6 +111,9 @@ export default function Invoices({ token }) {
     if (res.ok) {
       load();
       showToast('Invoice marked paid');
+    } else {
+      const d = await res.json().catch(() => ({}));
+      showToast(d.error || 'Failed', 'error');
     }
   };
 
@@ -100,7 +133,7 @@ export default function Invoices({ token }) {
       if (!a.amount || Number(a.amount) <= 0)
         return showToast('Enter a positive amount for each allocation', 'error');
     }
-    const total = Number(splitPayInv.total) || 0;
+    const total = Number(splitPayInv.amount) || 0;
     const allocSum = splitAllocs.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
     if (Math.abs(allocSum - total) > 0.02) {
       return showToast(
@@ -135,7 +168,8 @@ export default function Invoices({ token }) {
 
   const deleteInv = async (inv) => {
     if (!(await showConfirm(`Delete invoice ${inv.invoice_number}?`))) return;
-    const res = await fetch(`/api/direct-invoices/${inv.id}`, { method: 'DELETE', headers });
+    const url = inv.source === 'job' ? `/api/invoices/${inv.id}` : `/api/direct-invoices/${inv.id}`;
+    const res = await fetch(url, { method: 'DELETE', headers });
     if (res.ok) {
       load();
       showToast('Invoice deleted');
@@ -148,8 +182,9 @@ export default function Invoices({ token }) {
       const q = search.toLowerCase();
       if (
         !(inv.invoice_number || '').toLowerCase().includes(q) &&
-        !(inv.to_name || '').toLowerCase().includes(q) &&
-        !(inv.to_email || '').toLowerCase().includes(q)
+        !(inv.customer_name || '').toLowerCase().includes(q) &&
+        !(inv.customer_email || '').toLowerCase().includes(q) &&
+        !(inv.project_address || '').toLowerCase().includes(q)
       )
         return false;
     }
@@ -158,13 +193,13 @@ export default function Invoices({ token }) {
 
   const totalPaid = invoices
     .filter((i) => i.status === 'paid')
-    .reduce((s, i) => s + Number(i.total || 0), 0);
+    .reduce((s, i) => s + Number(i.amount || 0), 0);
   const totalPending = invoices
-    .filter((i) => i.status === 'sent')
-    .reduce((s, i) => s + Number(i.total || 0), 0);
+    .filter((i) => i.status === 'sent' || i.status === 'pending_send')
+    .reduce((s, i) => s + Number(i.amount || 0), 0);
 
   return (
-    <div style={{ padding: '28px 24px', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ padding: '28px 24px', maxWidth: 960, margin: '0 auto' }}>
       {showModal && (
         <DirectInvoiceModal
           jobId={null}
@@ -183,9 +218,7 @@ export default function Invoices({ token }) {
           marginBottom: 20,
         }}
       >
-        <h2 style={{ color: BLUE, margin: 0, fontSize: 22 }}>
-          Accounts Receivable — Customer Invoices
-        </h2>
+        <h2 style={{ color: BLUE, margin: 0, fontSize: 22 }}>Accounts Receivable — All Invoices</h2>
         <button
           onClick={() => setShowModal(true)}
           style={{
@@ -199,11 +232,10 @@ export default function Invoices({ token }) {
             fontSize: 13,
           }}
         >
-          + New Invoice
+          + New Direct Invoice
         </button>
       </div>
 
-      {/* Summary cards */}
       <div
         style={{
           display: 'grid',
@@ -243,10 +275,9 @@ export default function Invoices({ token }) {
         ))}
       </div>
 
-      {/* Filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
         <input
-          placeholder="Search name, email, invoice #"
+          placeholder="Search name, email, address, invoice #"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
@@ -266,6 +297,7 @@ export default function Invoices({ token }) {
           <option value="">All statuses</option>
           <option value="draft">Draft</option>
           <option value="sent">Sent</option>
+          <option value="pending_send">Pending Send</option>
           <option value="paid">Paid</option>
         </select>
       </div>
@@ -285,20 +317,33 @@ export default function Invoices({ token }) {
         >
           <div style={{ fontSize: 36, marginBottom: 12 }}>🧾</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#555', marginBottom: 6 }}>
-            No invoices yet
+            No invoices found
           </div>
-          <div style={{ fontSize: 13 }}>Click "New Invoice" to create one — no job required.</div>
+          <div style={{ fontSize: 13 }}>
+            Job invoices appear automatically when contracts are signed. Use "New Direct Invoice"
+            for standalone billing.
+          </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtered.map((inv) => {
             const sc = STATUS_COLOR[inv.status] || '#888';
+            const typeLabel = TYPE_LABELS[inv.invoice_type] || inv.invoice_type || '—';
+            const isJob = inv.source === 'job';
+            const isDirect = inv.source === 'direct';
+            const isPendingSend = inv.status === 'pending_send';
+            const isUnpaid = inv.status !== 'paid' && inv.status !== 'void';
+            const hasEmail = isJob ? !!inv.customer_email : !!inv.customer_email;
+            const pdfUrl = isJob
+              ? `/api/invoices/${inv.id}/pdf?token=${encodeURIComponent(token || '')}`
+              : `/api/direct-invoices/${inv.id}/pdf?token=${encodeURIComponent(token || '')}`;
+
             return (
-              <div key={inv.id}>
+              <div key={`${inv.source}-${inv.id}`}>
                 <div
                   style={{
-                    background: 'white',
-                    border: '1px solid #e5e7eb',
+                    background: isPendingSend ? '#fffbeb' : 'white',
+                    border: `1px solid ${isPendingSend ? '#fcd34d' : '#e5e7eb'}`,
                     borderRadius: 9,
                     padding: '12px 16px',
                     display: 'flex',
@@ -309,26 +354,53 @@ export default function Invoices({ token }) {
                     borderBottomRightRadius: splitPayInv?.id === inv.id ? 0 : 9,
                   }}
                 >
-                  <div
-                    style={{
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: '#4F46E5',
-                      minWidth: 160,
-                    }}
-                  >
-                    {inv.invoice_number}
+                  <div style={{ minWidth: 160 }}>
+                    <div
+                      style={{
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#4F46E5',
+                      }}
+                    >
+                      {inv.invoice_number}
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 9,
+                        padding: '1px 6px',
+                        borderRadius: 8,
+                        background: isJob ? '#e0e8ff' : '#f3f4f6',
+                        color: isJob ? '#1B3A6B' : '#555',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      {typeLabel}
+                    </span>
                   </div>
+
                   <div style={{ flex: 1, minWidth: 120 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>
-                      {inv.to_name || inv.to_email || '—'}
+                      {inv.customer_name || inv.customer_email || '—'}
                     </div>
-                    {inv.to_email && inv.to_name && (
-                      <div style={{ fontSize: 11, color: '#888' }}>{inv.to_email}</div>
+                    {inv.project_address && inv.job_id && (
+                      <a
+                        href={`/jobs/${inv.job_id}`}
+                        style={{ fontSize: 11, color: '#4F46E5', textDecoration: 'none' }}
+                      >
+                        {inv.project_address}
+                        {inv.pb_number ? ` — #${inv.pb_number}` : ''}
+                      </a>
+                    )}
+                    {!inv.project_address && inv.customer_email && inv.customer_name && (
+                      <div style={{ fontSize: 11, color: '#888' }}>{inv.customer_email}</div>
                     )}
                   </div>
+
                   <div style={{ fontSize: 13, color: '#555' }}>{fmtDate(inv.created_at)}</div>
+
                   <div
                     style={{
                       fontWeight: 800,
@@ -338,8 +410,9 @@ export default function Invoices({ token }) {
                       textAlign: 'right',
                     }}
                   >
-                    {fmt(inv.total)}
+                    {fmt(inv.amount)}
                   </div>
+
                   <span
                     style={{
                       fontSize: 10,
@@ -348,15 +421,16 @@ export default function Invoices({ token }) {
                       background: sc + '22',
                       color: sc,
                       fontWeight: 700,
-                      minWidth: 44,
+                      minWidth: 72,
                       textAlign: 'center',
                     }}
                   >
-                    {(inv.status || 'draft').toUpperCase()}
+                    {(inv.status || 'draft').replace('_', ' ').toUpperCase()}
                   </span>
+
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                     <a
-                      href={`/api/direct-invoices/${inv.id}/pdf?token=${encodeURIComponent(token || '')}`}
+                      href={pdfUrl}
                       target="_blank"
                       rel="noreferrer"
                       style={{
@@ -371,29 +445,71 @@ export default function Invoices({ token }) {
                     >
                       PDF
                     </a>
-                    {inv.to_email && inv.status !== 'paid' && (
-                      <button
-                        onClick={() => sendInvoice(inv)}
-                        disabled={sending === inv.id}
-                        style={{
-                          fontSize: 11,
-                          padding: '4px 10px',
-                          background: '#3B82F611',
-                          color: '#3B82F6',
-                          border: '1px solid #3B82F622',
-                          borderRadius: 5,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {sending === inv.id
-                          ? 'Sending…'
-                          : inv.status === 'sent'
-                            ? 'Resend'
-                            : 'Send'}
-                      </button>
-                    )}
-                    {inv.status !== 'paid' && (
+
+                    {isUnpaid && (
                       <>
+                        {isJob && (isPendingSend || inv.status === 'draft') && (
+                          <button
+                            onClick={() => sendJobInvoice(inv)}
+                            disabled={sending === inv.id}
+                            style={{
+                              fontSize: 11,
+                              padding: '4px 10px',
+                              background: isPendingSend ? '#ORANGE11' || '#fff3cd' : '#3B82F611',
+                              color: isPendingSend ? '#92400e' : '#3B82F6',
+                              border: `1px solid ${isPendingSend ? '#fcd34d' : '#3B82F622'}`,
+                              borderRadius: 5,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {sending === inv.id
+                              ? 'Sending…'
+                              : isPendingSend
+                                ? 'Retry Send'
+                                : 'Send'}
+                          </button>
+                        )}
+
+                        {isJob && inv.status === 'sent' && (
+                          <button
+                            onClick={() => sendJobInvoice(inv)}
+                            disabled={sending === inv.id}
+                            style={{
+                              fontSize: 11,
+                              padding: '4px 10px',
+                              background: '#3B82F611',
+                              color: '#3B82F6',
+                              border: '1px solid #3B82F622',
+                              borderRadius: 5,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {sending === inv.id ? 'Sending…' : 'Resend'}
+                          </button>
+                        )}
+
+                        {isDirect && hasEmail && (
+                          <button
+                            onClick={() => sendDirectInvoice(inv)}
+                            disabled={sending === inv.id}
+                            style={{
+                              fontSize: 11,
+                              padding: '4px 10px',
+                              background: '#3B82F611',
+                              color: '#3B82F6',
+                              border: '1px solid #3B82F622',
+                              borderRadius: 5,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {sending === inv.id
+                              ? 'Sending…'
+                              : inv.status === 'sent'
+                                ? 'Resend'
+                                : 'Send'}
+                          </button>
+                        )}
+
                         <button
                           onClick={() => markPaid(inv)}
                           style={{
@@ -408,24 +524,28 @@ export default function Invoices({ token }) {
                         >
                           Mark Paid
                         </button>
-                        <button
-                          onClick={() =>
-                            splitPayInv?.id === inv.id ? setSplitPayInv(null) : openSplitPay(inv)
-                          }
-                          style={{
-                            fontSize: 11,
-                            padding: '4px 10px',
-                            background: splitPayInv?.id === inv.id ? '#3B82F6' : '#3B82F611',
-                            color: splitPayInv?.id === inv.id ? 'white' : '#3B82F6',
-                            border: '1px solid #3B82F622',
-                            borderRadius: 5,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Split Paid
-                        </button>
+
+                        {isDirect && (
+                          <button
+                            onClick={() =>
+                              splitPayInv?.id === inv.id ? setSplitPayInv(null) : openSplitPay(inv)
+                            }
+                            style={{
+                              fontSize: 11,
+                              padding: '4px 10px',
+                              background: splitPayInv?.id === inv.id ? '#3B82F6' : '#3B82F611',
+                              color: splitPayInv?.id === inv.id ? 'white' : '#3B82F6',
+                              border: '1px solid #3B82F622',
+                              borderRadius: 5,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Split Paid
+                          </button>
+                        )}
                       </>
                     )}
+
                     <button
                       onClick={() => deleteInv(inv)}
                       style={{
@@ -442,13 +562,14 @@ export default function Invoices({ token }) {
                     </button>
                   </div>
                 </div>
-                {splitPayInv?.id === inv.id && (
+
+                {splitPayInv?.id === inv.id && isDirect && (
                   <div
                     style={{
-                      marginTop: 12,
                       background: '#f0f9ff',
                       border: '1.5px solid #3B82F6',
-                      borderRadius: 8,
+                      borderTop: 'none',
+                      borderRadius: '0 0 8px 8px',
                       padding: 14,
                     }}
                   >
@@ -460,14 +581,14 @@ export default function Invoices({ token }) {
                         marginBottom: 10,
                       }}
                     >
-                      Split Payment — Allocate {fmt(inv.total)}
+                      Split Payment — Allocate {fmt(inv.amount)}
                     </div>
                     {(() => {
                       const allocTotal = splitAllocs.reduce(
                         (s, a) => s + (parseFloat(a.amount) || 0),
                         0,
                       );
-                      const total = Number(inv.total) || 0;
+                      const total = Number(inv.amount) || 0;
                       const remaining = Math.round((total - allocTotal) * 100) / 100;
                       const balanced = Math.abs(remaining) < 0.02;
                       return (

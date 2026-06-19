@@ -804,12 +804,27 @@ export default function Dashboard({ token }) {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 18,
+              }}
+            >
               <h3 style={{ margin: 0, fontSize: 16, color: '#1B3A6B' }}>Edit Contact Info</h3>
               <button
                 onClick={() => setEditingLead(null)}
-                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#888' }}
-              >×</button>
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: 20,
+                  cursor: 'pointer',
+                  color: '#888',
+                }}
+              >
+                ×
+              </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[
@@ -820,7 +835,15 @@ export default function Dashboard({ token }) {
                 { label: 'City', key: 'city', placeholder: 'Boston' },
               ].map((f) => (
                 <div key={f.key}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: '#555', display: 'block', marginBottom: 4 }}>
+                  <label
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: '#555',
+                      display: 'block',
+                      marginBottom: 4,
+                    }}
+                  >
                     {f.label}
                   </label>
                   <input

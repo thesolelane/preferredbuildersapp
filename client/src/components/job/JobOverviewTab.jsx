@@ -1,8 +1,81 @@
 import React from 'react';
 import { BLUE } from './constants';
 
+const fmt = (n) =>
+  `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function BalanceBar({ job, paymentSummary }) {
+  if (!job?.total_value) return null;
+  const contractTotal = Number(job.total_value);
+  const collected = Number(paymentSummary?.contract_received || 0);
+  const depositDue = Number(job.deposit_amount || 0);
+  const remaining = Math.max(0, contractTotal - collected);
+  const pct = Math.min(100, contractTotal > 0 ? (collected / contractTotal) * 100 : 0);
+
+  const seg = (label, value, color, tip) => (
+    <div style={{ textAlign: 'center', flex: 1 }}>
+      <div
+        style={{
+          fontSize: 10,
+          color: '#888',
+          marginBottom: 2,
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 800, color }} title={tip}>
+        {fmt(value)}
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      style={{
+        background: '#f8f9ff',
+        border: '1px solid #d0d9f4',
+        borderRadius: 8,
+        padding: '12px 16px',
+        marginBottom: 20,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          justifyContent: 'space-around',
+          marginBottom: 10,
+          flexWrap: 'wrap',
+        }}
+      >
+        {seg('Contract Total', contractTotal, '#1B3A6B', 'Full contract value')}
+        {seg('Deposit Due', depositDue, '#E07B2A', '33% deposit')}
+        {seg('Collected', collected, '#2E7D32', 'Payments received')}
+        {seg('Remaining', remaining, remaining > 0 ? '#C62828' : '#2E7D32', 'Balance outstanding')}
+      </div>
+      <div style={{ height: 8, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div
+          style={{
+            height: '100%',
+            width: `${pct}%`,
+            background: pct >= 100 ? '#2E7D32' : '#3B82F6',
+            borderRadius: 4,
+            transition: 'width 0.4s ease',
+          }}
+        />
+      </div>
+      <div style={{ fontSize: 10, color: '#888', textAlign: 'right', marginTop: 3 }}>
+        {pct.toFixed(0)}% collected
+      </div>
+    </div>
+  );
+}
+
 export default function JobOverviewTab({
   job,
+  paymentSummary,
   canEditCustomer,
   editingCustomer,
   setEditingCustomer,
@@ -17,6 +90,7 @@ export default function JobOverviewTab({
 }) {
   return (
     <div>
+      <BalanceBar job={job} paymentSummary={paymentSummary} />
       <h3 style={{ color: BLUE, marginBottom: 16 }}>Project Details</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <tbody>

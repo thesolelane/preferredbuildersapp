@@ -30,7 +30,10 @@ export default function JobProposalTab({ proposalData, job, token, userRole, onJ
       }
       setPreview({
         lineCount: parsed.lineItems.length,
-        trades: parsed.lineItems.map((li) => li.trade).filter(Boolean).join(', '),
+        trades: parsed.lineItems
+          .map((li) => li.trade)
+          .filter(Boolean)
+          .join(', '),
         customer: parsed.customer?.name || '—',
         address: parsed.project?.address || '—',
       });
