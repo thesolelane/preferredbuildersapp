@@ -244,7 +244,15 @@ export default function Analytics({ token }) {
   if (loading) return <div style={{ padding: 40, color: '#888' }}>Loading analytics...</div>;
   if (!data) return <div style={{ padding: 40, color: RED }}>Failed to load analytics data.</div>;
 
-  const { pipeline, winRate, lossBreakdown, proposalVelocity, monthlyRevenue, summary } = data;
+  const {
+    pipeline,
+    winRate,
+    lossBreakdown,
+    proposalVelocity,
+    monthlyRevenue,
+    summary,
+    reconciliation,
+  } = data;
   const totalActive = pipeline.reduce((s, p) => s + p.count, 0);
   const maxPipeline = Math.max(...pipeline.map((p) => p.count), 1);
   const maxLoss = Math.max(...(lossBreakdown.map((l) => l.count) || [0]), 1);
@@ -353,6 +361,47 @@ export default function Analytics({ token }) {
           />
         </div>
       )}
+
+      {reconciliation &&
+        (reconciliation.unlinkedPaidInvoices > 0 || reconciliation.paymentInvoiceMismatch > 0) && (
+          <div
+            style={{
+              background: '#FFF8E1',
+              border: '1px solid #FFD54F',
+              borderRadius: 10,
+              padding: '14px 20px',
+              marginBottom: 20,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+            }}
+          >
+            <div style={{ fontSize: 20, flexShrink: 0, lineHeight: 1.2 }}>⚠️</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 'bold', color: '#7C4700', marginBottom: 6 }}>
+                Reconciliation Warnings
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {reconciliation.unlinkedPaidInvoices > 0 && (
+                  <div style={{ fontSize: 12, color: '#5C3500' }}>
+                    <strong>{reconciliation.unlinkedPaidInvoices}</strong> paid invoice
+                    {reconciliation.unlinkedPaidInvoices !== 1 ? 's' : ''} have no linked payment
+                    record — a deposit or progress payment may have been recorded without
+                    referencing its invoice.
+                  </div>
+                )}
+                {reconciliation.paymentInvoiceMismatch > 0 && (
+                  <div style={{ fontSize: 12, color: '#5C3500' }}>
+                    <strong>{reconciliation.paymentInvoiceMismatch}</strong> payment
+                    {reconciliation.paymentInvoiceMismatch !== 1 ? 's' : ''} reference an invoice
+                    but the invoice total and payment amount don&apos;t match — review those records
+                    for possible data entry errors.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
       <div
         style={{
