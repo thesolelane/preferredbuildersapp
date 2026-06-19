@@ -577,6 +577,7 @@ async function initDatabase() {
     const findInvoice = db.prepare(
       `SELECT id FROM invoices
        WHERE job_id = ? AND status = 'paid' AND ABS(amount - ?) < 0.01
+         AND id NOT IN (SELECT invoice_id FROM payments_received WHERE invoice_id IS NOT NULL)
        ORDER BY paid_at ASC
        LIMIT 1`,
     );

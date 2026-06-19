@@ -289,9 +289,9 @@ router.patch(
       if (inv.job_id) {
         const existing = db
           .prepare(
-            "SELECT id FROM payments_received WHERE invoice_id = ? OR (job_id = ? AND ABS(amount - ?) < 0.01 AND credit_debit = 'credit') LIMIT 1",
+            "SELECT id FROM payments_received WHERE invoice_id = ? OR (job_id = ? AND ABS(amount - ?) < 0.01 AND credit_debit = 'credit' AND (invoice_id IS NULL OR invoice_id = ?)) LIMIT 1",
           )
-          .get(inv.id, inv.job_id, newAmount);
+          .get(inv.id, inv.job_id, newAmount, inv.id);
         if (!existing) {
           const today = new Date().toISOString().slice(0, 10);
           const recorder = req.session?.name || 'system';
