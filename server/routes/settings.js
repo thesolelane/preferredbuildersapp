@@ -63,6 +63,39 @@ router.get('/logs', requireAdmin, (req, res) => {
   });
 });
 
+// GET invoice stage threshold — readable by any authenticated user
+// NOTE: must be declared before /:key so Express doesn't match "invoice-threshold" as a key param
+router.get('/invoice-threshold', requireAuth, (req, res) => {
+  const db = getDb();
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'invoice.stage_threshold'").get();
+  res.json({ threshold: row?.value || 'proposal_ready' });
+});
+
+// PUT invoice stage threshold — admin only
+// NOTE: must be declared before /:key for the same reason
+router.put('/invoice-threshold', requireAuth, requireRole('system_admin'), (req, res) => {
+  const { threshold } = req.body;
+  const valid = [
+    'new_lead',
+    'estimate_pending',
+    'proposal_ready',
+    'proposal_sent',
+    'proposal_approved',
+    'contract_ready',
+    'contract_sent',
+    'contract_signed',
+    'completed',
+  ];
+  if (!valid.includes(threshold)) {
+    return res.status(400).json({ error: 'Invalid stage' });
+  }
+  const db = getDb();
+  db.prepare(
+    "INSERT OR REPLACE INTO settings (key, value, category, label) VALUES ('invoice.stage_threshold', ?, 'invoices', 'Minimum Job Stage to Show Invoice Panel')",
+  ).run(threshold);
+  res.json({ success: true, threshold });
+});
+
 // GET single setting
 router.get('/:key', requireAdmin, (req, res) => {
   const db = getDb();

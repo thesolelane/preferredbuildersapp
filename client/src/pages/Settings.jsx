@@ -80,6 +80,10 @@ export default function Settings({ token, userRole }) {
   const [marblismConfig, setMarblismConfig] = useState(null);
   const [marblismKeyCopied, setMarblismKeyCopied] = useState(false);
 
+  const [invoiceThreshold, setInvoiceThreshold] = useState('proposal_ready');
+  const [invoiceThresholdSaving, setInvoiceThresholdSaving] = useState(false);
+  const [invoiceThresholdSaved, setInvoiceThresholdSaved] = useState(false);
+
   const [depts, setDepts] = useState([]);
   const [deptsLoading, setDeptsLoading] = useState(false);
   const [deptsDraft, setDeptsDraft] = useState({});
@@ -141,6 +145,12 @@ export default function Settings({ token, userRole }) {
         .then((r) => r.json())
         .then((data) => {
           if (data && data.webhookUrl) setMarblismConfig(data);
+        })
+        .catch(() => {});
+      fetch('/api/settings/invoice-threshold', { headers: { 'x-auth-token': token } })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data?.threshold) setInvoiceThreshold(data.threshold);
         })
         .catch(() => {});
     }
@@ -207,6 +217,28 @@ export default function Settings({ token, userRole }) {
       })
       .catch(() => {});
   }, []);
+
+  const saveInvoiceThreshold = async (value) => {
+    setInvoiceThresholdSaving(true);
+    try {
+      const res = await fetch('/api/settings/invoice-threshold', {
+        method: 'PUT',
+        headers: { 'x-auth-token': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threshold: value }),
+      });
+      if (res.ok) {
+        setInvoiceThreshold(value);
+        setInvoiceThresholdSaved(true);
+        setTimeout(() => setInvoiceThresholdSaved(false), 2500);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        console.error('Failed to save invoice threshold:', d.error || res.status);
+      }
+    } catch (err) {
+      console.error('Failed to save invoice threshold:', err);
+    }
+    setInvoiceThresholdSaving(false);
+  };
 
   const savePrinterName = async () => {
     setPrinterSaving(true);
@@ -1589,6 +1621,60 @@ export default function Settings({ token, userRole }) {
             (or a shared network path), and use that button to scan. The file will appear in the app
             within seconds.
           </div>
+        </div>
+      </div>
+
+      {/* Invoice Panel Threshold */}
+      <div style={{ marginTop: 28 }}>
+        <div style={{ fontWeight: 700, color: BLUE, fontSize: 14, marginBottom: 4 }}>
+          🧾 Invoice Panel Visibility
+        </div>
+        <p style={{ fontSize: 12, color: '#888', marginBottom: 14 }}>
+          Choose the earliest job stage at which the invoice panel appears on the job overview. Jobs
+          below this stage will not show the panel.
+        </p>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select
+            value={invoiceThreshold}
+            onChange={(e) => setInvoiceThreshold(e.target.value)}
+            disabled={invoiceThresholdSaving}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #ddd',
+              borderRadius: 6,
+              fontSize: 13,
+              color: '#222',
+              background: 'white',
+              minWidth: 220,
+            }}
+          >
+            <option value="new_lead">New Lead (all jobs)</option>
+            <option value="estimate_pending">Estimate Pending</option>
+            <option value="proposal_ready">Proposal Ready (default)</option>
+            <option value="proposal_sent">Proposal Sent</option>
+            <option value="proposal_approved">Proposal Approved</option>
+            <option value="contract_ready">Contract Ready</option>
+            <option value="contract_sent">Contract Sent</option>
+            <option value="contract_signed">Contract Signed</option>
+            <option value="completed">Completed only</option>
+          </select>
+          <button
+            onClick={() => saveInvoiceThreshold(invoiceThreshold)}
+            disabled={invoiceThresholdSaving}
+            style={{
+              padding: '8px 18px',
+              background: invoiceThresholdSaved ? '#2E7D32' : BLUE,
+              color: 'white',
+              border: 'none',
+              borderRadius: 6,
+              cursor: invoiceThresholdSaving ? 'not-allowed' : 'pointer',
+              fontSize: 13,
+              fontWeight: 'bold',
+              opacity: invoiceThresholdSaving ? 0.6 : 1,
+            }}
+          >
+            {invoiceThresholdSaved ? '✅ Saved' : invoiceThresholdSaving ? 'Saving…' : 'Save'}
+          </button>
         </div>
       </div>
 

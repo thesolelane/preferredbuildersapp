@@ -30,11 +30,14 @@ const STAGE_RANK = {
   completed: 70,
 };
 
-const INVOICE_STAGE_THRESHOLD = STAGE_RANK.proposal_ready;
+const DEFAULT_THRESHOLD_STAGE = 'proposal_ready';
 
-const isInvoiceEligible = (status) => {
+const isInvoiceEligible = (status, thresholdStage) => {
   const rank = STAGE_RANK[(status || '').toLowerCase()];
-  return rank === undefined || rank >= INVOICE_STAGE_THRESHOLD;
+  const thresholdRank =
+    STAGE_RANK[(thresholdStage || DEFAULT_THRESHOLD_STAGE).toLowerCase()] ??
+    STAGE_RANK[DEFAULT_THRESHOLD_STAGE];
+  return rank === undefined || rank >= thresholdRank;
 };
 
 const fmtMoney = (n) =>
@@ -290,10 +293,22 @@ export default function JobOverviewTab({
   setNote,
   saveNote,
 }) {
+  const [invoiceThreshold, setInvoiceThreshold] = useState(DEFAULT_THRESHOLD_STAGE);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/settings/invoice-threshold', { headers: { 'x-auth-token': token } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.threshold) setInvoiceThreshold(d.threshold);
+      })
+      .catch(() => {});
+  }, [token]);
+
   return (
     <div>
       <BalanceBar job={job} paymentSummary={paymentSummary} />
-      {isInvoiceEligible(job?.status) && (
+      {isInvoiceEligible(job?.status, invoiceThreshold) && (
         <InvoiceStatusPanel job={job} token={token} refreshKey={refreshKey} />
       )}
       <h3 style={{ color: BLUE, marginBottom: 16 }}>Project Details</h3>

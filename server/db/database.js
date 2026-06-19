@@ -1299,6 +1299,13 @@ function seedDefaultSettings() {
       category: 'security',
       label: 'Allowed IP Addresses',
     },
+    // Invoices — minimum job stage that shows the invoice panel
+    {
+      key: 'invoice.stage_threshold',
+      value: 'proposal_ready',
+      category: 'invoices',
+      label: 'Minimum Job Stage to Show Invoice Panel',
+    },
   ];
 
   const insert = db.prepare(`
