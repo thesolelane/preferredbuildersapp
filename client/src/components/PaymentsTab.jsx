@@ -72,7 +72,7 @@ const inputStyle = {
 
 const EMPTY_ALLOC = { job_id: '', payment_class: 'contract', amount: '', notes: '' };
 
-export default function PaymentsTab({ jobId, token, job }) {
+export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
   const [received, setReceived] = useState([]);
   const [made, setMade] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -254,6 +254,7 @@ export default function PaymentsTab({ jobId, token, job }) {
     if (res.ok) {
       showToast(`Invoice 1 sent to ${job.customer_email}`);
       load();
+      onInvoiceChange?.();
     } else {
       showToast(d.error || 'Failed to send invoice', 'error');
     }
@@ -309,6 +310,7 @@ export default function PaymentsTab({ jobId, token, job }) {
       setShowInvoiceForm(false);
       load();
       showToast('Invoice created: ' + data.invoice.invoice_number);
+      onInvoiceChange?.();
     } else {
       showToast(data.error || 'Failed to create invoice', 'error');
     }
@@ -324,6 +326,7 @@ export default function PaymentsTab({ jobId, token, job }) {
     if (res.ok) {
       load();
       showToast(`Invoice marked ${status}`);
+      onInvoiceChange?.();
     } else {
       const d = await res.json();
       showToast(d.error || 'Failed', 'error');
@@ -336,6 +339,7 @@ export default function PaymentsTab({ jobId, token, job }) {
     if (res.ok) {
       load();
       showToast('Invoice deleted');
+      onInvoiceChange?.();
     }
   };
 

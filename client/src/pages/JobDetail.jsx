@@ -65,6 +65,9 @@ export default function JobDetail({ token, userName }) {
   });
   const [savingPt, setSavingPt] = useState(false);
 
+  const [invoiceRefreshKey, setInvoiceRefreshKey] = useState(0);
+  const bumpInvoiceRefresh = () => setInvoiceRefreshKey((k) => k + 1);
+
   const [editingCustomer, setEditingCustomer] = useState(false);
   const [customerForm, setCustomerForm] = useState({
     name: '',
@@ -1053,7 +1056,7 @@ export default function JobDetail({ token, userName }) {
 
           {activeTab === 'payments' && (
             <div>
-              <PaymentsTab jobId={id} token={token} />
+              <PaymentsTab jobId={id} token={token} onInvoiceChange={bumpInvoiceRefresh} />
               <ActivityLog jobId={id} token={token} />
             </div>
           )}
@@ -1081,6 +1084,7 @@ export default function JobDetail({ token, userName }) {
               paymentSummary={paymentSummary}
               job={job}
               token={token}
+              refreshKey={invoiceRefreshKey}
               canEditCustomer={canEditCustomer}
               editingCustomer={editingCustomer}
               setEditingCustomer={setEditingCustomer}

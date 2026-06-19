@@ -21,17 +21,19 @@ const STATUS_COLORS = {
   void: '#C62828',
 };
 
-function InvoiceStatusPanel({ job, token }) {
+function InvoiceStatusPanel({ job, token, refreshKey }) {
   const [invoices, setInvoices] = useState([]);
   const [sending, setSending] = useState(null);
 
-  useEffect(() => {
+  const fetchInvoices = () => {
     if (!job?.id || !token) return;
     fetch(`/api/invoices/job/${job.id}`, { headers: { 'x-auth-token': token } })
       .then((r) => r.json())
       .then((d) => setInvoices(d.invoices || []))
       .catch(() => {});
-  }, [job?.id, token]);
+  };
+
+  useEffect(fetchInvoices, [job?.id, token, refreshKey]);
 
   if (!invoices.length) return null;
 
@@ -42,10 +44,10 @@ function InvoiceStatusPanel({ job, token }) {
         method: 'POST',
         headers: { 'x-auth-token': token, 'Content-Type': 'application/json' },
       });
-      const d = await res.json();
       if (res.ok) {
-        setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: 'sent' } : i)));
+        fetchInvoices();
       } else {
+        const d = await res.json();
         console.error('Failed to send invoice:', d.error);
       }
     } catch (_e) {
@@ -234,6 +236,7 @@ export default function JobOverviewTab({
   job,
   token,
   paymentSummary,
+  refreshKey,
   canEditCustomer,
   editingCustomer,
   setEditingCustomer,
@@ -249,7 +252,7 @@ export default function JobOverviewTab({
   return (
     <div>
       <BalanceBar job={job} paymentSummary={paymentSummary} />
-      <InvoiceStatusPanel job={job} token={token} />
+      <InvoiceStatusPanel job={job} token={token} refreshKey={refreshKey} />
       <h3 style={{ color: BLUE, marginBottom: 16 }}>Project Details</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <tbody>
