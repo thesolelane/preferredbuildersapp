@@ -32,6 +32,37 @@ const STAGE_RANK = {
 
 const DEFAULT_THRESHOLD_STAGE = 'proposal_ready';
 
+const STAGE_LABELS = {
+  new_lead: 'New Lead',
+  estimate_pending: 'Estimate Pending',
+  received: 'Received',
+  processing: 'Processing',
+  clarification: 'Clarification',
+  review_pending: 'Review Pending',
+  proposal_ready: 'Proposal Ready',
+  quote_draft: 'Quote Draft',
+  quote_sent: 'Quote Sent',
+  proposal_sent: 'Proposal Sent',
+  follow_up_1: 'Follow-Up 1',
+  follow_up_2: 'Follow-Up 2',
+  proposal_declined: 'Proposal Declined',
+  proposal_approved: 'Proposal Approved',
+  customer_approved: 'Customer Approved',
+  site_visit_complete: 'Site Visit Complete',
+  appointment_booked: 'Appointment Booked',
+  callback_done: 'Callback Done',
+  contract_ready: 'Contract Ready',
+  contract_sent: 'Contract Sent',
+  contract_signed: 'Contract Signed',
+  signed: 'Signed',
+  complete: 'Complete',
+  completed: 'Completed',
+};
+
+const stageLabel = (stage) =>
+  STAGE_LABELS[(stage || '').toLowerCase()] ||
+  (stage || DEFAULT_THRESHOLD_STAGE).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
 const isInvoiceEligible = (status, thresholdStage) => {
   const rank = STAGE_RANK[(status || '').toLowerCase()];
   const thresholdRank =
@@ -308,8 +339,31 @@ export default function JobOverviewTab({
   return (
     <div>
       <BalanceBar job={job} paymentSummary={paymentSummary} />
-      {isInvoiceEligible(job?.status, invoiceThreshold) && (
+      {isInvoiceEligible(job?.status, invoiceThreshold) ? (
         <InvoiceStatusPanel job={job} token={token} refreshKey={refreshKey} />
+      ) : (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 12,
+            color: '#9ca3af',
+            background: '#f9fafb',
+            border: '1px dashed #e5e7eb',
+            borderRadius: 8,
+            padding: '9px 14px',
+            marginBottom: 20,
+          }}
+        >
+          <span style={{ fontSize: 14 }}>🔒</span>
+          <span>
+            Invoice panel available from{' '}
+            <strong style={{ color: '#6b7280' }}>{stageLabel(invoiceThreshold)}</strong> onward
+            &mdash; current stage:{' '}
+            <strong style={{ color: '#6b7280' }}>{stageLabel(job?.status)}</strong>
+          </span>
+        </div>
       )}
       <h3 style={{ color: BLUE, marginBottom: 16 }}>Project Details</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
