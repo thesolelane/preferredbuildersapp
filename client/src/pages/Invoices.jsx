@@ -581,18 +581,28 @@ export default function Invoices({ token }) {
                     )}
 
                     <button
-                      onClick={() => (editInv?.id === inv.id ? cancelEdit() : openEdit(inv))}
+                      onClick={() =>
+                        editInv?.id === inv.id && editInv?.source === inv.source
+                          ? cancelEdit()
+                          : openEdit(inv)
+                      }
                       style={{
                         fontSize: 11,
                         padding: '4px 10px',
-                        background: editInv?.id === inv.id ? '#E07B2A' : '#E07B2A11',
-                        color: editInv?.id === inv.id ? 'white' : ORANGE,
-                        border: `1px solid ${editInv?.id === inv.id ? ORANGE : '#E07B2A22'}`,
+                        background:
+                          editInv?.id === inv.id && editInv?.source === inv.source
+                            ? '#E07B2A'
+                            : '#E07B2A11',
+                        color:
+                          editInv?.id === inv.id && editInv?.source === inv.source
+                            ? 'white'
+                            : ORANGE,
+                        border: `1px solid ${editInv?.id === inv.id && editInv?.source === inv.source ? ORANGE : '#E07B2A22'}`,
                         borderRadius: 5,
                         cursor: 'pointer',
                       }}
                     >
-                      {editInv?.id === inv.id ? 'Close' : 'Edit'}
+                      {editInv?.id === inv.id && editInv?.source === inv.source ? 'Close' : 'Edit'}
                     </button>
 
                     <button
@@ -865,7 +875,7 @@ export default function Invoices({ token }) {
                   </div>
                 )}
 
-                {editInv?.id === inv.id && (
+                {editInv?.id === inv.id && editInv?.source === inv.source && (
                   <div
                     style={{
                       background: '#fff8f0',
