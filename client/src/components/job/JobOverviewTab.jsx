@@ -1,5 +1,162 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BLUE } from './constants';
+
+const TEAL = '#0D9488';
+
+const fmtMoney = (n) =>
+  `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const INVOICE_TYPE_LABELS = {
+  contract_invoice: 'Contract',
+  pass_through_invoice: 'Pass-Through',
+  change_order: 'Change Order',
+  combined_invoice: 'Combined',
+};
+
+const STATUS_COLORS = {
+  draft: '#888',
+  sent: '#3B82F6',
+  pending_send: '#D97706',
+  paid: '#2E7D32',
+  void: '#C62828',
+};
+
+function InvoiceStatusPanel({ job, token }) {
+  const [invoices, setInvoices] = useState([]);
+  const [sending, setSending] = useState(null);
+
+  useEffect(() => {
+    if (!job?.id || !token) return;
+    fetch(`/api/invoices/job/${job.id}`, { headers: { 'x-auth-token': token } })
+      .then((r) => r.json())
+      .then((d) => setInvoices(d.invoices || []))
+      .catch(() => {});
+  }, [job?.id, token]);
+
+  if (!invoices.length) return null;
+
+  const sendInvoice = async (inv) => {
+    setSending(inv.id);
+    try {
+      const res = await fetch(`/api/invoices/${inv.id}/email`, {
+        method: 'POST',
+        headers: { 'x-auth-token': token, 'Content-Type': 'application/json' },
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setInvoices((prev) => prev.map((i) => (i.id === inv.id ? { ...i, status: 'sent' } : i)));
+      } else {
+        console.error('Failed to send invoice:', d.error);
+      }
+    } catch (_e) {
+      /* network error */
+    }
+    setSending(null);
+  };
+
+  return (
+    <div
+      style={{
+        background: '#f8faff',
+        border: '1px solid #d0d9f4',
+        borderRadius: 8,
+        padding: '12px 16px',
+        marginBottom: 20,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: TEAL,
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          marginBottom: 10,
+        }}
+      >
+        Invoices
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {invoices.map((inv) => {
+          const statusColor = STATUS_COLORS[inv.status] || '#888';
+          const isPendingSend = inv.status === 'pending_send';
+          const isSent = inv.status === 'sent';
+          const canSend = inv.status !== 'void' && inv.status !== 'paid';
+
+          return (
+            <div
+              key={inv.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                flexWrap: 'wrap',
+                padding: '6px 0',
+                borderBottom: '1px solid #e8edf5',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  color: BLUE,
+                  minWidth: 150,
+                }}
+              >
+                {inv.invoice_number}
+              </span>
+              <span style={{ fontSize: 11, color: '#888', minWidth: 90 }}>
+                {INVOICE_TYPE_LABELS[inv.invoice_type] || inv.invoice_type}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 700, minWidth: 80 }}>
+                {fmtMoney(inv.amount)}
+              </span>
+              <span
+                style={{
+                  fontSize: 10,
+                  padding: '2px 8px',
+                  borderRadius: 10,
+                  background: statusColor + '22',
+                  color: statusColor,
+                  fontWeight: 700,
+                  border: isPendingSend ? `1px solid ${statusColor}55` : 'none',
+                }}
+              >
+                {inv.status === 'pending_send' ? 'PENDING SEND' : inv.status?.toUpperCase()}
+              </span>
+              {job?.customer_email && canSend && (
+                <button
+                  onClick={() => sendInvoice(inv)}
+                  disabled={sending === inv.id}
+                  style={{
+                    fontSize: 10,
+                    padding: '3px 9px',
+                    background: isPendingSend ? '#FEF3C7' : isSent ? '#eff6ff' : '#f0fdf4',
+                    color: isPendingSend ? '#D97706' : isSent ? '#3B82F6' : TEAL,
+                    border: `1px solid ${isPendingSend ? '#D9770644' : isSent ? '#3B82F644' : '#0D948844'}`,
+                    borderRadius: 4,
+                    cursor: sending === inv.id ? 'not-allowed' : 'pointer',
+                    fontWeight: 600,
+                    opacity: sending === inv.id ? 0.7 : 1,
+                  }}
+                >
+                  {sending === inv.id
+                    ? 'Sending…'
+                    : isPendingSend
+                      ? 'Retry Send'
+                      : isSent
+                        ? 'Resend'
+                        : 'Send'}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 const fmt = (n) =>
   `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -75,6 +232,7 @@ function BalanceBar({ job, paymentSummary }) {
 
 export default function JobOverviewTab({
   job,
+  token,
   paymentSummary,
   canEditCustomer,
   editingCustomer,
@@ -91,6 +249,7 @@ export default function JobOverviewTab({
   return (
     <div>
       <BalanceBar job={job} paymentSummary={paymentSummary} />
+      <InvoiceStatusPanel job={job} token={token} />
       <h3 style={{ color: BLUE, marginBottom: 16 }}>Project Details</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <tbody>

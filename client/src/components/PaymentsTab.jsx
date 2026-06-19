@@ -2330,7 +2330,13 @@ export default function PaymentsTab({ jobId, token, job }) {
 }
 
 function InvoiceGroup({ label, invoices, color, onMark, onDelete, token, job }) {
-  const statusColor = { draft: '#888', sent: '#3B82F6', paid: '#2E7D32', void: '#C62828' };
+  const statusColor = {
+    draft: '#888',
+    sent: '#3B82F6',
+    pending_send: '#D97706',
+    paid: '#2E7D32',
+    void: '#C62828',
+  };
   const [emailing, setEmailing] = useState(null);
 
   const emailInvoice = async (inv) => {
@@ -2422,9 +2428,13 @@ function InvoiceGroup({ label, invoices, color, onMark, onDelete, token, job }) 
                   background: (statusColor[inv.status] || '#888') + '22',
                   color: statusColor[inv.status] || '#888',
                   fontWeight: 'bold',
+                  border:
+                    inv.status === 'pending_send'
+                      ? `1px solid ${statusColor.pending_send}55`
+                      : 'none',
                 }}
               >
-                {inv.status?.toUpperCase()}
+                {inv.status === 'pending_send' ? 'PENDING SEND' : inv.status?.toUpperCase()}
               </span>
             </div>
             {inv.notes && (
@@ -2467,14 +2477,23 @@ function InvoiceGroup({ label, invoices, color, onMark, onDelete, token, job }) 
                   style={{
                     fontSize: 10,
                     padding: '3px 8px',
-                    background: '#f0fdf411',
-                    color: '#0D9488',
-                    border: '1px solid #0D948822',
+                    background: inv.status === 'pending_send' ? '#FEF3C7' : '#f0fdf411',
+                    color: inv.status === 'pending_send' ? '#D97706' : '#0D9488',
+                    border:
+                      inv.status === 'pending_send' ? '1px solid #D9770644' : '1px solid #0D948822',
                     borderRadius: 4,
-                    cursor: 'pointer',
+                    cursor: emailing === inv.id ? 'not-allowed' : 'pointer',
+                    fontWeight: inv.status === 'pending_send' ? 600 : 400,
+                    opacity: emailing === inv.id ? 0.7 : 1,
                   }}
                 >
-                  {emailing === inv.id ? 'Sending...' : 'Email'}
+                  {emailing === inv.id
+                    ? 'Sending...'
+                    : inv.status === 'pending_send'
+                      ? 'Retry Send'
+                      : inv.status === 'sent'
+                        ? 'Resend'
+                        : 'Send'}
                 </button>
               )}
               {inv.status === 'draft' && (

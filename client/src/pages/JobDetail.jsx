@@ -1080,6 +1080,7 @@ export default function JobDetail({ token, userName }) {
             <JobOverviewTab
               paymentSummary={paymentSummary}
               job={job}
+              token={token}
               canEditCustomer={canEditCustomer}
               editingCustomer={editingCustomer}
               setEditingCustomer={setEditingCustomer}
