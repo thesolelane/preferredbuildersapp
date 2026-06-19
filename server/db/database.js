@@ -559,6 +559,46 @@ async function initDatabase() {
   addColIfMissing('payments_received', 'line_item_ref', 'TEXT');
   addColIfMissing('payments_received', 'split_group_id', 'TEXT');
 
+  // ── Migration: back-fill invoice_id on historical payment rows ────────────────
+  // Matches payments_received rows (credit, non-pass-through, no invoice_id yet)
+  // to paid invoices with the same job_id and amount within $0.01.
+  // Idempotent: only touches rows where invoice_id IS NULL.
+  {
+    const unlinked = db
+      .prepare(
+        `SELECT pr.id AS pr_id, pr.job_id, pr.amount
+         FROM payments_received pr
+         WHERE pr.invoice_id IS NULL
+           AND pr.credit_debit = 'credit'
+           AND pr.is_pass_through_reimbursement = 0`,
+      )
+      .all();
+
+    const findInvoice = db.prepare(
+      `SELECT id FROM invoices
+       WHERE job_id = ? AND status = 'paid' AND ABS(amount - ?) < 0.01
+       ORDER BY paid_at ASC
+       LIMIT 1`,
+    );
+
+    const linkPayment = db.prepare(
+      'UPDATE payments_received SET invoice_id = ? WHERE id = ? AND invoice_id IS NULL',
+    );
+
+    let backfillCount = 0;
+    for (const row of unlinked) {
+      const invoice = findInvoice.get(row.job_id, row.amount);
+      if (invoice) {
+        const result = linkPayment.run(invoice.id, row.pr_id);
+        if (result.changes > 0) backfillCount++;
+      }
+    }
+
+    if (backfillCount > 0) {
+      console.log(`[db] Back-filled invoice_id on ${backfillCount} historical payment row(s).`);
+    }
+  }
+
   // ── Field photos — lead link ──────────────────────────────────────────────────
   addColIfMissing('field_photos', 'lead_id', 'INTEGER');
 
