@@ -24,18 +24,19 @@ const STATUS_COLORS = {
 function InvoiceStatusPanel({ job, token, refreshKey }) {
   const [invoices, setInvoices] = useState([]);
   const [sending, setSending] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchInvoices = () => {
     if (!job?.id || !token) return;
+    setLoading(true);
     fetch(`/api/invoices/job/${job.id}`, { headers: { 'x-auth-token': token } })
       .then((r) => r.json())
       .then((d) => setInvoices(d.invoices || []))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   };
 
   useEffect(fetchInvoices, [job?.id, token, refreshKey]);
-
-  if (!invoices.length) return null;
 
   const sendInvoice = async (inv) => {
     setSending(inv.id);
@@ -78,6 +79,12 @@ function InvoiceStatusPanel({ job, token, refreshKey }) {
       >
         Invoices
       </div>
+      {loading && <div style={{ fontSize: 12, color: '#aaa', padding: '4px 0' }}>Loading…</div>}
+      {!loading && invoices.length === 0 && (
+        <div style={{ fontSize: 12, color: '#aaa', fontStyle: 'italic', padding: '4px 0' }}>
+          No invoices yet
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {invoices.map((inv) => {
           const statusColor = STATUS_COLORS[inv.status] || '#888';
