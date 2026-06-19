@@ -412,6 +412,9 @@ async function start() {
 
     const { startTaskReminderScheduler } = require('./services/taskReminder');
     startTaskReminderScheduler();
+
+    const { startInvoiceRetryScheduler } = require('./services/invoiceRetryScheduler');
+    startInvoiceRetryScheduler();
   } catch (err) {
     console.error('Failed to start:', err);
     process.exit(1);
