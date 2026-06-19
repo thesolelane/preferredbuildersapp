@@ -285,10 +285,10 @@ export default function Payments({ token }) {
   };
 
   const jobLabel = (p) => {
-    const name = p.job_customer || p.customer_name || '';
     const addr = p.project_address || '';
-    if (name && addr) return `${name} — ${addr}`;
-    return name || addr || p.job_id?.slice(0, 8) || '—';
+    const num = p.pb_number || p.job_id?.slice(0, 8) || '';
+    if (addr && num) return `${addr} — #${num}`;
+    return addr || num || '—';
   };
 
   return (
@@ -642,9 +642,9 @@ export default function Payments({ token }) {
                                 >
                                   <option value="">— Select job —</option>
                                   {jobs.map((j) => {
-                                    const name = j.customer_name || '';
                                     const addr = j.project_address || '';
-                                    const label = name && addr ? `${name} — ${addr}` : name || addr || j.id.slice(0, 8);
+                                    const num = j.pb_number || j.id.slice(0, 8);
+                                    const label = addr && num ? `${addr} — #${num}` : addr || num;
                                     return (
                                       <option key={j.id} value={j.id}>
                                         {label}
@@ -874,9 +874,9 @@ export default function Payments({ token }) {
           >
             <option value="">All Jobs</option>
             {jobs.map((j) => {
-              const name = j.customer_name || '';
               const addr = j.project_address || '';
-              const label = name && addr ? `${name} — ${addr}` : name || addr || j.id.slice(0, 8);
+              const num = j.pb_number || j.id.slice(0, 8);
+              const label = addr && num ? `${addr} — #${num}` : addr || num;
               return (
                 <option key={j.id} value={j.id}>
                   {label}
@@ -1230,9 +1230,9 @@ function JobSelect({ value, onChange, jobs }) {
     <select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
       <option value="">Select a job...</option>
       {jobs.map((j) => {
-        const name = j.customer_name || '';
         const addr = j.project_address || '';
-        const label = name && addr ? `${name} — ${addr}` : name || addr || j.id.slice(0, 8);
+        const num = j.pb_number || j.id.slice(0, 8);
+        const label = addr && num ? `${addr} — #${num}` : addr || num;
         return (
           <option key={j.id} value={j.id}>
             {label}
