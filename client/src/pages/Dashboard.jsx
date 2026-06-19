@@ -20,6 +20,57 @@ function outcomeBadge(reason) {
   return OUTCOME_BADGES[reason] || null;
 }
 
+const INV_BADGE_STYLES = {
+  pending_send: { bg: '#FFF3E0', color: '#E65100', label: 'pending send' },
+  draft: { bg: '#ECEFF1', color: '#546E7A', label: 'draft' },
+  sent: { bg: '#E3F2FD', color: '#1565C0', label: 'sent' },
+};
+
+function InvoiceSummaryBadges({ job }) {
+  const pending = job.inv_pending_send || 0;
+  const draft = job.inv_draft || 0;
+  const sent = job.inv_sent || 0;
+  const paid = job.inv_paid || 0;
+  const total = pending + draft + sent + paid;
+  if (total === 0) return null;
+  const badges = [];
+  if (pending > 0) {
+    const s = INV_BADGE_STYLES.pending_send;
+    badges.push({ key: 'pending', bg: s.bg, color: s.color, text: `${pending} pending send` });
+  }
+  if (draft > 0) {
+    const s = INV_BADGE_STYLES.draft;
+    badges.push({ key: 'draft', bg: s.bg, color: s.color, text: `${draft} draft` });
+  }
+  if (sent > 0) {
+    const s = INV_BADGE_STYLES.sent;
+    badges.push({ key: 'sent', bg: s.bg, color: s.color, text: `${sent} sent` });
+  }
+  if (badges.length === 0 && paid > 0) {
+    badges.push({ key: 'paid', bg: '#E8F5E9', color: '#2E7D32', text: '✓ paid' });
+  }
+  return (
+    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+      {badges.map((b) => (
+        <span
+          key={b.key}
+          style={{
+            background: b.bg,
+            color: b.color,
+            fontSize: 10,
+            fontWeight: 600,
+            padding: '2px 7px',
+            borderRadius: 10,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {b.text}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard({ token }) {
   const location = useLocation();
   const [jobs, setJobs] = useState([]);
@@ -549,7 +600,9 @@ export default function Dashboard({ token }) {
                   {job.customer_email}
                 </div>
               )}
-              {!job.project_address && !job.customer_email && <div style={{ marginBottom: 8 }} />}
+              {!job.project_address && !job.customer_email && <div style={{ marginBottom: 4 }} />}
+              {/* Invoice status badges */}
+              <InvoiceSummaryBadges job={job} />
               {/* Bottom row: value + date + actions */}
               <div
                 style={{
@@ -629,7 +682,16 @@ export default function Dashboard({ token }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
             <thead>
               <tr style={{ background: '#1B3A6B' }}>
-                {['PB Number', 'Customer', 'Address', 'Value', 'Status', 'Date', ''].map((h) => (
+                {[
+                  'PB Number',
+                  'Customer',
+                  'Address',
+                  'Value',
+                  'Status',
+                  'Invoices',
+                  'Date',
+                  '',
+                ].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -648,7 +710,7 @@ export default function Dashboard({ token }) {
             <tbody>
               {jobs.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ padding: 32, textAlign: 'center', color: '#888' }}>
+                  <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#888' }}>
                     No jobs yet. Waiting for estimates from Hearth...
                   </td>
                 </tr>
@@ -707,6 +769,9 @@ export default function Dashboard({ token }) {
                     >
                       {getStatusStyle(job.status).label}
                     </span>
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <InvoiceSummaryBadges job={job} />
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: 11, color: '#888' }}>
                     {new Date(job.created_at).toLocaleDateString()}

@@ -88,14 +88,22 @@ router.get('/archived/list', requireAuth, (req, res) => {
 router.get('/', requireAuth, (req, res) => {
   const db = getDb();
   const { status, limit = 50, offset = 0 } = req.query;
-  let query =
-    'SELECT id, customer_name, customer_email, customer_phone, project_address, project_city, status, total_value, deposit_amount, created_at, updated_at, submitted_by, contact_id, pb_number, external_ref FROM jobs WHERE archived = 0';
+  let query = `
+    SELECT j.id, j.customer_name, j.customer_email, j.customer_phone,
+           j.project_address, j.project_city, j.status, j.total_value,
+           j.deposit_amount, j.created_at, j.updated_at, j.submitted_by,
+           j.contact_id, j.pb_number, j.external_ref,
+           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'draft') AS inv_draft,
+           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'pending_send') AS inv_pending_send,
+           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'sent') AS inv_sent,
+           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'paid') AS inv_paid
+    FROM jobs j WHERE j.archived = 0`;
   const params = [];
   if (status) {
-    query += ' AND status = ?';
+    query += ' AND j.status = ?';
     params.push(status);
   }
-  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+  query += ' ORDER BY j.created_at DESC LIMIT ? OFFSET ?';
   params.push(parseInt(limit), parseInt(offset));
   const jobs = db.prepare(query).all(...params);
   const total = db
