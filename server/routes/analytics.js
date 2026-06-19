@@ -208,6 +208,26 @@ router.get('/pipeline', requireAuth, (req, res) => {
 
   const avgWonMargin = marginCount > 0 ? Math.round((marginSum / marginCount) * 10) / 10 : null;
 
+  // Reconciliation: count paid invoices with no matching payment row linked via invoice_id
+  const unlinkedPaidInvoices = db
+    .prepare(
+      `SELECT COUNT(*) as count FROM invoices i
+       WHERE i.status = 'paid'
+         AND NOT EXISTS (
+           SELECT 1 FROM payments_received pr WHERE pr.invoice_id = i.id
+         )`,
+    )
+    .get().count;
+
+  // Reconciliation: count payment rows that reference an invoice_id but that invoice is not paid
+  const paymentInvoiceMismatch = db
+    .prepare(
+      `SELECT COUNT(*) as count FROM payments_received pr
+       JOIN invoices i ON i.id = pr.invoice_id
+       WHERE i.status != 'paid' AND pr.credit_debit = 'credit'`,
+    )
+    .get().count;
+
   res.json({
     pipeline,
     winRate: { won: wonCount, lost: lostCount, total: totalClosed, rate: winRate },
@@ -220,6 +240,10 @@ router.get('/pipeline', requireAuth, (req, res) => {
       pipelineValue: Math.round(pipelineValue),
       wonRevenueYTD: Math.round(wonRevenueYTD),
       avgWonMargin,
+    },
+    reconciliation: {
+      unlinkedPaidInvoices,
+      paymentInvoiceMismatch,
     },
   });
 });

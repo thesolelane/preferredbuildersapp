@@ -295,16 +295,24 @@ router.patch(
         if (!existing) {
           const today = new Date().toISOString().slice(0, 10);
           const recorder = req.session?.name || 'system';
+          const invoiceTypeToPaymentType = {
+            contract_invoice: 'progress',
+            pass_through_invoice: 'other',
+            change_order: 'progress',
+            combined_invoice: 'progress',
+          };
+          const autoPaymentType = invoiceTypeToPaymentType[inv.invoice_type] || 'progress';
           db.prepare(
             `INSERT INTO payments_received
               (job_id, customer_name, amount, date_received, payment_type, credit_debit,
                recorded_by, notes, invoice_id)
-             VALUES (?, ?, ?, ?, 'deposit', 'credit', ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, 'credit', ?, ?, ?)`,
           ).run(
             inv.job_id,
             job?.customer_name || null,
             newAmount,
             today,
+            autoPaymentType,
             recorder,
             `Auto-recorded from invoice ${inv.invoice_number} marked paid`,
             inv.id,

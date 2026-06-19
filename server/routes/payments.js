@@ -470,7 +470,12 @@ router.post(
           db.prepare(
             "UPDATE invoices SET status = 'paid', paid_at = ?, amount_paid = ? WHERE id = ?",
           ).run(invPaidAt, parsedAmount, matchingInv.id);
-          console.log(`[PaymentSync] Invoice ${matchingInv.invoice_number} auto-marked paid`);
+          db.prepare(
+            'UPDATE payments_received SET invoice_id = ? WHERE id = ? AND invoice_id IS NULL',
+          ).run(matchingInv.id, payment.id);
+          console.log(
+            `[PaymentSync] Invoice ${matchingInv.invoice_number} auto-marked paid and linked to payment ${payment.id}`,
+          );
         }
       } catch (syncErr) {
         console.warn('[PaymentSync]', syncErr.message);
