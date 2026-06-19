@@ -93,26 +93,28 @@ router.get('/all', requireAuth, (req, res) => {
     )
     .all(...jobParams);
 
-  let directInvoices = [];
-  if (!job_id) {
-    const dirParams = [];
-    let dirWhere = '';
-    if (status) {
-      dirWhere += ' AND d.status = ?';
-      dirParams.push(status);
-    }
-    if (date_from) {
-      dirWhere += ' AND d.created_at >= ?';
-      dirParams.push(date_from);
-    }
-    if (date_to) {
-      dirWhere += ' AND d.created_at <= ?';
-      dirParams.push(date_to + 'T23:59:59');
-    }
+  const dirParams = [];
+  let dirWhere = '';
+  if (job_id) {
+    dirWhere += ' AND d.job_id = ?';
+    dirParams.push(job_id);
+  }
+  if (status) {
+    dirWhere += ' AND d.status = ?';
+    dirParams.push(status);
+  }
+  if (date_from) {
+    dirWhere += ' AND d.created_at >= ?';
+    dirParams.push(date_from);
+  }
+  if (date_to) {
+    dirWhere += ' AND d.created_at <= ?';
+    dirParams.push(date_to + 'T23:59:59');
+  }
 
-    directInvoices = db
-      .prepare(
-        `
+  const directInvoices = db
+    .prepare(
+      `
       SELECT d.id, d.invoice_number, 'direct' AS invoice_type, d.status, d.total AS amount,
              d.issued_at, d.paid_at, d.created_at, d.job_id,
              j.project_address, j.pb_number, d.to_name AS customer_name, d.to_email AS customer_email,
@@ -122,9 +124,8 @@ router.get('/all', requireAuth, (req, res) => {
       WHERE 1=1 ${dirWhere}
       ORDER BY d.created_at DESC
     `,
-      )
-      .all(...dirParams);
-  }
+    )
+    .all(...dirParams);
 
   const all = [...jobInvoices, ...directInvoices].sort(
     (a, b) => new Date(b.created_at) - new Date(a.created_at),
@@ -284,11 +285,13 @@ router.patch(
         recorded_by: req.session?.name || 'staff',
       });
 
-      // Auto-create a payments_received record if one doesn't already exist for this invoice
+      // Auto-create a payments_received record if no matching record already exists
       if (inv.job_id) {
         const existing = db
-          .prepare('SELECT id FROM payments_received WHERE invoice_id = ? LIMIT 1')
-          .get(inv.id);
+          .prepare(
+            "SELECT id FROM payments_received WHERE invoice_id = ? OR (job_id = ? AND ABS(amount - ?) < 0.01 AND credit_debit = 'credit') LIMIT 1",
+          )
+          .get(inv.id, inv.job_id, newAmount);
         if (!existing) {
           const today = new Date().toISOString().slice(0, 10);
           const recorder = req.session?.name || 'system';

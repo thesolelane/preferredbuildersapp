@@ -44,6 +44,13 @@ function jobSummary(db, jobId) {
 
   const netMargin = contractReceived - subMaterialCosts;
 
+  const invRow = db
+    .prepare(
+      "SELECT COALESCE(SUM(amount), 0) AS total FROM invoices WHERE job_id = ? AND status NOT IN ('void')",
+    )
+    .get(jobId);
+  const invoicedTotal = Number(invRow?.total || 0);
+
   return {
     total_received: totalIn,
     total_paid_out: totalOut,
@@ -53,6 +60,7 @@ function jobSummary(db, jobId) {
     sub_material_costs: subMaterialCosts,
     pt_advances: ptAdvances,
     net_margin: netMargin,
+    invoiced_total: invoicedTotal,
   };
 }
 
@@ -458,9 +466,10 @@ router.post(
           )
           .get(job_id, parsedAmount);
         if (matchingInv) {
+          const invPaidAt = date_received || new Date().toISOString().slice(0, 10);
           db.prepare(
-            "UPDATE invoices SET status = 'paid', paid_at = CURRENT_TIMESTAMP, amount_paid = ? WHERE id = ?",
-          ).run(parsedAmount, matchingInv.id);
+            "UPDATE invoices SET status = 'paid', paid_at = ?, amount_paid = ? WHERE id = ?",
+          ).run(invPaidAt, parsedAmount, matchingInv.id);
           console.log(`[PaymentSync] Invoice ${matchingInv.invoice_number} auto-marked paid`);
         }
       } catch (syncErr) {
@@ -740,6 +749,27 @@ router.patch('/received/:id', requireAuth, validateNumber('amount', { min: 0.01 
   );
 
   const updated = db.prepare('SELECT * FROM payments_received WHERE id = ?').get(row.id);
+
+  // Sync: on PATCH, check if a matching outstanding invoice now qualifies as paid
+  if (!updated.is_pass_through_reimbursement && updated.credit_debit === 'credit') {
+    try {
+      const matchingInv = db
+        .prepare(
+          "SELECT id, invoice_number FROM invoices WHERE job_id = ? AND status IN ('sent', 'pending_send') AND amount = ? LIMIT 1",
+        )
+        .get(updated.job_id, updated.amount);
+      if (matchingInv) {
+        const invPaidAt = updated.date_received || new Date().toISOString().slice(0, 10);
+        db.prepare(
+          "UPDATE invoices SET status = 'paid', paid_at = ?, amount_paid = ? WHERE id = ?",
+        ).run(invPaidAt, updated.amount, matchingInv.id);
+        console.log(`[PaymentSync] Invoice ${matchingInv.invoice_number} auto-marked paid (PATCH)`);
+      }
+    } catch (syncErr) {
+      console.warn('[PaymentSync PATCH]', syncErr.message);
+    }
+  }
+
   res.json({ payment: updated, summary: jobSummary(db, row.job_id) });
 });
 

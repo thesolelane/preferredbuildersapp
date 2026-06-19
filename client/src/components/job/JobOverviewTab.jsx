@@ -8,7 +8,7 @@ function BalanceBar({ job, paymentSummary }) {
   if (!job?.total_value) return null;
   const contractTotal = Number(job.total_value);
   const collected = Number(paymentSummary?.contract_received || 0);
-  const depositDue = Number(job.deposit_amount || 0);
+  const invoiced = Number(paymentSummary?.invoiced_total || 0);
   const remaining = Math.max(0, contractTotal - collected);
   const pct = Math.min(100, contractTotal > 0 ? (collected / contractTotal) * 100 : 0);
 
@@ -51,7 +51,7 @@ function BalanceBar({ job, paymentSummary }) {
         }}
       >
         {seg('Contract Total', contractTotal, '#1B3A6B', 'Full contract value')}
-        {seg('Deposit Due', depositDue, '#E07B2A', '33% deposit')}
+        {seg('Invoiced', invoiced, '#4F46E5', 'Total invoiced to customer')}
         {seg('Collected', collected, '#2E7D32', 'Payments received')}
         {seg('Remaining', remaining, remaining > 0 ? '#C62828' : '#2E7D32', 'Balance outstanding')}
       </div>
