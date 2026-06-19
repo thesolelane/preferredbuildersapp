@@ -45,6 +45,9 @@ export default function Invoices({ token }) {
   const [splitPayInv, setSplitPayInv] = useState(null);
   const [splitAllocs, setSplitAllocs] = useState([{ ...EMPTY_INV_ALLOC }, { ...EMPTY_INV_ALLOC }]);
   const [savingSplit, setSavingSplit] = useState(false);
+  const [editInv, setEditInv] = useState(null);
+  const [editForm, setEditForm] = useState({ amount: '', notes: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
@@ -174,6 +177,37 @@ export default function Invoices({ token }) {
       load();
       showToast('Invoice deleted');
     }
+  };
+
+  const openEdit = (inv) => {
+    setSplitPayInv(null);
+    setEditInv(inv);
+    setEditForm({ amount: String(inv.amount || ''), notes: inv.notes || '' });
+  };
+
+  const cancelEdit = () => {
+    setEditInv(null);
+    setEditForm({ amount: '', notes: '' });
+  };
+
+  const saveEdit = async () => {
+    if (!editInv) return;
+    const isJob = editInv.source === 'job';
+    const url = isJob ? `/api/invoices/${editInv.id}` : `/api/direct-invoices/${editInv.id}`;
+    const body = isJob
+      ? { amount: parseFloat(editForm.amount) || editInv.amount, notes: editForm.notes }
+      : { notes: editForm.notes };
+    setSavingEdit(true);
+    const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(body) });
+    if (res.ok) {
+      cancelEdit();
+      load();
+      showToast('Invoice updated');
+    } else {
+      const d = await res.json().catch(() => ({}));
+      showToast(d.error || 'Failed to save', 'error');
+    }
+    setSavingEdit(false);
   };
 
   const filtered = invoices.filter((inv) => {
@@ -547,6 +581,21 @@ export default function Invoices({ token }) {
                     )}
 
                     <button
+                      onClick={() => (editInv?.id === inv.id ? cancelEdit() : openEdit(inv))}
+                      style={{
+                        fontSize: 11,
+                        padding: '4px 10px',
+                        background: editInv?.id === inv.id ? '#E07B2A' : '#E07B2A11',
+                        color: editInv?.id === inv.id ? 'white' : ORANGE,
+                        border: `1px solid ${editInv?.id === inv.id ? ORANGE : '#E07B2A22'}`,
+                        borderRadius: 5,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {editInv?.id === inv.id ? 'Close' : 'Edit'}
+                    </button>
+
+                    <button
                       onClick={() => deleteInv(inv)}
                       style={{
                         fontSize: 11,
@@ -813,6 +862,121 @@ export default function Invoices({ token }) {
                         </>
                       );
                     })()}
+                  </div>
+                )}
+
+                {editInv?.id === inv.id && (
+                  <div
+                    style={{
+                      background: '#fff8f0',
+                      border: `1.5px solid ${ORANGE}`,
+                      borderTop: 'none',
+                      borderRadius: '0 0 8px 8px',
+                      padding: '14px 16px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 'bold',
+                        color: ORANGE,
+                        fontSize: 13,
+                        marginBottom: 10,
+                      }}
+                    >
+                      Edit Invoice — {inv.invoice_number}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+                      {inv.source === 'job' && (
+                        <div style={{ flex: '0 0 150px' }}>
+                          <label
+                            style={{
+                              display: 'block',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: '#555',
+                              marginBottom: 4,
+                            }}
+                          >
+                            Amount ($)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={editForm.amount}
+                            onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              border: '1px solid #ddd',
+                              borderRadius: 5,
+                              fontSize: 13,
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: '#555',
+                            marginBottom: 4,
+                          }}
+                        >
+                          Notes
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.notes}
+                          onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                          placeholder="Add a note…"
+                          style={{
+                            width: '100%',
+                            padding: '6px 8px',
+                            border: '1px solid #ddd',
+                            borderRadius: 5,
+                            fontSize: 13,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={saveEdit}
+                        disabled={savingEdit}
+                        style={{
+                          padding: '7px 18px',
+                          background: ORANGE,
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 6,
+                          cursor: savingEdit ? 'not-allowed' : 'pointer',
+                          fontWeight: 'bold',
+                          fontSize: 12,
+                        }}
+                      >
+                        {savingEdit ? 'Saving…' : 'Save Changes'}
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        style={{
+                          padding: '7px 12px',
+                          background: 'none',
+                          border: '1px solid #ddd',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          color: '#888',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

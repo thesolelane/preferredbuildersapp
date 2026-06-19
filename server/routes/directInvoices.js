@@ -5,6 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const { getDb } = require('../db/database');
 const { generatePDFFromHTML } = require('../services/pdfService');
 const { sendEmail } = require('../services/emailService');
+const { logActivity } = require('./activityLog');
 const fs = require('fs');
 
 const MA_TAX_RATE = 0.0625;
@@ -450,6 +451,21 @@ router.patch('/:id', requireAuth, (req, res) => {
   });
 
   applyUpdate();
+
+  const dirChanges = [];
+  if (newStatus !== inv.status && !becomingPaid) dirChanges.push(`status → ${newStatus}`);
+  if (notes !== undefined && notes !== inv.notes) dirChanges.push('notes updated');
+  if (dirChanges.length > 0) {
+    logActivity({
+      customer_number: null,
+      job_id: inv.job_id || null,
+      event_type: 'INVOICE_UPDATED',
+      description: `Invoice ${inv.invoice_number} edited — ${dirChanges.join(', ')}`,
+      document_ref: inv.invoice_number,
+      recorded_by: req.session?.name || 'staff',
+    });
+  }
+
   res.json({ invoice: db.prepare('SELECT * FROM direct_invoices WHERE id = ?').get(inv.id) });
 });
 

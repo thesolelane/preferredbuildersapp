@@ -19,6 +19,7 @@ const EVENT_CONFIG = {
   PASS_THROUGH_PAID: { label: 'Pass-Through Paid', color: ORANGE, bg: '#fffbeb' },
   PASS_THROUGH_REIMBURSED: { label: 'Pass-Through Reimbursed', color: TEAL, bg: '#f0fdfa' },
   CHANGE_ORDER_CREATED: { label: 'Change Order', color: PURPLE, bg: '#faf5ff' },
+  INVOICE_UPDATED: { label: 'Invoice Edited', color: TEAL, bg: '#f0fdfa' },
   JOB_COMPLETED: { label: 'Job Completed', color: GREEN, bg: '#f0fdf4' },
   NOTE: { label: 'Note', color: '#888', bg: '#f9f9f9' },
 };

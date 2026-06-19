@@ -267,6 +267,26 @@ router.patch(
       inv.id,
     );
 
+    const editChanges = [];
+    if (newStatus !== inv.status && newStatus !== 'paid') editChanges.push(`status → ${newStatus}`);
+    if (Math.abs(newAmount - inv.amount) > 0.001)
+      editChanges.push(`amount → $${newAmount.toFixed(2)}`);
+    if (notes !== undefined && notes !== inv.notes) editChanges.push('notes updated');
+    if (editChanges.length > 0) {
+      const editJob = db.prepare('SELECT * FROM jobs WHERE id = ?').get(inv.job_id);
+      const editContact = editJob?.contact_id
+        ? db.prepare('SELECT pb_customer_number FROM contacts WHERE id = ?').get(editJob.contact_id)
+        : null;
+      logActivity({
+        customer_number: editContact?.pb_customer_number || null,
+        job_id: inv.job_id,
+        event_type: 'INVOICE_UPDATED',
+        description: `Invoice ${inv.invoice_number} edited — ${editChanges.join(', ')}`,
+        document_ref: inv.invoice_number,
+        recorded_by: req.session?.name || 'staff',
+      });
+    }
+
     if (newStatus === 'paid' && inv.status !== 'paid') {
       const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(inv.job_id);
       const contact = job?.contact_id
