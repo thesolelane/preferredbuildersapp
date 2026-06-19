@@ -284,10 +284,15 @@ export default function Payments({ token }) {
     }
   };
 
-  const jobLabel = (p) => p.project_address || p.job_customer || p.job_id?.slice(0, 8) || '—';
+  const jobLabel = (p) => {
+    const name = p.job_customer || p.customer_name || '';
+    const addr = p.project_address || '';
+    if (name && addr) return `${name} — ${addr}`;
+    return name || addr || p.job_id?.slice(0, 8) || '—';
+  };
 
   return (
-    <div style={{ padding: 32, maxWidth: 1100 }}>
+    <div className="pb-page" style={{ maxWidth: 1100 }}>
       <div
         style={{
           display: 'flex',
@@ -636,11 +641,16 @@ export default function Payments({ token }) {
                                   style={{ ...inputStyle, fontSize: 11, padding: '5px 6px' }}
                                 >
                                   <option value="">— Select job —</option>
-                                  {jobs.map((j) => (
-                                    <option key={j.id} value={j.id}>
-                                      {j.project_address || j.customer_name || j.id.slice(0, 8)}
-                                    </option>
-                                  ))}
+                                  {jobs.map((j) => {
+                                    const name = j.customer_name || '';
+                                    const addr = j.project_address || '';
+                                    const label = name && addr ? `${name} — ${addr}` : name || addr || j.id.slice(0, 8);
+                                    return (
+                                      <option key={j.id} value={j.id}>
+                                        {label}
+                                      </option>
+                                    );
+                                  })}
                                 </select>
                               </td>
                               <td style={{ padding: '4px 6px', minWidth: 140 }}>
@@ -863,11 +873,16 @@ export default function Payments({ token }) {
             style={{ ...inputStyle, minWidth: 200 }}
           >
             <option value="">All Jobs</option>
-            {jobs.map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.project_address || j.customer_name || j.id.slice(0, 8)}
-              </option>
-            ))}
+            {jobs.map((j) => {
+              const name = j.customer_name || '';
+              const addr = j.project_address || '';
+              const label = name && addr ? `${name} — ${addr}` : name || addr || j.id.slice(0, 8);
+              return (
+                <option key={j.id} value={j.id}>
+                  {label}
+                </option>
+              );
+            })}
           </select>
         </div>
         <div>
@@ -1214,11 +1229,16 @@ function JobSelect({ value, onChange, jobs }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
       <option value="">Select a job...</option>
-      {jobs.map((j) => (
-        <option key={j.id} value={j.id}>
-          {j.project_address || j.customer_name || j.id.slice(0, 8)}
-        </option>
-      ))}
+      {jobs.map((j) => {
+        const name = j.customer_name || '';
+        const addr = j.project_address || '';
+        const label = name && addr ? `${name} — ${addr}` : name || addr || j.id.slice(0, 8);
+        return (
+          <option key={j.id} value={j.id}>
+            {label}
+          </option>
+        );
+      })}
     </select>
   );
 }
