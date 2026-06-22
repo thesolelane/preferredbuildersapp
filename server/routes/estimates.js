@@ -1080,6 +1080,20 @@ router.post('/:id/revise', requireAuth, requireRole('admin', 'pm', 'system_admin
   res.json({ success: true, version: nextVersion });
 });
 
+// POST /:id/payment-overrides — set custom milestone amounts for a job
+router.post('/:id/payment-overrides', requireAuth, requireRole('admin', 'pm', 'system_admin'), (req, res) => {
+  const db = getDb();
+  const job = db.prepare('SELECT id FROM jobs WHERE id = ? AND deleted = 0').get(req.params.id);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  const { finalAmount, middleAmounts } = req.body;
+  if (finalAmount == null) return res.status(400).json({ error: 'finalAmount required' });
+  const overrides = { finalAmount: Number(finalAmount), middleAmounts: middleAmounts || [] };
+  db.prepare('UPDATE jobs SET payment_overrides = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(
+    JSON.stringify(overrides), job.id,
+  );
+  res.json({ success: true, payment_overrides: overrides });
+});
+
 // Wizard routes (/wizard, /wizard/extract-text, /wizard/questions, /wizard/submit)
 // live in estimateWizard.js
 router.use('/', require('./estimateWizard'));
