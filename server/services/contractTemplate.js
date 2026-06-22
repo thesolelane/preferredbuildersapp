@@ -515,8 +515,24 @@ function calculateMilestoneDistribution(job, totalContractPrice, depositAmount, 
   const fmt = (n) => `$${Number(Math.round(n)).toLocaleString()}`;
   const pct = (n) => `${Math.round(n)}%`;
 
-  // Final SC milestone gets 1% (or $1,000 min)
-  const finalAmt = Math.max(Math.round(totalContractPrice * 0.01), 1000);
+  // Parse per-job payment overrides (set via payment_overrides JSON column on job)
+  let overrides = {};
+  if (job.payment_overrides) {
+    try {
+      overrides =
+        typeof job.payment_overrides === 'string'
+          ? JSON.parse(job.payment_overrides)
+          : job.payment_overrides;
+    } catch (_) {
+      overrides = {};
+    }
+  }
+
+  // Final SC milestone — use override if present, otherwise 1% (min $1,000)
+  const finalAmt =
+    overrides.finalAmount != null
+      ? overrides.finalAmount
+      : Math.max(Math.round(totalContractPrice * 0.01), 1000);
   const finalPct = Math.round((finalAmt / totalContractPrice) * 100);
 
   // Remaining after deposit and final SC
@@ -529,8 +545,13 @@ function calculateMilestoneDistribution(job, totalContractPrice, depositAmount, 
 
   milestones.forEach((m, idx) => {
     const invoiceIdx = idx + 2; // Invoice 1 = deposit
-    milestoneShares[m.code] = pct((perMilestone / totalContractPrice) * 100);
-    milestoneAmounts[m.code] = fmt(perMilestone);
+    // Use per-position override array if present, otherwise distribute evenly
+    const overrideAmt = Array.isArray(overrides.middleAmounts)
+      ? overrides.middleAmounts[idx]
+      : overrides.middleAmounts && overrides.middleAmounts[m.code];
+    const amt = overrideAmt != null ? overrideAmt : perMilestone;
+    milestoneShares[m.code] = pct((amt / totalContractPrice) * 100);
+    milestoneAmounts[m.code] = fmt(amt);
     invoiceNumbers[m.code] = qn
       ? `INV-${qn}-${String(invoiceIdx).padStart(3, '0')}`
       : `Invoice No. ${invoiceIdx}`;

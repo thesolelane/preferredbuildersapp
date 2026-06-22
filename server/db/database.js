@@ -891,6 +891,9 @@ async function initDatabase() {
   addColIfMissing('jobs', 'active_editor', 'TEXT');
   addColIfMissing('jobs', 'active_editor_at', 'DATETIME');
 
+  // ── Migration: custom payment schedule overrides per job ─────────────────────
+  addColIfMissing('jobs', 'payment_overrides', 'TEXT');
+
   // ── Migration: wizard draft autosave (cross-device resume) ───────────────────
   addColIfMissing('leads', 'wizard_draft', 'TEXT');
 
