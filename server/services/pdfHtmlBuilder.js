@@ -12,21 +12,22 @@ function baseCSS() {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; font-size: 10.5pt; color: #1a1a1a; line-height: 1.55; }
 
-    .cover { background: ${BRAND_BLUE}; color: white; padding: 48px 56px; min-height: 200px; }
-    .cover-title { font-size: 26pt; font-weight: bold; letter-spacing: 1px; }
-    .cover-sub { font-size: 13pt; margin-top: 8px; opacity: 0.85; }
-    .cover-meta { margin-top: 24px; font-size: 10pt; opacity: 0.8; line-height: 2; }
-    .cover-badge { display: inline-block; background: ${BRAND_ORANGE}; color: white; padding: 4px 14px; border-radius: 3px; font-size: 9pt; font-weight: bold; margin-top: 16px; }
+    .cover { background: white; border-left: 6px solid ${BRAND_BLUE}; border-top: 3px solid ${BRAND_BLUE}; border-bottom: 1px solid #C8D4E4; padding: 36px 56px; min-height: 200px; }
+    .cover-title { font-size: 26pt; font-weight: bold; letter-spacing: 1px; color: ${BRAND_BLUE}; }
+    .cover-sub { font-size: 13pt; margin-top: 8px; color: #444; }
+    .cover-meta { margin-top: 24px; font-size: 10pt; color: #333; line-height: 2; }
+    .cover-badge { display: inline-block; border: 2px solid ${BRAND_ORANGE}; color: ${BRAND_ORANGE}; padding: 4px 14px; border-radius: 3px; font-size: 9pt; font-weight: bold; margin-top: 16px; background: white; }
 
     .content { padding: 20px 56px; }
 
     .section-header {
-      background: ${BRAND_BLUE}; color: white;
+      background: white; color: ${BRAND_BLUE};
+      border-left: 5px solid ${BRAND_BLUE}; border-bottom: 1.5px solid ${BRAND_BLUE};
       padding: 8px 14px; margin: 24px 0 12px;
       font-size: 11.5pt; font-weight: bold;
       page-break-after: avoid;
     }
-    .section-header.orange { background: ${BRAND_ORANGE}; }
+    .section-header.orange { background: white; color: ${BRAND_ORANGE}; border-left-color: ${BRAND_ORANGE}; border-bottom-color: ${BRAND_ORANGE}; }
     .sub-header {
       color: ${BRAND_BLUE}; font-weight: bold; font-size: 11pt;
       margin: 16px 0 6px; border-bottom: 1px solid #ddd; padding-bottom: 4px;
@@ -34,7 +35,7 @@ function baseCSS() {
     }
 
     table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 10pt; }
-    th { background: ${BRAND_BLUE}; color: white; padding: 7px 10px; text-align: left; font-weight: bold; }
+    th { background: ${LIGHT_BLUE}; color: ${BRAND_BLUE}; padding: 7px 10px; text-align: left; font-weight: bold; border-bottom: 2px solid ${BRAND_BLUE}; }
     td { padding: 6px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
     tr:nth-child(even) td { background: ${LIGHT_GRAY}; }
     tr.total td { background: ${LIGHT_BLUE}; font-weight: bold; border-top: 2px solid ${BRAND_BLUE}; }
