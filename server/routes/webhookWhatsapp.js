@@ -573,6 +573,8 @@ async function handleApproval(job, from, db, language, senderName) {
 
   try {
     const proposalData = JSON.parse(job.proposal_data);
+    if (!proposalData.job) proposalData.job = {};
+    proposalData.job.payment_overrides = job.payment_overrides || null;
     const contractData = await generateContract(proposalData, job.id, language);
 
     const contractPDF = await generatePDF(contractData, 'contract', job.id);

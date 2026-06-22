@@ -745,6 +745,8 @@ router.post('/api/signing/signed/:token', requireFields(['signer_name']), async 
         const { generatePDF } = require('../services/pdfService');
         const proposalData =
           typeof job.proposal_data === 'string' ? JSON.parse(job.proposal_data) : job.proposal_data;
+        if (!proposalData.job) proposalData.job = {};
+        proposalData.job.payment_overrides = job.payment_overrides || null;
         const contractData = await generateContract(proposalData, session.job_id, 'en');
         const contractPDF = await generatePDF(contractData, 'contract', session.job_id);
         db.prepare(

@@ -987,6 +987,8 @@ router.post(
 
       const { generateContract } = require('../services/claudeService');
       const proposalData = JSON.parse(job.proposal_data);
+      if (!proposalData.job) proposalData.job = {};
+      proposalData.job.payment_overrides = job.payment_overrides || null;
       mergeContactIntoProposal(db, job.id, proposalData);
 
       if (!proposalData.customer) proposalData.customer = {};
