@@ -33,6 +33,12 @@ upsertInvoice('INV-1026/1-001', 'contract_invoice', 9401, 'Contract Deposit');
 upsertInvoice('INV-1026/1-002', 'contract_invoice', 9000, 'Progress Payment');
 upsertInvoice('INV-1026/1-003', 'contract_invoice', 10087, 'Substantial Completion');
 
+// Deposit was already paid — mark it accordingly
+db.prepare(
+  "UPDATE invoices SET status = 'paid', amount_paid = 9401, updated_at = CURRENT_TIMESTAMP WHERE job_id = ? AND invoice_number = 'INV-1026/1-001'"
+).run(job.id);
+console.log('INV-1026/1-001 marked as paid.');
+
 // Final check
 const after = db.prepare('SELECT invoice_number, amount, status FROM invoices WHERE job_id = ? ORDER BY id').all(job.id);
 console.log('\n--- FINAL STATE ---');
