@@ -646,6 +646,7 @@ function adaptToContractSchema(data) {
       site_plan_required: false,
       new_sewer_connection: false,
     },
+    payment_overrides: jobRaw.payment_overrides || null,
   };
 
   // Calculate milestone distribution from actual pricing
