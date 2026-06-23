@@ -46,10 +46,10 @@ function jobSummary(db, jobId) {
 
   const invRow = db
     .prepare(
-      `SELECT COALESCE(SUM(amount), 0) AS total FROM (
-        SELECT amount FROM invoices WHERE job_id = ? AND status NOT IN ('void')
+      `SELECT COALESCE(SUM(amt), 0) AS total FROM (
+        SELECT amount AS amt FROM invoices WHERE job_id = ? AND status NOT IN ('void')
         UNION ALL
-        SELECT amount FROM direct_invoices WHERE job_id = ? AND status NOT IN ('void')
+        SELECT total  AS amt FROM direct_invoices WHERE job_id = ? AND status NOT IN ('void')
       )`,
     )
     .get(jobId, jobId);
