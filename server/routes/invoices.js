@@ -243,7 +243,7 @@ router.patch(
     const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id);
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
 
-    const { status, amount, amount_paid, notes, line_items, issued_at, paid_at } = req.body;
+    const { status, amount, amount_paid, notes, line_items, issued_at, paid_at, check_number } = req.body;
 
     const newStatus = VALID_STATUSES.includes(status) ? status : inv.status;
     const newAmount = amount !== undefined ? parseFloat(amount) : inv.amount;
@@ -325,8 +325,8 @@ router.patch(
           db.prepare(
             `INSERT INTO payments_received
               (job_id, customer_name, amount, date_received, payment_type, credit_debit,
-               recorded_by, notes, invoice_id)
-             VALUES (?, ?, ?, ?, ?, 'credit', ?, ?, ?)`,
+               recorded_by, notes, invoice_id, check_number)
+             VALUES (?, ?, ?, ?, ?, 'credit', ?, ?, ?, ?)`,
           ).run(
             inv.job_id,
             job?.customer_name || null,
@@ -336,6 +336,7 @@ router.patch(
             recorder,
             `Auto-recorded from invoice ${inv.invoice_number} marked paid`,
             inv.id,
+            check_number || null,
           );
         }
       }

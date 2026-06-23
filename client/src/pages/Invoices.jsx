@@ -48,6 +48,8 @@ export default function Invoices({ token }) {
   const [editInv, setEditInv] = useState(null);
   const [editForm, setEditForm] = useState({ amount: '', notes: '' });
   const [savingEdit, setSavingEdit] = useState(false);
+  const [markPaidInv, setMarkPaidInv] = useState(null);
+  const [markPaidCheck, setMarkPaidCheck] = useState('');
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
@@ -104,14 +106,16 @@ export default function Invoices({ token }) {
     setSending(null);
   };
 
-  const markPaid = async (inv) => {
+  const markPaid = async (inv, checkNumber) => {
     const url = inv.source === 'job' ? `/api/invoices/${inv.id}` : `/api/direct-invoices/${inv.id}`;
     const res = await fetch(url, {
       method: 'PATCH',
       headers,
-      body: JSON.stringify({ status: 'paid' }),
+      body: JSON.stringify({ status: 'paid', check_number: checkNumber || null }),
     });
     if (res.ok) {
+      setMarkPaidInv(null);
+      setMarkPaidCheck('');
       load();
       showToast('Invoice marked paid');
     } else {
@@ -544,20 +548,55 @@ export default function Invoices({ token }) {
                           </button>
                         )}
 
-                        <button
-                          onClick={() => markPaid(inv)}
-                          style={{
-                            fontSize: 11,
-                            padding: '4px 10px',
-                            background: '#2E7D3211',
-                            color: GREEN,
-                            border: '1px solid #2E7D3222',
-                            borderRadius: 5,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Mark Paid
-                        </button>
+                        {markPaidInv?.id === inv.id ? (
+                          <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                            <input
+                              autoFocus
+                              placeholder="Check #"
+                              value={markPaidCheck}
+                              onChange={(e) => setMarkPaidCheck(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') markPaid(inv, markPaidCheck);
+                                if (e.key === 'Escape') { setMarkPaidInv(null); setMarkPaidCheck(''); }
+                              }}
+                              style={{
+                                width: 80, fontSize: 11, padding: '3px 6px',
+                                border: '1px solid #86efac', borderRadius: 4,
+                              }}
+                            />
+                            <button
+                              onClick={() => markPaid(inv, markPaidCheck)}
+                              style={{
+                                fontSize: 11, padding: '4px 10px',
+                                background: GREEN, color: 'white',
+                                border: 'none', borderRadius: 5, cursor: 'pointer',
+                              }}
+                            >✓</button>
+                            <button
+                              onClick={() => { setMarkPaidInv(null); setMarkPaidCheck(''); }}
+                              style={{
+                                fontSize: 11, padding: '4px 8px',
+                                background: '#eee', color: '#555',
+                                border: 'none', borderRadius: 5, cursor: 'pointer',
+                              }}
+                            >✕</button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => { setMarkPaidInv(inv); setMarkPaidCheck(''); }}
+                            style={{
+                              fontSize: 11,
+                              padding: '4px 10px',
+                              background: '#2E7D3211',
+                              color: GREEN,
+                              border: '1px solid #2E7D3222',
+                              borderRadius: 5,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Mark Paid
+                          </button>
+                        )}
 
                         {isDirect && (
                           <button

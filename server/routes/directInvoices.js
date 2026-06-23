@@ -368,7 +368,7 @@ router.patch('/:id', requireAuth, (req, res) => {
   const inv = db.prepare('SELECT * FROM direct_invoices WHERE id = ?').get(req.params.id);
   if (!inv) return res.status(404).json({ error: 'Not found' });
 
-  const { status, notes, allocations } = req.body;
+  const { status, notes, allocations, check_number } = req.body;
   const newStatus = ['draft', 'sent', 'paid'].includes(status) ? status : inv.status;
   const becomingPaid = newStatus === 'paid' && inv.status !== 'paid';
   const paidAt = becomingPaid ? new Date().toISOString() : inv.paid_at;
@@ -434,11 +434,11 @@ router.patch('/:id', requireAuth, (req, res) => {
         );
       }
     } else if (inv.job_id) {
-      // Single auto-record (existing behavior)
+      // Single auto-record
       db.prepare(
         `INSERT INTO payments_received
-          (job_id, customer_name, amount, date_received, payment_type, credit_debit, recorded_by, notes)
-         VALUES (?, ?, ?, ?, 'invoice', 'credit', ?, ?)`,
+          (job_id, customer_name, amount, date_received, payment_type, credit_debit, recorded_by, notes, check_number)
+         VALUES (?, ?, ?, ?, 'invoice', 'credit', ?, ?, ?)`,
       ).run(
         inv.job_id,
         inv.to_name || null,
@@ -446,6 +446,7 @@ router.patch('/:id', requireAuth, (req, res) => {
         today,
         recorder,
         `Auto-recorded from invoice ${inv.invoice_number}`,
+        check_number || null,
       );
     }
   });
