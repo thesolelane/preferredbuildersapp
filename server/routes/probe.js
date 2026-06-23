@@ -1,7 +1,7 @@
 // server/routes/probe.js
 // Read-only diagnostic probe — for Replit dev environment to query production
 // Auth: Bearer token matched against PROBE_READ_TOKEN env var (set on prod server)
-// ALL endpoints are GET only — no writes possible through this router
+// Mostly read-only; a few targeted write endpoints for production data corrections
 
 const express = require('express');
 const router = express.Router();
@@ -217,6 +217,29 @@ router.get('/errors', requireProbeToken, (req, res) => {
   } catch {
     res.json({ count: 0, errors: [], note: 'error_log table not present on this server' });
   }
+});
+
+// PATCH /api/probe/jobs/:id/payment-overrides — set custom payment schedule on a job
+router.patch('/jobs/:id/payment-overrides', requireProbeToken, (req, res) => {
+  const db = getDb();
+  const job = db.prepare('SELECT id FROM jobs WHERE id = ?').get(req.params.id);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+
+  const { middleAmounts, finalAmount, depositAmount } = req.body;
+  const overrides = {};
+  if (Array.isArray(middleAmounts)) overrides.middleAmounts = middleAmounts;
+  if (finalAmount != null) overrides.finalAmount = finalAmount;
+
+  db.prepare('UPDATE jobs SET payment_overrides = ? WHERE id = ?').run(
+    JSON.stringify(overrides),
+    req.params.id,
+  );
+
+  if (depositAmount != null) {
+    db.prepare('UPDATE jobs SET deposit_amount = ? WHERE id = ?').run(depositAmount, req.params.id);
+  }
+
+  res.json({ ok: true, id: req.params.id, payment_overrides: overrides });
 });
 
 module.exports = router;
