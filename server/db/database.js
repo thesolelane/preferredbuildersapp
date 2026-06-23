@@ -421,6 +421,13 @@ async function initDatabase() {
   addColIfMissing('payments_made', 'time_paid', 'TEXT');
   addColIfMissing('payments_made', 'credit_debit', "TEXT NOT NULL DEFAULT 'debit'");
   addColIfMissing('payments_made', 'recorded_by', 'TEXT');
+
+  // Accounting features: lien waivers, receipt photos, retainage
+  addColIfMissing('payments_made', 'lien_waiver_signed', 'TEXT');
+  addColIfMissing('payments_received', 'receipt_photo', 'TEXT');
+  addColIfMissing('payments_made', 'receipt_photo', 'TEXT');
+  addColIfMissing('jobs', 'retainage_pct', 'REAL NOT NULL DEFAULT 0');
+
   addColIfMissing('jobs', 'takeoff_data', 'TEXT');
   addColIfMissing('jobs', 'closed_reason', 'TEXT');
   addColIfMissing('jobs', 'closed_note', 'TEXT');

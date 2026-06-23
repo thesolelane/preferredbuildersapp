@@ -1,5 +1,7 @@
 'use strict';
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const { requireFields, validateNumber } = require('../middleware/validate');
@@ -730,6 +732,7 @@ router.patch('/received/:id', requireAuth, validateNumber('amount', { min: 0.01 
     payment_type,
     credit_debit,
     notes,
+    invoice_id,
   } = req.body;
 
   let parsedAmt = row.amount;
@@ -751,11 +754,20 @@ router.patch('/received/:id', requireAuth, validateNumber('amount', { min: 0.01 
         : row.credit_debit
       : row.credit_debit;
 
+  const newInvoiceId =
+    invoice_id !== undefined
+      ? invoice_id === null
+        ? null
+        : Number(invoice_id) || null
+      : undefined;
+
   db.prepare(
     `
     UPDATE payments_received SET
       customer_name = ?, check_number = ?, amount = ?, date_received = ?, time_received = ?,
-      payment_type = ?, credit_debit = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+      payment_type = ?, credit_debit = ?, notes = ?,
+      invoice_id = COALESCE(?, invoice_id),
+      updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `,
   ).run(
@@ -767,6 +779,7 @@ router.patch('/received/:id', requireAuth, validateNumber('amount', { min: 0.01 
     pType,
     crDr,
     notes ?? row.notes,
+    newInvoiceId !== undefined ? newInvoiceId : null,
     row.id,
   );
 
@@ -810,6 +823,7 @@ router.patch('/made/:id', requireAuth, validateNumber('amount', { min: 0.01 }), 
     credit_debit,
     notes,
     paid_by,
+    lien_waiver_signed,
   } = req.body;
 
   let parsedAmt = row.amount;
@@ -837,11 +851,17 @@ router.patch('/made/:id', requireAuth, validateNumber('amount', { min: 0.01 }), 
         : 'pb'
       : row.paid_by || 'pb';
 
+  const waiverDate =
+    lien_waiver_signed !== undefined
+      ? lien_waiver_signed || null
+      : (row.lien_waiver_signed ?? null);
+
   db.prepare(
     `
     UPDATE payments_made SET
       payee_name = ?, check_number = ?, amount = ?, date_paid = ?, time_paid = ?,
-      category = ?, credit_debit = ?, notes = ?, paid_by = ?, updated_at = CURRENT_TIMESTAMP
+      category = ?, credit_debit = ?, notes = ?, paid_by = ?,
+      lien_waiver_signed = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `,
   ).run(
@@ -854,11 +874,81 @@ router.patch('/made/:id', requireAuth, validateNumber('amount', { min: 0.01 }), 
     crDr,
     notes ?? row.notes,
     paidBy,
+    waiverDate,
     row.id,
   );
 
   const updated = db.prepare('SELECT * FROM payments_made WHERE id = ?').get(row.id);
   res.json({ payment: updated, summary: jobSummary(db, row.job_id) });
+});
+
+const RECEIPT_DIR = path.join(__dirname, '../../uploads/receipts');
+const ALLOWED_RECEIPT_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf']);
+
+function handleReceiptUpload(type, req, res) {
+  const db = getDb();
+  const table = type === 'received' ? 'payments_received' : 'payments_made';
+  const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Payment not found' });
+  if (!req.files?.photo) return res.status(400).json({ error: 'No file uploaded' });
+
+  const file = req.files.photo;
+  const ext = path.extname(file.name).toLowerCase();
+  if (!ALLOWED_RECEIPT_EXTS.has(ext))
+    return res.status(400).json({ error: 'File type not allowed' });
+
+  if (!fs.existsSync(RECEIPT_DIR)) fs.mkdirSync(RECEIPT_DIR, { recursive: true });
+
+  const filename = `rcpt_${type[0]}_${row.id}_${Date.now()}${ext}`;
+  const dest = path.join(RECEIPT_DIR, filename);
+
+  if (row.receipt_photo) {
+    const old = path.join(RECEIPT_DIR, row.receipt_photo);
+    if (fs.existsSync(old)) fs.unlinkSync(old);
+  }
+
+  file.mv(dest, (err) => {
+    if (err) return res.status(500).json({ error: 'Upload failed' });
+    db.prepare(
+      `UPDATE ${table} SET receipt_photo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    ).run(filename, row.id);
+    res.json({ filename });
+  });
+}
+
+router.post('/received/:id/receipt', requireAuth, (req, res) =>
+  handleReceiptUpload('received', req, res),
+);
+router.post('/made/:id/receipt', requireAuth, (req, res) => handleReceiptUpload('made', req, res));
+
+router.delete('/received/:id/receipt', requireAuth, (req, res) => {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM payments_received WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  if (row.receipt_photo) {
+    const fp = path.join(RECEIPT_DIR, row.receipt_photo);
+    if (fs.existsSync(fp)) fs.unlinkSync(fp);
+  }
+  db.prepare('UPDATE payments_received SET receipt_photo = NULL WHERE id = ?').run(row.id);
+  res.json({ success: true });
+});
+
+router.delete('/made/:id/receipt', requireAuth, (req, res) => {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM payments_made WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  if (row.receipt_photo) {
+    const fp = path.join(RECEIPT_DIR, row.receipt_photo);
+    if (fs.existsSync(fp)) fs.unlinkSync(fp);
+  }
+  db.prepare('UPDATE payments_made SET receipt_photo = NULL WHERE id = ?').run(row.id);
+  res.json({ success: true });
+});
+
+router.get('/receipt/:filename', requireAuth, (req, res) => {
+  const fp = path.join(RECEIPT_DIR, path.basename(req.params.filename));
+  if (!fs.existsSync(fp)) return res.status(404).json({ error: 'Not found' });
+  res.sendFile(fp);
 });
 
 router.delete('/received/:id', requireAuth, (req, res) => {

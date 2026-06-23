@@ -97,6 +97,9 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
   const [splitSiblings, setSplitSiblings] = useState({});
   const [nextMilestone, setNextMilestone] = useState(null);
   const [generatingMilestone, setGeneratingMilestone] = useState(false);
+  const [receiptUpload, setReceiptUpload] = useState(null);
+  const [linkingPaymentId, setLinkingPaymentId] = useState(null);
+  const [linkInvoices, setLinkInvoices] = useState([]);
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
@@ -375,6 +378,74 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
     setGeneratingMilestone(false);
   };
 
+  const signLienWaiver = async (paymentId) => {
+    const signed = new Date().toISOString().slice(0, 10);
+    const res = await fetch(`/api/payments/made/${paymentId}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ lien_waiver_signed: signed }),
+    });
+    if (res.ok) { load(); showToast('Lien waiver signed ✅'); }
+    else showToast('Failed to sign waiver', 'error');
+  };
+
+  const uploadReceipt = async (type, id, file) => {
+    const fd = new FormData();
+    fd.append('photo', file);
+    const res = await fetch(`/api/payments/${type}/${id}/receipt`, {
+      method: 'POST',
+      headers: { 'x-auth-token': token },
+      body: fd,
+    });
+    if (res.ok) { load(); showToast('Receipt attached'); }
+    else showToast('Upload failed', 'error');
+  };
+
+  const removeReceipt = async (type, id) => {
+    const res = await fetch(`/api/payments/${type}/${id}/receipt`, { method: 'DELETE', headers });
+    if (res.ok) { load(); showToast('Receipt removed'); }
+  };
+
+  const openLinkInvoice = async (paymentId) => {
+    setLinkingPaymentId(paymentId);
+    const res = await fetch(`/api/invoices/job/${jobId}`, { headers: { 'x-auth-token': token } });
+    const d = await res.json();
+    setLinkInvoices((d.invoices || []).filter((i) => i.status !== 'void'));
+  };
+
+  const linkInvoice = async (paymentId, invoiceId) => {
+    const res = await fetch(`/api/payments/received/${paymentId}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ invoice_id: invoiceId }),
+    });
+    if (res.ok) {
+      load();
+      setLinkingPaymentId(null);
+      showToast('Linked to invoice ✅');
+    } else showToast('Failed to link', 'error');
+  };
+
+  const releaseRetainage = async (amount) => {
+    if (!(await showConfirm(`Create retainage release invoice for ${fmt(amount)}?`))) return;
+    const res = await fetch(`/api/invoices/job/${jobId}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        invoice_type: 'contract_invoice',
+        amount,
+        notes: 'Retainage Release',
+        line_items: [{ description: 'Retainage Release', amount, type: 'contract' }],
+      }),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      load();
+      showToast(`Created: ${d.invoice.invoice_number} — Retainage Release`);
+      onInvoiceChange?.();
+    } else showToast(d.error || 'Failed to create invoice', 'error');
+  };
+
   const deleteReceived = async (p) => {
     if (
       !(await showConfirm(
@@ -452,7 +523,17 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
     0,
   );
   const grossMargin = totalContractReceived - totalContractPaid;
-  const ptBalance = totalPtPaid - totalPtReceived; // only PB-fronted costs vs reimbursements
+  const ptBalance = totalPtPaid - totalPtReceived;
+
+  const retainagePct = Number(job?.retainage_pct || 0);
+  const retainableBase = contractInvoices
+    .filter((i) => ['sent', 'paid', 'pending_send'].includes(i.status))
+    .reduce((s, i) => s + Number(i.amount || 0), 0);
+  const retainageHeld = retainagePct > 0 ? (retainableBase * retainagePct) / 100 : 0;
+  const retainageAlreadyReleased = contractInvoices
+    .filter((i) => i.notes === 'Retainage Release')
+    .reduce((s, i) => s + Number(i.amount || 0), 0);
+  const retainageReleasable = Math.max(0, retainageHeld - retainageAlreadyReleased); // only PB-fronted costs vs reimbursements
   const totalCOValue = changeOrders.reduce((s, co) => s + Number(co.amount || 0), 0);
   const totalCOPaid = changeOrders
     .filter((co) => co.status === 'paid')
@@ -460,6 +541,19 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
 
   return (
     <div>
+      <input
+        type="file"
+        id="receipt-file-input"
+        accept="image/*,application/pdf"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          if (e.target.files[0] && receiptUpload) {
+            uploadReceipt(receiptUpload.type, receiptUpload.id, e.target.files[0]);
+            e.target.value = '';
+            setReceiptUpload(null);
+          }
+        }}
+      />
       <div
         style={{
           display: 'flex',
@@ -669,6 +763,7 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
             border: `1px solid ${grossMargin >= 0 ? GREEN : RED}40`,
             borderRadius: 7,
             padding: '9px 16px',
+            marginBottom: retainagePct > 0 ? 8 : 0,
           }}
         >
           <span style={{ color: '#555', fontWeight: 600, fontSize: 12 }}>
@@ -688,6 +783,50 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
             {fmt(grossMargin)}
           </span>
         </div>
+
+        {/* Retainage row — only shown when retainage_pct > 0 */}
+        {retainagePct > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#faf5ff',
+              border: '1px solid #d8b4fe',
+              borderRadius: 7,
+              padding: '9px 16px',
+            }}
+          >
+            <span style={{ color: '#6d28d9', fontWeight: 600, fontSize: 12 }}>
+              Retainage Held ({retainagePct}%)
+              <span style={{ fontWeight: 400, color: '#888', marginLeft: 6, fontSize: 11 }}>
+                of invoiced contract work
+              </span>
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: '#6d28d9' }}>
+                {fmt(retainageHeld)}
+              </span>
+              {retainageReleasable > 0.01 && (
+                <button
+                  onClick={() => releaseRetainage(retainageReleasable)}
+                  style={{
+                    padding: '3px 10px',
+                    background: '#7c3aed',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 5,
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Release {fmt(retainageReleasable)}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Invoice Form */}
@@ -1769,6 +1908,7 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                     'Amount',
                     'Recorded By',
                     'Notes',
+                    'Invoice',
                     '',
                   ].map((h) => (
                     <th
@@ -1891,21 +2031,173 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                       <td style={{ padding: '8px 10px', color: '#888', fontSize: 12 }}>
                         {p.notes || ''}
                       </td>
-                      <td style={{ padding: '8px 10px' }}>
-                        <button
-                          onClick={() => deleteReceived(p)}
-                          style={{
-                            padding: '3px 8px',
-                            background: '#ff000011',
-                            color: RED,
-                            border: '1px solid #ff000022',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            fontSize: 11,
-                          }}
-                        >
-                          Delete
-                        </button>
+                      {/* Invoice link cell */}
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                        {p.invoice_id ? (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              padding: '2px 7px',
+                              borderRadius: 8,
+                              background: '#f0fdf4',
+                              color: '#166534',
+                              border: '1px solid #86efac',
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            ✓ Linked
+                          </span>
+                        ) : (
+                          <div style={{ position: 'relative' }}>
+                            <button
+                              onClick={() =>
+                                linkingPaymentId === p.id
+                                  ? setLinkingPaymentId(null)
+                                  : openLinkInvoice(p.id)
+                              }
+                              style={{
+                                padding: '2px 7px',
+                                background: '#eff6ff',
+                                color: '#2563eb',
+                                border: '1px solid #bfdbfe',
+                                borderRadius: 5,
+                                cursor: 'pointer',
+                                fontSize: 10,
+                                fontWeight: 'bold',
+                              }}
+                            >
+                              🔗 Link
+                            </button>
+                            {linkingPaymentId === p.id && (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: 26,
+                                  right: 0,
+                                  zIndex: 50,
+                                  background: 'white',
+                                  border: '1px solid #ddd',
+                                  borderRadius: 7,
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                                  minWidth: 220,
+                                  padding: 8,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 'bold',
+                                    color: '#555',
+                                    marginBottom: 6,
+                                  }}
+                                >
+                                  Select invoice to link:
+                                </div>
+                                {linkInvoices.length === 0 ? (
+                                  <div style={{ fontSize: 11, color: '#aaa' }}>
+                                    No invoices found
+                                  </div>
+                                ) : (
+                                  linkInvoices.map((inv) => (
+                                    <button
+                                      key={inv.id}
+                                      onClick={() => linkInvoice(p.id, inv.id)}
+                                      style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        textAlign: 'left',
+                                        padding: '5px 8px',
+                                        marginBottom: 3,
+                                        background: '#f8faff',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: 5,
+                                        cursor: 'pointer',
+                                        fontSize: 11,
+                                      }}
+                                    >
+                                      <strong>{inv.invoice_number}</strong>{' '}
+                                      <span style={{ color: '#888' }}>
+                                        {fmt(inv.amount)} — {inv.status}
+                                      </span>
+                                    </button>
+                                  ))
+                                )}
+                                <button
+                                  onClick={() => setLinkingPaymentId(null)}
+                                  style={{
+                                    marginTop: 4,
+                                    width: '100%',
+                                    padding: '3px 8px',
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#888',
+                                    cursor: 'pointer',
+                                    fontSize: 10,
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      {/* Actions cell: receipt attach + delete */}
+                      <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          {p.receipt_photo ? (
+                            <a
+                              href={`/api/payments/receipt/${p.receipt_photo}?token=${token}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="View receipt"
+                              style={{
+                                padding: '3px 7px',
+                                background: '#f0fdf4',
+                                color: GREEN,
+                                border: `1px solid ${GREEN}33`,
+                                borderRadius: 4,
+                                fontSize: 11,
+                                textDecoration: 'none',
+                              }}
+                            >
+                              📎
+                            </a>
+                          ) : (
+                            <button
+                              title="Attach receipt"
+                              onClick={() => {
+                                setReceiptUpload({ type: 'received', id: p.id });
+                                document.getElementById('receipt-file-input').click();
+                              }}
+                              style={{
+                                padding: '3px 7px',
+                                background: '#f8faff',
+                                color: '#888',
+                                border: '1px solid #ddd',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                fontSize: 11,
+                              }}
+                            >
+                              📎
+                            </button>
+                          )}
+                          <button
+                            onClick={() => deleteReceived(p)}
+                            style={{
+                              padding: '3px 8px',
+                              background: '#ff000011',
+                              color: RED,
+                              border: '1px solid #ff000022',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              fontSize: 11,
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     {p.split_group_id && expandedSplits.has(p.split_group_id) && (
@@ -1916,7 +2208,7 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                           borderLeft: '3px solid #3B82F6',
                         }}
                       >
-                        <td colSpan={10} style={{ padding: '10px 14px' }}>
+                        <td colSpan={11} style={{ padding: '10px 14px' }}>
                           <div
                             style={{
                               fontSize: 12,
@@ -2048,6 +2340,7 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                     'Amount',
                     'Recorded By',
                     'Notes',
+                    'Waiver',
                     '',
                   ].map((h) => (
                     <th
@@ -2165,21 +2458,99 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                     <td style={{ padding: '8px 10px', color: '#888', fontSize: 12 }}>
                       {p.notes || ''}
                     </td>
-                    <td style={{ padding: '8px 10px' }}>
-                      <button
-                        onClick={() => deleteMade(p)}
-                        style={{
-                          padding: '3px 8px',
-                          background: '#ff000011',
-                          color: RED,
-                          border: '1px solid #ff000022',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          fontSize: 11,
-                        }}
-                      >
-                        Delete
-                      </button>
+                    {/* Lien waiver cell */}
+                    <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                      {p.lien_waiver_signed ? (
+                        <span
+                          title={`Signed ${p.lien_waiver_signed}`}
+                          style={{
+                            fontSize: 10,
+                            padding: '2px 7px',
+                            borderRadius: 8,
+                            background: '#f0fdf4',
+                            color: '#166534',
+                            border: '1px solid #86efac',
+                            fontWeight: 'bold',
+                            cursor: 'default',
+                          }}
+                        >
+                          ✓ {p.lien_waiver_signed}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => signLienWaiver(p.id)}
+                          title="Mark lien waiver as signed today"
+                          style={{
+                            padding: '2px 7px',
+                            background: '#fff7ed',
+                            color: '#c2410c',
+                            border: '1px solid #fed7aa',
+                            borderRadius: 5,
+                            cursor: 'pointer',
+                            fontSize: 10,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          ⚠ Get Waiver
+                        </button>
+                      )}
+                    </td>
+                    {/* Actions: receipt attach + delete */}
+                    <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        {p.receipt_photo ? (
+                          <a
+                            href={`/api/payments/receipt/${p.receipt_photo}?token=${token}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="View receipt"
+                            style={{
+                              padding: '3px 7px',
+                              background: '#fff7ed',
+                              color: ORANGE,
+                              border: `1px solid ${ORANGE}33`,
+                              borderRadius: 4,
+                              fontSize: 11,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            📎
+                          </a>
+                        ) : (
+                          <button
+                            title="Attach receipt"
+                            onClick={() => {
+                              setReceiptUpload({ type: 'made', id: p.id });
+                              document.getElementById('receipt-file-input').click();
+                            }}
+                            style={{
+                              padding: '3px 7px',
+                              background: '#f8faff',
+                              color: '#888',
+                              border: '1px solid #ddd',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              fontSize: 11,
+                            }}
+                          >
+                            📎
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteMade(p)}
+                          style={{
+                            padding: '3px 8px',
+                            background: '#ff000011',
+                            color: RED,
+                            border: '1px solid #ff000022',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            fontSize: 11,
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
