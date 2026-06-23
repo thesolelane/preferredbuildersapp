@@ -283,6 +283,7 @@ app.use('/api/lead-check', require('./routes/leadCheck'));
 app.use('/api/purchase-orders', require('./routes/purchaseOrders'));
 app.use('/api/staff-chat', require('./routes/staffChat'));
 app.use('/api/direct-invoices', require('./routes/directInvoices'));
+app.use('/api/probe', require('./routes/probe'));
 
 // ── SIGNING (public pages at /sign/* + api at /api/signing/*) ─
 app.use(require('./routes/signing'));
