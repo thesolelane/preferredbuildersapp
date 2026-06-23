@@ -95,6 +95,8 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
   const [sendingInvoice, setSendingInvoice] = useState(null);
   const [expandedSplits, setExpandedSplits] = useState(new Set());
   const [splitSiblings, setSplitSiblings] = useState({});
+  const [nextMilestone, setNextMilestone] = useState(null);
+  const [generatingMilestone, setGeneratingMilestone] = useState(false);
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
@@ -107,11 +109,15 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
       fetch(`/api/invoices/job/${jobId}`, { headers: { 'x-auth-token': token } }).then((r) =>
         r.json(),
       ),
-    ]).then(([payData, invData]) => {
+      fetch(`/api/invoices/job/${jobId}/next-milestone`, { headers: { 'x-auth-token': token } })
+        .then((r) => r.json())
+        .catch(() => null),
+    ]).then(([payData, invData, nmData]) => {
       setReceived(payData.received || []);
       setMade(payData.made || []);
       setSummary(payData.summary || { total_received: 0, total_paid_out: 0, balance: 0 });
       setInvoices(invData.invoices || []);
+      setNextMilestone(nmData?.hasNext ? nmData : null);
       setLoading(false);
     });
   }, [jobId, token]);
@@ -343,6 +349,32 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
     }
   };
 
+  const generateNextMilestone = async () => {
+    if (!nextMilestone) return;
+    setGeneratingMilestone(true);
+    const res = await fetch(`/api/invoices/job/${jobId}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        invoice_type: 'contract_invoice',
+        amount: nextMilestone.amount,
+        notes: nextMilestone.title,
+        line_items: [
+          { description: nextMilestone.title, amount: nextMilestone.amount, type: 'contract' },
+        ],
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      load();
+      showToast(`Created: ${data.invoice.invoice_number} — ${nextMilestone.title}`);
+      onInvoiceChange?.();
+    } else {
+      showToast(data.error || 'Failed to create invoice', 'error');
+    }
+    setGeneratingMilestone(false);
+  };
+
   const deleteReceived = async (p) => {
     if (
       !(await showConfirm(
@@ -454,6 +486,38 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
           >
             🧾 Invoices
           </a>
+          {nextMilestone && (
+            <button
+              onClick={generateNextMilestone}
+              disabled={generatingMilestone}
+              title={`Invoice ${nextMilestone.slot} of ${nextMilestone.totalSlots}`}
+              style={{
+                padding: '8px 14px',
+                background: nextMilestone.isFinal ? '#7C3AED' : '#0F766E',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: generatingMilestone ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold',
+                fontSize: 12,
+                opacity: generatingMilestone ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              {generatingMilestone ? (
+                'Creating...'
+              ) : (
+                <>
+                  ➕ INV-{nextMilestone.slot}/{nextMilestone.totalSlots}
+                  <span style={{ fontWeight: 'normal', opacity: 0.9 }}>
+                    {nextMilestone.title} — ${Number(nextMilestone.amount).toLocaleString()}
+                  </span>
+                </>
+              )}
+            </button>
+          )}
           <button
             onClick={() => {
               setShowInvoiceForm(true);

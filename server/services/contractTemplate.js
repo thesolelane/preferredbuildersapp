@@ -537,13 +537,27 @@ function calculateMilestoneDistribution(job, totalContractPrice, depositAmount, 
 
   // Remaining after deposit and final SC
   const middleTotal = totalContractPrice - depositAmount - finalAmt;
-  const perMilestone = milestones.length > 0 ? Math.round(middleTotal / milestones.length) : 0;
+
+  // Reduce milestones to fit 20–33% band unless manual overrides are set
+  const hasManualOverrides =
+    Array.isArray(overrides.middleAmounts) && overrides.middleAmounts.length > 0;
+  let activeMilestones = milestones;
+  if (!hasManualOverrides && middleTotal > 0 && milestones.length > 1) {
+    const maxPerMilestone = totalContractPrice * 0.33;
+    const minCount = Math.max(1, Math.ceil(middleTotal / maxPerMilestone));
+    if (minCount < milestones.length) {
+      activeMilestones = milestones.slice(0, minCount);
+    }
+  }
+
+  const perMilestone =
+    activeMilestones.length > 0 ? Math.round(middleTotal / activeMilestones.length) : 0;
 
   const milestoneShares = {};
   const milestoneAmounts = {};
   const invoiceNumbers = {};
 
-  milestones.forEach((m, idx) => {
+  activeMilestones.forEach((m, idx) => {
     const invoiceIdx = idx + 2; // Invoice 1 = deposit
     // Use per-position override array if present, otherwise distribute evenly
     const overrideAmt = Array.isArray(overrides.middleAmounts)
@@ -557,7 +571,7 @@ function calculateMilestoneDistribution(job, totalContractPrice, depositAmount, 
       : `Invoice No. ${invoiceIdx}`;
   });
 
-  const finalInvoiceIdx = milestones.length + 2;
+  const finalInvoiceIdx = activeMilestones.length + 2;
 
   return {
     milestoneShares,
@@ -1333,4 +1347,114 @@ ${buildAllowanceTables(data)}
 </html>`;
 }
 
-module.exports = { buildContractHTML, adaptToContractSchema, blankContractSchema };
+// ─── Payment schedule helper (used by invoices route for next-milestone) ─────
+// Returns a flat ordered array of payment slots for a job.
+// Slot 1 = deposit, slots 2..N = active milestones, last slot = final SC.
+function getPaymentSchedule(job) {
+  let proposalData = {};
+  try {
+    proposalData = job.proposal_data
+      ? typeof job.proposal_data === 'string'
+        ? JSON.parse(job.proposal_data)
+        : job.proposal_data
+      : {};
+  } catch (_) {}
+
+  const pricing = proposalData.pricing || {};
+  const totalContractPrice = parseFloat(job.total_value) || pricing.totalContractPrice || 0;
+  if (!totalContractPrice) return [];
+
+  const depositPct = pricing.depositPercent || 33;
+  const depositAmount =
+    pricing.depositAmount || Math.round(totalContractPrice * (depositPct / 100));
+
+  let overrides = {};
+  if (job.payment_overrides) {
+    try {
+      overrides =
+        typeof job.payment_overrides === 'string'
+          ? JSON.parse(job.payment_overrides)
+          : job.payment_overrides;
+    } catch (_) {}
+  }
+
+  const finalAmt =
+    overrides.finalAmount != null
+      ? overrides.finalAmount
+      : Math.max(Math.round(totalContractPrice * 0.01), 1000);
+
+  const middleTotal = totalContractPrice - depositAmount - finalAmt;
+
+  // Build a minimal job shape for selectMilestones from stored proposal data
+  const pd = proposalData;
+  const jobShape = {
+    type: pd.project?.type || pd.job?.type || 'renovation',
+    trades: pd.job?.trades || {},
+    has_demo: pd.job?.has_demo || false,
+    has_framing: pd.job?.has_framing || false,
+    has_insulation: pd.job?.has_insulation || false,
+    has_engineer: pd.job?.has_engineer || false,
+    has_architect: pd.job?.has_architect || false,
+    adu: pd.job?.adu || null,
+    customMilestone: pd.job?.customMilestone || null,
+  };
+
+  const milestones = selectMilestones(jobShape);
+
+  const hasManualOverrides =
+    Array.isArray(overrides.middleAmounts) && overrides.middleAmounts.length > 0;
+  let activeMilestones = milestones;
+  if (!hasManualOverrides && middleTotal > 0 && milestones.length > 1) {
+    const maxPerMilestone = totalContractPrice * 0.33;
+    const minCount = Math.max(1, Math.ceil(middleTotal / maxPerMilestone));
+    if (minCount < milestones.length) {
+      activeMilestones = milestones.slice(0, minCount);
+    }
+  }
+
+  const perMilestone =
+    activeMilestones.length > 0 ? Math.round(middleTotal / activeMilestones.length) : 0;
+
+  const schedule = [
+    {
+      slot: 1,
+      title: 'Contract Deposit',
+      amount: depositAmount,
+      isDeposit: true,
+      isFinal: false,
+      code: null,
+    },
+  ];
+
+  activeMilestones.forEach((m, idx) => {
+    const overrideAmt = Array.isArray(overrides.middleAmounts)
+      ? overrides.middleAmounts[idx]
+      : null;
+    schedule.push({
+      slot: idx + 2,
+      title: m.title,
+      amount: overrideAmt != null ? overrideAmt : perMilestone,
+      isDeposit: false,
+      isFinal: false,
+      code: m.code,
+    });
+  });
+
+  schedule.push({
+    slot: activeMilestones.length + 2,
+    title: 'Substantial Completion',
+    amount: finalAmt,
+    isDeposit: false,
+    isFinal: true,
+    code: 'SC',
+  });
+
+  return schedule;
+}
+
+module.exports = {
+  buildContractHTML,
+  adaptToContractSchema,
+  blankContractSchema,
+  getPaymentSchedule,
+};

@@ -557,33 +557,57 @@ export default function Invoices({ token }) {
                               onChange={(e) => setMarkPaidCheck(e.target.value)}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') markPaid(inv, markPaidCheck);
-                                if (e.key === 'Escape') { setMarkPaidInv(null); setMarkPaidCheck(''); }
+                                if (e.key === 'Escape') {
+                                  setMarkPaidInv(null);
+                                  setMarkPaidCheck('');
+                                }
                               }}
                               style={{
-                                width: 80, fontSize: 11, padding: '3px 6px',
-                                border: '1px solid #86efac', borderRadius: 4,
+                                width: 80,
+                                fontSize: 11,
+                                padding: '3px 6px',
+                                border: '1px solid #86efac',
+                                borderRadius: 4,
                               }}
                             />
                             <button
                               onClick={() => markPaid(inv, markPaidCheck)}
                               style={{
-                                fontSize: 11, padding: '4px 10px',
-                                background: GREEN, color: 'white',
-                                border: 'none', borderRadius: 5, cursor: 'pointer',
+                                fontSize: 11,
+                                padding: '4px 10px',
+                                background: GREEN,
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 5,
+                                cursor: 'pointer',
                               }}
-                            >✓</button>
+                            >
+                              ✓
+                            </button>
                             <button
-                              onClick={() => { setMarkPaidInv(null); setMarkPaidCheck(''); }}
-                              style={{
-                                fontSize: 11, padding: '4px 8px',
-                                background: '#eee', color: '#555',
-                                border: 'none', borderRadius: 5, cursor: 'pointer',
+                              onClick={() => {
+                                setMarkPaidInv(null);
+                                setMarkPaidCheck('');
                               }}
-                            >✕</button>
+                              style={{
+                                fontSize: 11,
+                                padding: '4px 8px',
+                                background: '#eee',
+                                color: '#555',
+                                border: 'none',
+                                borderRadius: 5,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              ✕
+                            </button>
                           </span>
                         ) : (
                           <button
-                            onClick={() => { setMarkPaidInv(inv); setMarkPaidCheck(''); }}
+                            onClick={() => {
+                              setMarkPaidInv(inv);
+                              setMarkPaidCheck('');
+                            }}
                             style={{
                               fontSize: 11,
                               padding: '4px 10px',

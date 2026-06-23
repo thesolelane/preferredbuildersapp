@@ -7,6 +7,7 @@ const { getDb } = require('../db/database');
 const { logActivity } = require('./activityLog');
 const { generatePDFFromHTML } = require('../services/pdfService');
 const { sendInvoiceEmail } = require('../services/invoiceEmailService');
+const { getPaymentSchedule } = require('../services/contractTemplate');
 
 const VALID_TYPES = [
   'contract_invoice',
@@ -134,6 +135,31 @@ router.get('/all', requireAuth, (req, res) => {
   res.json({ invoices: all });
 });
 
+// GET /job/:jobId/next-milestone — returns the next unpaid milestone slot for the job
+router.get('/job/:jobId/next-milestone', requireAuth, (req, res) => {
+  const db = getDb();
+  const { jobId } = req.params;
+  const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+
+  const schedule = getPaymentSchedule(job);
+  if (!schedule.length)
+    return res.json({ hasNext: false, reason: 'No payment schedule available' });
+
+  const existingCount = db
+    .prepare(
+      `SELECT COUNT(*) AS cnt FROM invoices
+       WHERE job_id = ? AND invoice_type IN ('contract_invoice','combined_invoice')`,
+    )
+    .get(jobId).cnt;
+
+  if (existingCount >= schedule.length)
+    return res.json({ hasNext: false, reason: 'All invoices generated' });
+
+  const next = schedule[existingCount];
+  res.json({ hasNext: true, totalSlots: schedule.length, existingCount, ...next });
+});
+
 router.get('/job/:jobId', requireAuth, (req, res) => {
   const db = getDb();
   const { jobId } = req.params;
@@ -243,7 +269,8 @@ router.patch(
     const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id);
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
 
-    const { status, amount, amount_paid, notes, line_items, issued_at, paid_at, check_number } = req.body;
+    const { status, amount, amount_paid, notes, line_items, issued_at, paid_at, check_number } =
+      req.body;
 
     const newStatus = VALID_STATUSES.includes(status) ? status : inv.status;
     const newAmount = amount !== undefined ? parseFloat(amount) : inv.amount;
