@@ -57,6 +57,8 @@ export default function Settings({ token, userRole }) {
   const [deployCommitLoading, setDeployCommitLoading] = useState(false);
   const [deployRunning, setDeployRunning] = useState(false);
   const [deployResult, setDeployResult] = useState(null);
+  const [syncRunning, setSyncRunning] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
 
   const [ipBlocked, setIpBlocked] = useState(false);
   const [myIp, setMyIp] = useState(null);
@@ -3883,6 +3885,90 @@ export default function Settings({ token, userRole }) {
             )}
           </div>
         )}
+
+        {/* Payment↔Invoice Sync */}
+        <div
+          style={{
+            marginTop: 32,
+            borderTop: '1px solid #e5e7eb',
+            paddingTop: 24,
+          }}
+        >
+          <h4 style={{ color: BLUE, margin: '0 0 6px' }}>🔗 Payment ↔ Invoice Sync</h4>
+          <p style={{ fontSize: 13, color: '#666', marginBottom: 14 }}>
+            Scans all unlinked payments and connects them to matching open invoices within a 2%
+            tolerance. Safe to run multiple times.
+          </p>
+          <button
+            onClick={async () => {
+              setSyncRunning(true);
+              setSyncResult(null);
+              try {
+                const r = await fetch('/api/remote-update/sync-payments', {
+                  method: 'POST',
+                  headers: { 'x-auth-token': token },
+                });
+                setSyncResult(await r.json());
+              } catch (e) {
+                setSyncResult({ ok: false, message: e.message });
+              } finally {
+                setSyncRunning(false);
+              }
+            }}
+            disabled={syncRunning}
+            style={{
+              padding: '10px 24px',
+              background: syncRunning ? '#888' : '#0ea5e9',
+              color: 'white',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 'bold',
+              fontSize: 13,
+              cursor: syncRunning ? 'not-allowed' : 'pointer',
+              marginBottom: 16,
+            }}
+          >
+            {syncRunning ? '⏳ Syncing…' : '🔗 Run Payment Sync'}
+          </button>
+
+          {syncResult && (
+            <div
+              style={{
+                background: '#f5f7fa',
+                border: '1px solid #dde',
+                borderRadius: 8,
+                padding: '14px 18px',
+                fontSize: 13,
+              }}
+            >
+              <div style={{ fontWeight: 'bold', color: BLUE, marginBottom: 10 }}>
+                ✅ {syncResult.linked} linked &nbsp;·&nbsp; ⏭ {syncResult.skipped} skipped
+              </div>
+              {(syncResult.results || []).map((r, i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: '6px 0',
+                    borderBottom: '1px solid #eee',
+                    color: r.linked ? '#166534' : '#555',
+                  }}
+                >
+                  {r.linked ? (
+                    <>
+                      ✅ <strong>{r.customer}</strong> — ${Number(r.payment).toLocaleString()} →{' '}
+                      {r.invoice} (${Number(r.invoice_amount).toLocaleString()})
+                    </>
+                  ) : (
+                    <>
+                      ⏭ <strong>{r.customer}</strong> — ${Number(r.payment).toLocaleString()} (
+                      {r.payment_type}, {r.date}) — no matching invoice
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   };

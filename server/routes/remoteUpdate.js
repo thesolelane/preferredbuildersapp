@@ -129,4 +129,67 @@ router.get('/status', (req, res) => {
   }
 });
 
+// ── POST /api/remote-update/sync-payments — retroactive payment↔invoice linker ──
+
+router.post('/sync-payments', requireAuth, requireRole('system_admin'), (req, res) => {
+  const { getDb } = require('../db/database');
+  const db = getDb();
+
+  const TOLERANCE_PCT = 0.02;
+  const TOLERANCE_MIN = 25;
+
+  const unlinked = db
+    .prepare(
+      `SELECT r.id, r.job_id, r.amount, r.date_received, r.payment_type, r.check_number,
+              j.customer_name
+       FROM payments_received r
+       JOIN jobs j ON j.id = r.job_id
+       WHERE r.invoice_id IS NULL
+         AND r.credit_debit = 'credit'
+         AND (r.is_pass_through_reimbursement IS NULL OR r.is_pass_through_reimbursement != 1)
+       ORDER BY r.date_received`,
+    )
+    .all();
+
+  const results = [];
+  for (const pmt of unlinked) {
+    const tolerance = Math.max(TOLERANCE_MIN, pmt.amount * TOLERANCE_PCT);
+    const openInvoices = db
+      .prepare(
+        `SELECT id, invoice_number, amount FROM invoices
+         WHERE job_id = ? AND status IN ('draft', 'sent', 'pending_send')
+         ORDER BY issued_at ASC`,
+      )
+      .all(pmt.job_id);
+
+    const match = openInvoices.find((inv) => Math.abs(inv.amount - pmt.amount) <= tolerance);
+    if (match) {
+      const paidAt = pmt.date_received || new Date().toISOString().slice(0, 10);
+      db.prepare(
+        "UPDATE invoices SET status = 'paid', paid_at = ?, amount_paid = ? WHERE id = ?",
+      ).run(paidAt, pmt.amount, match.id);
+      db.prepare('UPDATE payments_received SET invoice_id = ? WHERE id = ?').run(match.id, pmt.id);
+      results.push({
+        linked: true,
+        customer: pmt.customer_name,
+        payment: pmt.amount,
+        invoice: match.invoice_number,
+        invoice_amount: match.amount,
+      });
+    } else {
+      results.push({
+        linked: false,
+        customer: pmt.customer_name,
+        payment: pmt.amount,
+        payment_type: pmt.payment_type,
+        date: pmt.date_received,
+      });
+    }
+  }
+
+  const linked = results.filter((r) => r.linked).length;
+  const skipped = results.filter((r) => !r.linked).length;
+  res.json({ ok: true, linked, skipped, results });
+});
+
 module.exports = router;
