@@ -117,9 +117,13 @@ router.get('/payments', requireProbeToken, (req, res) => {
   const db = getDb();
   const { job_id, limit = 30 } = req.query;
 
-  let rSql = `SELECT r.*, j.customer_name FROM payments_received r
+  let rSql = `SELECT r.id, r.job_id, r.amount, r.date_received, r.payment_type,
+                     r.check_number, r.notes, r.payment_class, j.customer_name
+              FROM payments_received r
               LEFT JOIN jobs j ON j.id = r.job_id WHERE 1=1`;
-  let mSql = `SELECT m.*, j.customer_name FROM payments_made m
+  let mSql = `SELECT m.id, m.job_id, m.amount, m.date_paid, m.category,
+                     m.check_number, m.notes, m.payee_name, j.customer_name
+              FROM payments_made m
               LEFT JOIN jobs j ON j.id = m.job_id WHERE 1=1`;
   const params = [];
   if (job_id) {
@@ -127,8 +131,8 @@ router.get('/payments', requireProbeToken, (req, res) => {
     mSql += ' AND m.job_id = ?';
     params.push(job_id);
   }
-  rSql += ' ORDER BY r.date DESC, r.created_at DESC LIMIT ?';
-  mSql += ' ORDER BY m.date DESC, m.created_at DESC LIMIT ?';
+  rSql += ' ORDER BY r.date_received DESC, r.created_at DESC LIMIT ?';
+  mSql += ' ORDER BY m.date_paid DESC, m.created_at DESC LIMIT ?';
 
   const received = db.prepare(rSql).all(...params, Number(limit));
   const made = db.prepare(mSql).all(...params, Number(limit));
