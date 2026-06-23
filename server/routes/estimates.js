@@ -8,6 +8,7 @@ const { getDb } = require('../db/database');
 const { generatePDF } = require('../services/pdfService');
 const { sendWhatsApp } = require('../services/whatsappService');
 const { logAudit } = require('../services/auditService');
+const { autoCreateDepositInvoice } = require('../services/autoDepositInvoice');
 const { logActivity } = require('./activityLog');
 const jobMemory = require('../services/jobMemory');
 const { tickQuoteCounter } = require('../services/assessmentService');
@@ -1080,19 +1081,48 @@ router.post('/:id/revise', requireAuth, requireRole('admin', 'pm', 'system_admin
   res.json({ success: true, version: nextVersion });
 });
 
+// POST /:id/mark-contract-signed — mark contract as manually signed, trigger deposit invoice
+router.post(
+  '/:id/mark-contract-signed',
+  requireAuth,
+  requireRole('admin', 'pm', 'system_admin'),
+  (req, res) => {
+    const db = getDb();
+    const job = db.prepare('SELECT * FROM jobs WHERE id = ? AND deleted = 0').get(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    db.prepare('UPDATE jobs SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(
+      'contract_signed',
+      job.id,
+    );
+    autoCreateDepositInvoice(job.id, db);
+    logAudit(
+      job.id,
+      'contract_signed',
+      'Contract manually marked as signed via admin panel',
+      req.session?.name || 'admin',
+    );
+    res.json({ success: true, message: 'Contract marked as signed' });
+  },
+);
+
 // POST /:id/payment-overrides — set custom milestone amounts for a job
-router.post('/:id/payment-overrides', requireAuth, requireRole('admin', 'pm', 'system_admin'), (req, res) => {
-  const db = getDb();
-  const job = db.prepare('SELECT id FROM jobs WHERE id = ? AND deleted = 0').get(req.params.id);
-  if (!job) return res.status(404).json({ error: 'Job not found' });
-  const { finalAmount, middleAmounts } = req.body;
-  if (finalAmount == null) return res.status(400).json({ error: 'finalAmount required' });
-  const overrides = { finalAmount: Number(finalAmount), middleAmounts: middleAmounts || [] };
-  db.prepare('UPDATE jobs SET payment_overrides = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(
-    JSON.stringify(overrides), job.id,
-  );
-  res.json({ success: true, payment_overrides: overrides });
-});
+router.post(
+  '/:id/payment-overrides',
+  requireAuth,
+  requireRole('admin', 'pm', 'system_admin'),
+  (req, res) => {
+    const db = getDb();
+    const job = db.prepare('SELECT id FROM jobs WHERE id = ? AND deleted = 0').get(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const { finalAmount, middleAmounts } = req.body;
+    if (finalAmount == null) return res.status(400).json({ error: 'finalAmount required' });
+    const overrides = { finalAmount: Number(finalAmount), middleAmounts: middleAmounts || [] };
+    db.prepare(
+      'UPDATE jobs SET payment_overrides = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    ).run(JSON.stringify(overrides), job.id);
+    res.json({ success: true, payment_overrides: overrides });
+  },
+);
 
 // Wizard routes (/wizard, /wizard/extract-text, /wizard/questions, /wizard/submit)
 // live in estimateWizard.js

@@ -572,6 +572,28 @@ export default function JobDetail({ token, userName }) {
     setManualUploading(false);
   };
 
+  const markContractSigned = async () => {
+    if (
+      !(await showConfirm(
+        'Mark this contract as signed? This will update the job status and create a deposit invoice.',
+      ))
+    )
+      return;
+    setActionLoading(true);
+    const res = await fetch(`/api/estimates/${id}/mark-contract-signed`, {
+      method: 'POST',
+      headers,
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('Contract marked as signed — deposit invoice created');
+      load();
+    } else {
+      showToast(data.error || 'Failed to mark as signed', 'error');
+    }
+    setActionLoading(false);
+  };
+
   const reprocessJob = async () => {
     if (
       !(await showConfirm(
@@ -1111,6 +1133,8 @@ export default function JobDetail({ token, userName }) {
               manualUploading={manualUploading}
               manualUploadDone={manualUploadDone}
               uploadManualSignature={uploadManualSignature}
+              markContractSigned={markContractSigned}
+              actionLoading={actionLoading}
             />
           )}
 

@@ -69,6 +69,8 @@ export default function JobSignaturesTab({
   manualUploading,
   manualUploadDone,
   uploadManualSignature,
+  markContractSigned,
+  actionLoading,
 }) {
   return (
     <div>
@@ -195,7 +197,7 @@ export default function JobSignaturesTab({
                 opacity: manualUploading ? 0.5 : 1,
               }}
             >
-              {manualUploading ? 'Uploading...' : '📑 Upload Signed Contract'}
+              {manualUploading ? 'Uploading...' : '✅ Upload Signed Contract & Mark as Signed'}
             </span>
           </label>
           <ScanButton
