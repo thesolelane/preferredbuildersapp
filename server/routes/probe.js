@@ -33,7 +33,7 @@ router.get('/jobs', requireProbeToken, (req, res) => {
   const db = getDb();
   const { status, limit = 20 } = req.query;
   let sql = `
-    SELECT id, customer_name, project_address, project_city, status,
+    SELECT id, pb_number, customer_name, project_address, project_city, status,
            total_value, created_at, updated_at
     FROM jobs
     WHERE archived = 0
@@ -90,7 +90,7 @@ router.get('/jobs/:id/detail', requireProbeToken, (req, res) => {
   const db = getDb();
   const job = db
     .prepare(
-      `SELECT id, customer_name, customer_email, project_address, project_city,
+      `SELECT id, pb_number, customer_name, customer_email, project_address, project_city,
               status, total_value, deposit_amount
        FROM jobs WHERE id = ?`,
     )
