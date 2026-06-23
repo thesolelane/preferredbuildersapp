@@ -238,6 +238,13 @@ export default function JobDetail({ token, userName }) {
       .catch(() => setPOLoading(false));
   };
 
+  const loadPaymentSummary = () => {
+    fetch(`/api/payments/summary/${id}`, { headers: { 'x-auth-token': token } })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setPaymentSummary(data))
+      .catch(() => setPaymentSummary(null));
+  };
+
   const load = () => {
     fetch(`/api/jobs/${id}`, { headers: { 'x-auth-token': token } })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
@@ -261,6 +268,7 @@ export default function JobDetail({ token, userName }) {
       .then((r) => r.json())
       .then((data) => setSigSessions(data.sessions || []))
       .catch(() => {});
+    loadPaymentSummary();
   };
 
   useEffect(() => {
@@ -361,10 +369,6 @@ export default function JobDetail({ token, userName }) {
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => setPipelineCtx(data))
       .catch(() => setPipelineCtx(null));
-    fetch(`/api/payments/summary/${id}`, { headers: { 'x-auth-token': token } })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data) => setPaymentSummary(data))
-      .catch(() => setPaymentSummary(null));
     fetch(`/api/tasks?job_id=${id}`, { headers: { 'x-auth-token': token } })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => {
