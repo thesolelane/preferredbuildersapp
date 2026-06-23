@@ -85,6 +85,68 @@ router.get('/jobs/:id', requireProbeToken, (req, res) => {
   });
 });
 
+// GET /api/probe/jobs/:id/detail — all payments + invoices for one job
+router.get('/jobs/:id/detail', requireProbeToken, (req, res) => {
+  const db = getDb();
+  const job = db
+    .prepare(
+      `SELECT id, customer_name, project_address, project_city, status, total_value, deposit_amount
+       FROM jobs WHERE id = ?`,
+    )
+    .get(req.params.id);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+
+  const paymentsIn = db
+    .prepare(
+      `SELECT id, amount, date_received, payment_type, check_number, payment_class, invoice_id, notes
+       FROM payments_received WHERE job_id = ? ORDER BY date_received`,
+    )
+    .all(job.id);
+
+  const paymentsOut = db
+    .prepare(
+      `SELECT id, amount, date_paid, category, check_number, payee_name, notes
+       FROM payments_made WHERE job_id = ? ORDER BY date_paid`,
+    )
+    .all(job.id);
+
+  const invoices = db
+    .prepare(
+      `SELECT id, invoice_number, invoice_type, status, amount, amount_paid, issued_at, paid_at
+       FROM invoices WHERE job_id = ? ORDER BY issued_at`,
+    )
+    .all(job.id);
+
+  const directInvoices = db
+    .prepare(
+      `SELECT id, invoice_number, status, total, issued_at, paid_at
+       FROM direct_invoices WHERE job_id = ? ORDER BY issued_at`,
+    )
+    .all(job.id);
+
+  const totalIn = paymentsIn.reduce((s, r) => s + r.amount, 0);
+  const totalOut = paymentsOut.reduce((s, r) => s + r.amount, 0);
+  const totalInvoiced =
+    invoices.filter((i) => i.status !== 'void').reduce((s, i) => s + i.amount, 0) +
+    directInvoices.filter((i) => i.status !== 'void').reduce((s, i) => s + i.total, 0);
+
+  res.json({
+    job,
+    summary: {
+      contract: job.total_value,
+      invoiced: totalInvoiced,
+      collected: totalIn,
+      paid_out: totalOut,
+      balance_due: job.total_value - totalIn,
+      over_under_invoiced: totalInvoiced - totalIn,
+    },
+    payments_in: paymentsIn,
+    payments_out: paymentsOut,
+    invoices,
+    direct_invoices: directInvoices,
+  });
+});
+
 // GET /api/probe/stats — dashboard-level counts + totals
 router.get('/stats', requireProbeToken, (req, res) => {
   const db = getDb();
