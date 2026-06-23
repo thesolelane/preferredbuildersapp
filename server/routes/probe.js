@@ -90,7 +90,8 @@ router.get('/jobs/:id/detail', requireProbeToken, (req, res) => {
   const db = getDb();
   const job = db
     .prepare(
-      `SELECT id, customer_name, project_address, project_city, status, total_value, deposit_amount
+      `SELECT id, customer_name, customer_email, project_address, project_city,
+              status, total_value, deposit_amount
        FROM jobs WHERE id = ?`,
     )
     .get(req.params.id);
