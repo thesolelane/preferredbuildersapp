@@ -334,6 +334,11 @@ app.use((err, req, res, _next) => {
   if (err && err.message === 'Unexpected end of form') {
     return res.status(400).json({ error: 'Upload incomplete — connection dropped' });
   }
+  // Multipart body sent with Content-Type: application/json — body-parser rejects it.
+  // Return 400 instead of crashing with a 500.
+  if (err && err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Invalid request body — expected JSON' });
+  }
   console.error('Server error:', err.message || err, err.stack || '');
   res.status(500).json({ error: 'Internal server error', message: err.message });
 });
