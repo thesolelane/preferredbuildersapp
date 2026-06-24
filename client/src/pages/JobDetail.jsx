@@ -635,7 +635,7 @@ export default function JobDetail({ token, userName }) {
         reviseFiles.forEach((f, i) => fd.append(`file_${i}`, f));
         const extractRes = await fetch('/api/jobs/extract-from-files', {
           method: 'POST',
-          headers,
+          headers: { 'x-auth-token': token },
           body: fd,
         });
         if (extractRes.ok) {
