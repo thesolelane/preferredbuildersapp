@@ -54,6 +54,26 @@ router.post('/api/signing/send-proposal/:jobId', requireAuth, async (req, res) =
       'admin',
     );
 
+    // Auto-create a 3-day follow-up task for this proposal
+    try {
+      const followUpDue = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .replace('T', ' ')
+        .slice(0, 19);
+      const taskTitle = `📞 Follow up on proposal — ${job.customer_name || 'Customer'} (${job.project_address || 'project'})`;
+      db.prepare(
+        `INSERT INTO tasks (title, description, due_at, job_id, priority, task_type, status)
+         VALUES (?, ?, ?, ?, 'normal', 'pipeline', 'pending')`,
+      ).run(
+        taskTitle,
+        'Check if customer has reviewed the proposal. Answer any questions and confirm next steps.',
+        followUpDue,
+        job.id,
+      );
+    } catch (e) {
+      console.warn('[signingAdmin] Could not auto-create follow-up task:', e.message);
+    }
+
     const amount = job.total_value ? `$${Number(job.total_value).toLocaleString()}` : '';
 
     await sendEmail({

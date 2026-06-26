@@ -219,6 +219,41 @@ router.get('/errors', requireProbeToken, (req, res) => {
   }
 });
 
+// GET /api/probe/leads?stage= — active leads summary
+router.get('/leads', requireProbeToken, (req, res) => {
+  const db = getDb();
+  const { stage } = req.query;
+  let sql = `SELECT id, caller_name, caller_phone, stage, job_address, job_city,
+                    appointment_at, created_at, updated_at, stage_entered_at
+             FROM leads WHERE archived = 0`;
+  const params = [];
+  if (stage) {
+    sql += ' AND stage = ?';
+    params.push(stage);
+  }
+  sql += ' ORDER BY updated_at DESC';
+  const leads = db.prepare(sql).all(...params);
+  res.json({ count: leads.length, leads });
+});
+
+// GET /api/probe/tasks?status= — task list summary
+router.get('/tasks', requireProbeToken, (req, res) => {
+  const db = getDb();
+  const { status = 'pending' } = req.query;
+  const tasks = db
+    .prepare(
+      `SELECT t.id, t.title, t.status, t.priority, t.due_at, t.assigned_to,
+              t.recurrence, t.task_type, t.created_at,
+              j.customer_name, j.project_address
+       FROM tasks t
+       LEFT JOIN jobs j ON j.id = t.job_id
+       WHERE t.status = ?
+       ORDER BY t.due_at ASC NULLS LAST`,
+    )
+    .all(status);
+  res.json({ count: tasks.length, tasks });
+});
+
 // PATCH /api/probe/jobs/:id/payment-overrides — set custom payment schedule on a job
 router.patch('/jobs/:id/payment-overrides', requireProbeToken, (req, res) => {
   const db = getDb();
