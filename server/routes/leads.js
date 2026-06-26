@@ -414,6 +414,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
       }
       updates.push('stage = ?');
       params.push(stage);
+      updates.push('stage_entered_at = CURRENT_TIMESTAMP');
 
       // Merge any incoming job details into the lead before using them
       const merged = {

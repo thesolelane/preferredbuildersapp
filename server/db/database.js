@@ -915,6 +915,10 @@ async function initDatabase() {
   // ── Migration: task_type to distinguish lead-pipeline tasks from manual ones ──
   addColIfMissing('tasks', 'task_type', "TEXT DEFAULT 'manual'");
   addColIfMissing('tasks', 'reminded_at', 'DATETIME');
+  // ── Migration: recurring tasks ─────────────────────────────────────────────────
+  addColIfMissing('tasks', 'recurrence', "TEXT NOT NULL DEFAULT 'none'");
+  // ── Migration: leads stage duration tracking ───────────────────────────────────
+  addColIfMissing('leads', 'stage_entered_at', 'DATETIME');
 
   // ── Vendor documents table (workers comp, GL insurance, etc.) ─────────────────
   db.exec(`

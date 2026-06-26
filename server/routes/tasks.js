@@ -140,8 +140,12 @@ router.post('/', requireAuth, requireFields(['title']), async (req, res) => {
     assigned_to,
     remind_at,
     remind_interval_hours,
+    recurrence,
   } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
+
+  const VALID_RECURRENCE = ['none', 'daily', 'weekly', 'biweekly', 'monthly'];
+  const resolvedRecurrence = VALID_RECURRENCE.includes(recurrence) ? recurrence : 'none';
 
   // Manual tasks: only set remind_at if the caller explicitly provides one.
   // Lead pipeline tasks pass remind_at from their own logic (taskDefs in leads.js).
@@ -152,8 +156,8 @@ router.post('/', requireAuth, requireFields(['title']), async (req, res) => {
     .prepare(
       `
     INSERT INTO tasks (title, description, due_at, job_id, contact_id, priority, calendar_url,
-      remind_at, remind_interval_hours, assigned_to, task_type)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')
+      remind_at, remind_interval_hours, assigned_to, task_type, recurrence)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?)
   `,
     )
     .run(
@@ -167,6 +171,7 @@ router.post('/', requireAuth, requireFields(['title']), async (req, res) => {
       explicitRemindAt,
       explicitInterval,
       assigned_to || null,
+      resolvedRecurrence,
     );
 
   const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(info.lastInsertRowid);
@@ -197,6 +202,18 @@ router.post('/', requireAuth, requireFields(['title']), async (req, res) => {
   res.json({ task: enrichTask(task) });
 });
 
+// ── Recurrence helpers ────────────────────────────────────────────────────────
+const RECURRENCE_HOURS = { daily: 24, weekly: 168, biweekly: 336, monthly: 720 };
+
+function nextDueDate(currentDue, recurrence) {
+  const hours = RECURRENCE_HOURS[recurrence];
+  if (!hours || !currentDue) return null;
+  return new Date(new Date(currentDue).getTime() + hours * 3_600_000)
+    .toISOString()
+    .replace('T', ' ')
+    .slice(0, 19);
+}
+
 // ── PATCH /api/tasks/:id ──────────────────────────────────────────────────────
 router.patch(
   '/:id',
@@ -217,6 +234,7 @@ router.patch(
       remind_at,
       remind_interval_hours,
       assigned_to,
+      recurrence,
     } = req.body;
     const newTitle = title !== undefined ? title.trim() : task.title;
     const newDescription = description !== undefined ? description.trim() : task.description;
@@ -232,15 +250,19 @@ router.patch(
       parsedInterval !== null && VALID_INTERVALS.includes(parsedInterval)
         ? parsedInterval
         : task.remind_interval_hours || null;
+    const VALID_RECURRENCE = ['none', 'daily', 'weekly', 'biweekly', 'monthly'];
+    const newRecurrence =
+      recurrence !== undefined && VALID_RECURRENCE.includes(recurrence)
+        ? recurrence
+        : task.recurrence || 'none';
 
     const updated = { ...task, title: newTitle, description: newDescription, due_at: newDueAt };
     const calURL = makeCalendarURL(updated);
 
     db.prepare(
-      `
-    UPDATE tasks SET title=?, description=?, due_at=?, status=?, priority=?, calendar_url=?,
-      remind_at=?, remind_interval_hours=?, assigned_to=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
-  `,
+      `UPDATE tasks SET title=?, description=?, due_at=?, status=?, priority=?, calendar_url=?,
+        remind_at=?, remind_interval_hours=?, assigned_to=?, recurrence=?,
+        updated_at=CURRENT_TIMESTAMP WHERE id=?`,
     ).run(
       newTitle,
       newDescription,
@@ -251,11 +273,36 @@ router.patch(
       newRemindAt,
       newRemindIntervalHours,
       newAssignedTo,
+      newRecurrence,
       task.id,
     );
 
     if (task.job_id && status && status !== task.status) {
       logAudit(task.job_id, 'task_status_changed', `Task "${newTitle}" → ${newStatus}`, 'admin');
+    }
+
+    // Auto-create next recurrence when task is marked done
+    if (newStatus === 'done' && task.status !== 'done' && newRecurrence && newRecurrence !== 'none') {
+      const nextDue = nextDueDate(newDueAt, newRecurrence);
+      if (nextDue) {
+        db.prepare(
+          `INSERT INTO tasks (title, description, due_at, job_id, contact_id, priority,
+            recurrence, remind_interval_hours, assigned_to, task_type, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+        ).run(
+          newTitle,
+          newDescription || null,
+          nextDue,
+          task.job_id || null,
+          task.contact_id || null,
+          newPriority,
+          newRecurrence,
+          newRemindIntervalHours || null,
+          newAssignedTo || null,
+          task.task_type || 'manual',
+        );
+        console.log(`[Tasks] Recurring task scheduled: "${newTitle}" → ${nextDue}`);
+      }
     }
 
     res.json({ task: enrichTask(db.prepare('SELECT * FROM tasks WHERE id = ?').get(task.id)) });

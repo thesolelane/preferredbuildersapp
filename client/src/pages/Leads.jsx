@@ -1021,6 +1021,24 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard, o
   const isSigned = lead.stage === 'signed';
   const isQuoteDraft = lead.stage === 'quote_draft';
 
+  // Stage duration + stale detection
+  const STALE_DAYS = {
+    incoming: 1,
+    callback_done: 2,
+    site_visit_complete: 2,
+    quote_draft: 3,
+    quote_sent: 7,
+    follow_up_1: 7,
+    follow_up_2: 7,
+  };
+  const stageAnchor = lead.stage_entered_at || lead.updated_at;
+  const daysInStage = stageAnchor
+    ? Math.floor((Date.now() - new Date(stageAnchor).getTime()) / 86_400_000)
+    : 0;
+  const staleThreshold = STALE_DAYS[lead.stage];
+  const isStale =
+    !isArchived && lead.stage !== 'signed' && staleThreshold != null && daysInStage >= staleThreshold;
+
   const nextLabel = {
     incoming: '📞 Log Callback Done',
     callback_done: '📅 Book Appointment',
@@ -1163,6 +1181,23 @@ function LeadCard({ lead, token, onAdvance, onArchive, onDelete, onOpenWizard, o
                 }}
               >
                 {lead.archive_reason.replace(/_/g, ' ')}
+              </span>
+            )}
+            {/* Stage duration / stale badge */}
+            {!isArchived && lead.stage !== 'signed' && daysInStage > 0 && (
+              <span
+                style={{
+                  background: isStale ? '#FFF3CD' : '#f0f4f8',
+                  color: isStale ? '#856404' : '#64748b',
+                  borderRadius: 20,
+                  padding: '2px 9px',
+                  fontSize: 11,
+                  fontWeight: isStale ? 700 : 400,
+                  border: isStale ? '1px solid #FFECB5' : '1px solid #e2e8f0',
+                }}
+                title={`${daysInStage} day${daysInStage !== 1 ? 's' : ''} in current stage`}
+              >
+                {isStale ? `⚠️ ${daysInStage}d stale` : `${daysInStage}d in stage`}
               </span>
             )}
           </div>

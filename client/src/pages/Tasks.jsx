@@ -597,6 +597,7 @@ export default function Tasks({ token }) {
   const [range, setRange] = useState('all');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [personFilter, setPersonFilter] = useState('all');
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -605,6 +606,7 @@ export default function Tasks({ token }) {
     assigned_to: '',
     remind_at: '',
     remind_interval_hours: '',
+    recurrence: 'none',
   });
   const [saving, setSaving] = useState(false);
   const [snoozing, setSnoozing] = useState({});
@@ -645,6 +647,7 @@ export default function Tasks({ token }) {
     assigned_to: '',
     remind_at: '',
     remind_interval_hours: '',
+    recurrence: 'none',
   };
 
   const createTask = async () => {
@@ -657,6 +660,7 @@ export default function Tasks({ token }) {
       due_at: form.due_at || null,
       priority: form.priority,
       assigned_to: form.assigned_to || null,
+      recurrence: form.recurrence || 'none',
     };
     if (form.remind_at) {
       payload.remind_at = form.remind_at;
@@ -718,8 +722,12 @@ export default function Tasks({ token }) {
     setSnoozing((s) => ({ ...s, [task.id]: false }));
   };
 
+  // Apply person filter before grouping
+  const visibleTasks =
+    personFilter === 'all' ? tasks : tasks.filter((t) => t.assigned_to === personFilter);
+
   // Group tasks by date
-  const grouped = tasks.reduce((acc, task) => {
+  const grouped = visibleTasks.reduce((acc, task) => {
     let key = 'No due date';
     if (task.due_at) {
       const d = new Date(task.due_at);
@@ -918,6 +926,29 @@ export default function Tasks({ token }) {
                   ))}
                 </select>
               </div>
+              <div style={{ minWidth: 140 }}>
+                <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>
+                  Recurrence
+                </label>
+                <select
+                  value={form.recurrence}
+                  onChange={(e) => setForm((p) => ({ ...p, recurrence: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1.5px solid #C8D4E4',
+                    borderRadius: 6,
+                    fontSize: 13,
+                    height: 37,
+                  }}
+                >
+                  <option value="none">No repeat</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Every 2 weeks</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
               <div style={{ flex: 1, minWidth: 160 }}>
                 <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>
                   Send Reminder At (optional)
@@ -1046,6 +1077,29 @@ export default function Tasks({ token }) {
             {l}
           </button>
         ))}
+        {staffUsers.length > 0 && (
+          <>
+            <div style={{ borderLeft: '1px solid #eee', margin: '0 4px' }} />
+            {[['all', '👥 Everyone'], ...staffUsers.map((n) => [n, n])].map(([v, l]) => (
+              <button
+                key={v}
+                onClick={() => setPersonFilter(v)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 20,
+                  border: '1px solid #ddd',
+                  background: personFilter === v ? '#2E7D32' : 'white',
+                  color: personFilter === v ? 'white' : '#555',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  fontWeight: personFilter === v ? 'bold' : 'normal',
+                }}
+              >
+                {l}
+              </button>
+            ))}
+          </>
+        )}
       </div>
 
       {/* Task list */}
@@ -1171,6 +1225,25 @@ export default function Tasks({ token }) {
                           {task.assigned_to && (
                             <span style={{ fontSize: 11, color: '#666' }}>
                               👤 {task.assigned_to}
+                            </span>
+                          )}
+                          {task.recurrence && task.recurrence !== 'none' && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                color: '#0288D1',
+                                background: '#E1F5FE',
+                                borderRadius: 10,
+                                padding: '1px 7px',
+                              }}
+                            >
+                              🔁{' '}
+                              {{
+                                daily: 'Daily',
+                                weekly: 'Weekly',
+                                biweekly: 'Every 2 wks',
+                                monthly: 'Monthly',
+                              }[task.recurrence] || task.recurrence}
                             </span>
                           )}
                         </div>
