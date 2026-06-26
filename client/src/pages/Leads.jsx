@@ -1873,10 +1873,13 @@ function buildCalURL(lead) {
     const endDt = new Date(new Date(lead.appointment_at).getTime() + 2 * 3600000);
     const end = calDate(endDt.toISOString());
     const addr = [lead.job_address, lead.job_city].filter(Boolean).join(', ');
+    // ctz=UTC tells Google Calendar the date/time values are UTC so it converts
+    // to the viewer's local timezone correctly (fixes 3-4h offset).
     const parts = [
       'action=TEMPLATE',
-      `text=${encodeURIComponent(`Appointment: ${lead.caller_name}`)}`,
+      `text=${encodeURIComponent(`Site Visit: ${lead.caller_name}`)}`,
       `dates=${start}/${end}`,
+      'ctz=UTC',
       `details=${encodeURIComponent(`Site visit with ${lead.caller_name} (${lead.caller_phone})`)}`,
     ];
     if (addr) parts.push(`location=${encodeURIComponent(addr)}`);

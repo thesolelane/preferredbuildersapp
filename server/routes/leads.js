@@ -8,6 +8,7 @@ const { getDb } = require('../db/database');
 const { logAudit } = require('../services/auditService');
 const { findOrCreateContact, generatePbCustomerNumber } = require('../services/jobHelpers');
 const { enrichPropertyBackground } = require('../services/propertyEnrichment');
+const gcal = require('../services/googleCalendar');
 
 const FIELD_PHOTOS_DIR = path.resolve(__dirname, '../../uploads/field_photos');
 const LEAD_DOCS_DIR = path.resolve(__dirname, '../../uploads/lead_docs');
@@ -41,13 +42,29 @@ function makeCalURL({ title, startIso, durationHours = 1, description = '', loca
     const start = calDate(new Date(startIso).toISOString());
     const endDt = new Date(new Date(startIso).getTime() + durationHours * 3600000);
     const end = calDate(endDt.toISOString());
-    const parts = ['action=TEMPLATE', `text=${encodeURIComponent(title)}`, `dates=${start}/${end}`];
+    // ctz=UTC tells Google Calendar that the floating date/time values are UTC,
+    // so it converts to the viewer's local timezone correctly (fixes 3-4h offset).
+    const parts = [
+      'action=TEMPLATE',
+      `text=${encodeURIComponent(title)}`,
+      `dates=${start}/${end}`,
+      'ctz=UTC',
+    ];
     if (description) parts.push(`details=${encodeURIComponent(description)}`);
     if (location) parts.push(`location=${encodeURIComponent(location)}`);
     return `https://calendar.google.com/calendar/render?${parts.join('&')}`;
   } catch {
     return null;
   }
+}
+
+// ── Calendar settings from DB (mirrors tasks.js) ──────────────────────────────
+function getCalSettings(db) {
+  const calId =
+    db.prepare("SELECT value FROM settings WHERE key = 'gcal.calendarId'").get()?.value ||
+    'primary';
+  const enabled = db.prepare("SELECT value FROM settings WHERE key = 'gcal.enabled'").get()?.value;
+  return { calendarId: calId, enabled: enabled !== 'false' };
 }
 
 // ── Remind-at helper ──────────────────────────────────────────────────────────
@@ -133,14 +150,14 @@ function autoTask(db, lead, nextStage, performer) {
     },
     appointment_booked: lead.appointment_at
       ? {
-          title: `📅 Appointment: ${name}${addr ? ' — ' + addr : ''}`,
-          description: `Site visit appointment with ${name} (${phone}).\n${addr ? 'Address: ' + addr : ''}`,
+          title: `📅 Site Visit: ${name}${addr ? ' — ' + addr : ''}`,
+          description: `Site visit with ${name} (${phone}).\n${addr ? 'Address: ' + addr : ''}`,
           priority: 'high',
           due_at: lead.appointment_at,
           remind_at: lead.appointment_at,
           remind_interval_hours: 168,
           calendar_url: makeCalURL({
-            title: `Appointment: ${name}`,
+            title: `Site Visit: ${name}`,
             startIso: lead.appointment_at,
             durationHours: 2,
             description: `Site visit with ${name} (${phone})`,
@@ -224,6 +241,26 @@ function autoTask(db, lead, nextStage, performer) {
       `Lead #${lead.id}: task #${row.lastInsertRowid} auto-created for stage ${nextStage}`,
       performer,
     );
+
+    // Push appointment_booked tasks to Google Calendar automatically
+    if (nextStage === 'appointment_booked' && def.due_at) {
+      const taskId = row.lastInsertRowid;
+      const taskRow = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+      const { calendarId, enabled } = getCalSettings(db);
+      if (enabled && taskRow) {
+        gcal
+          .createCalendarEvent(
+            { ...taskRow, project_address: addr },
+            calendarId,
+            [],
+          )
+          .then((link) => {
+            if (link) db.prepare('UPDATE tasks SET calendar_url = ? WHERE id = ?').run(link, taskId);
+          })
+          .catch((e) => console.warn('[Leads] GCal push failed:', e.message));
+      }
+    }
+
     return row.lastInsertRowid;
   } catch (e) {
     console.error('[Leads] autoTask error:', e.message);
