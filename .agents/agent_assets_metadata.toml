@@ -36,3 +36,9 @@ id = "UdPxltykZrtBPMog0fd4V"
 uri = "file://docs/suggested-tasks.md"
 type = "text"
 title = "Suggested Tasks Backlog"
+
+[[outputs]]
+id = "1GiCSpthiSjVuPYH-0le6"
+uri = "file://CHANGELOG.md"
+type = "text"
+title = "PB System — Change Log & Multi-Tenant Import Guide"
