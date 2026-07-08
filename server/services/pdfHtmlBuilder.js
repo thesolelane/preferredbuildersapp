@@ -109,6 +109,17 @@ function buildProposalHTML(data) {
       budget: 'Approx. $600–$1,500 depending on volume',
     });
   }
+  // Aggregate per-trade scopeExcluded items into the top-level exclusions list
+  for (const item of lineItems) {
+    for (const ex of item.scopeExcluded || []) {
+      if (!ex) continue;
+      exclusions.push({
+        name: ex,
+        reason: `Not included in the ${item.trade} scope for this project`,
+        budget: '—',
+      });
+    }
+  }
   const fmt = (n) => (n ? `$${Number(n).toLocaleString()}` : '$0');
   const quoteNum = data.quoteNumber || '—';
   const validUntil = data.validUntil || '—';
@@ -483,6 +494,31 @@ function buildExhibitAHTML(data, _fmt) {
   const customer = data.customer || {};
   const project = data.project || {};
   const quoteNum = data.quoteNumber || '';
+  const lineItems = data.lineItems || [];
+
+  // Determine which allowance sections apply to this specific quote
+  const tradeStr = lineItems.map((i) => (i.trade || '').toLowerCase()).join(' ');
+  const scopeStr = lineItems
+    .flatMap((i) => [
+      ...(i.scopeIncluded || []),
+      ...(i.scopeExcluded || []),
+      i.description || '',
+    ])
+    .join(' ')
+    .toLowerCase();
+  const allContent = tradeStr + ' ' + scopeStr;
+
+  const showFlooring = /flooring|lvp|laminate|hardwood|carpet/.test(allContent);
+  const showKitchen = /kitchen|cabinet|countertop|counter|cabinetry/.test(allContent);
+  const showBath =
+    /bath|shower|tub|toilet|vanity/.test(allContent) ||
+    (/plumbing/.test(tradeStr) && /bath|shower|toilet|tub/.test(scopeStr));
+  const showDoors = /\bdoor\b|window|interior door|bifold|bi-fold|passage|privacy set/.test(allContent);
+  const showMillwork =
+    /millwork|trim|casing|molding|base mold|finish carpentry|painting|paint/.test(allContent);
+
+  // If none of our allowance categories apply (e.g. roofing-only job), skip Exhibit A entirely
+  if (!showFlooring && !showKitchen && !showBath && !showDoors && !showMillwork) return '';
 
   const get = (key, fallback) => {
     const v = settings[key];
@@ -542,14 +578,16 @@ function buildExhibitAHTML(data, _fmt) {
     Late selections may cause project delays and additional costs for which Contractor shall not be liable.
   </div>
 
+  ${showFlooring ? `
   <div class="sub-header">FLOORING</div>
   <table>
     <tr><th>Item</th><th>Location</th><th>Allowance</th><th>Spec</th></tr>
     <tr><td>LVP / Engineered Hardwood</td><td>All living areas</td><td>$${fmtAmt(flooring)}/sq ft</td><td>Supply only — Shaw, Armstrong or equiv</td></tr>
     <tr><td>Bath Floor Tile</td><td>All bathrooms</td><td>$${fmtAmt(bathTile)}/sq ft</td><td>12×12 ceramic or porcelain, supply only</td></tr>
     <tr><td>Carpet</td><td>Bedrooms (if selected)</td><td>$${fmtAmt(carpet)}/sq ft</td><td>Contractor grade, supply only</td></tr>
-  </table>
+  </table>` : ''}
 
+  ${showKitchen ? `
   <div class="sub-header">KITCHEN</div>
   <table>
     <tr><th>Item</th><th>Allowance</th><th>Contractor-Grade Spec</th></tr>
@@ -558,8 +596,9 @@ function buildExhibitAHTML(data, _fmt) {
     <tr><td>Kitchen Faucet</td><td>$${fmtAmt(kitFaucet)} each</td><td>Moen, Delta or Kohler — pull-down single handle</td></tr>
     <tr><td>Kitchen Sink</td><td>$${fmtAmt(kitSink)} each</td><td>Stainless undermount 60/40 double bowl</td></tr>
     <tr><td>Garbage Disposal</td><td>$${fmtAmt(disposal)} each</td><td>InSinkErator 1/2 HP contractor grade</td></tr>
-  </table>
+  </table>` : ''}
 
+  ${showBath ? `
   <div class="sub-header">BATHROOMS</div>
   <table>
     <tr><th>Item</th><th>Allowance</th><th>Contractor-Grade Spec</th></tr>
@@ -573,8 +612,9 @@ function buildExhibitAHTML(data, _fmt) {
     <tr><td>Shower Door</td><td>$${fmtAmt(showerDoor)} each</td><td>Frameless or semi-frameless glass — 36"–48"</td></tr>
     <tr><td>Bath Accessories Set</td><td>$${fmtAmt(bathAccessories)} per bath</td><td>TP holder, towel bar, towel ring — brushed nickel</td></tr>
     <tr><td>Exhaust Fan</td><td>$${fmtAmt(exhaustFan)} each</td><td>Broan or Panasonic — 80 CFM min</td></tr>
-  </table>
+  </table>` : ''}
 
+  ${showDoors ? `
   <div class="sub-header">DOORS &amp; HARDWARE</div>
   <table>
     <tr><th>Item</th><th>Allowance</th><th>Contractor-Grade Spec</th></tr>
@@ -582,15 +622,16 @@ function buildExhibitAHTML(data, _fmt) {
     <tr><td>Passage Set</td><td>$${fmtAmt(passage)} each</td><td>Schlage or Kwikset — brushed nickel</td></tr>
     <tr><td>Privacy Set (bath/bedroom)</td><td>$${fmtAmt(privacy)} each</td><td>Schlage or Kwikset — brushed nickel</td></tr>
     <tr><td>Bi-fold Door</td><td>$${fmtAmt(bifold)} each</td><td>6-panel hollow-core — primed</td></tr>
-  </table>
+  </table>` : ''}
 
+  ${showMillwork ? `
   <div class="sub-header">MILLWORK &amp; TRIM</div>
   <table>
     <tr><th>Item</th><th>Allowance</th><th>Spec</th></tr>
     <tr><td>Base Molding</td><td>$${fmtAmt(baseMold)}/LF</td><td>3½" Colonial or Craftsman — finger-jointed pine, primed</td></tr>
     <tr><td>Door/Window Casing</td><td>$${fmtAmt(casing)}/LF</td><td>2¼" Colonial — finger-jointed pine, primed</td></tr>
     <tr><td>Window Stool &amp; Apron</td><td>$${fmtAmt(windowStool)} per window</td><td>Pine — primed and painted</td></tr>
-  </table>
+  </table>` : ''}
 
   <div class="note-box" style="margin-top:16px;">
     ⚠️ <strong>Allowances represent contractor-grade specifications.</strong> Owner selections exceeding these allowances 

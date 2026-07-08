@@ -165,6 +165,22 @@ ONLY flag these as missing in stretchCodeItems if they are NOT already covered i
 ## BUDGET TARGET CALIBRATION
 If the estimate includes a BUDGET TARGET line, calibrate all line item baseCosts so that after the system applies its standard markup (~1.58×: sub O&P 15% + GC O&P 25% + contingency 10%), the total contract price lands within ±8% of the stated target. Prefer builder-grade or mid-range material specifications where a range of options exists. If you must constrain scope to hit the budget, document the tradeoffs in the "notes" field.
 
+## EXCLUSIONS — WHAT TO PUT WHERE
+Use BOTH fields to document what is NOT in the project:
+
+"scopeExcluded" (per line item) — carve-outs specific to a trade:
+- Things the trade typically does that are explicitly NOT in this scope
+- Examples under Electrical: "Panel upgrade not included", "Generator hookup not included"
+- Examples under Plumbing: "Water heater replacement not included", "Gas line not included"
+- Examples under Framing: "Structural engineering by others"
+- Be specific — list real carve-outs, not generic filler
+
+"exclusions" (top-level array) — items outside the project entirely that the customer might assume are included:
+- Format: { "name": "...", "reason": "...", "budget": "..." }
+- Examples: Appliances, Landscaping, Furniture, Site work, Well/septic, Painting (if not in scope), Window treatments, Security system, Smart home devices
+- Only list items that a customer might reasonably assume are included but aren't
+- If everything is included, leave the array empty — do NOT make things up
+
 ## CONSTRUCTION KNOWLEDGE
 - Metal roof at 3:12 or lower pitch requires 2x12 rafters at 16" O.C. and structural ridge beam
 - 2x6 framing required in MA Stretch Code towns for R-20
