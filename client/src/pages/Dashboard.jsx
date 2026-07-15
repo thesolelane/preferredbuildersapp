@@ -79,6 +79,14 @@ export default function Dashboard({ token }) {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const [showWizard, setShowWizard] = useState(false);
   const [showManual, setShowManual] = useState(false);
+  const [wizardDraft, setWizardDraft] = useState(() => {
+    try {
+      const raw = localStorage.getItem('pb_wizard_draft');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
   const [submitTab, setSubmitTab] = useState('text');
   const [submitBusy, setSubmitBusy] = useState(false);
   const [manual, setManual] = useState({
@@ -459,6 +467,52 @@ export default function Dashboard({ token }) {
               AI Estimation Wizard
             </div>
           </div>
+          {wizardDraft && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button
+                  onClick={() => setShowWizard(true)}
+                  style={{
+                    background: '#FFF8E1',
+                    color: '#7B5800',
+                    border: '1.5px solid #F9A825',
+                    padding: '9px 16px',
+                    borderRadius: '8px 0 0 8px',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: 13,
+                  }}
+                >
+                  ↩ Resume Draft
+                </button>
+                <button
+                  onClick={() => {
+                    try { localStorage.removeItem('pb_wizard_draft'); } catch {}
+                    setWizardDraft(null);
+                  }}
+                  title="Discard draft"
+                  style={{
+                    background: '#FFF8E1',
+                    color: '#999',
+                    border: '1.5px solid #F9A825',
+                    borderLeft: 'none',
+                    padding: '9px 8px',
+                    borderRadius: '0 8px 8px 0',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              <div style={{ fontSize: 10, color: '#999', marginTop: 3, textAlign: 'center' }}>
+                {wizardDraft.contact?.name
+                  ? `Draft: ${wizardDraft.contact.name}`
+                  : 'Unsaved estimate draft'}
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <button
               onClick={openNewJob}
@@ -1279,8 +1333,19 @@ export default function Dashboard({ token }) {
       {showWizard && (
         <CreateQuoteWizard
           token={token}
-          onClose={() => setShowWizard(false)}
+          prefillDraft={wizardDraft}
+          onClose={() => {
+            setShowWizard(false);
+            try {
+              const raw = localStorage.getItem('pb_wizard_draft');
+              setWizardDraft(raw ? JSON.parse(raw) : null);
+            } catch {
+              setWizardDraft(null);
+            }
+          }}
           onSubmitted={() => {
+            try { localStorage.removeItem('pb_wizard_draft'); } catch {}
+            setWizardDraft(null);
             loadDashboard();
           }}
         />

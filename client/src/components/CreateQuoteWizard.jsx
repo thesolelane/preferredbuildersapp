@@ -895,27 +895,29 @@ function buildTradesContext(selectedTrades, departments = DEPARTMENTS_FALLBACK) 
   return `\n\nEXPLICITLY SELECTED TRADES (user-confirmed before AI questions):\n${lines.join('\n')}\nUse this list to calibrate line items and clarifying questions — these trades are confirmed to be in scope.`;
 }
 
+const LS_DRAFT_KEY = 'pb_wizard_draft';
+
 // ── Main wizard component ──────────────────────────────────────────────────
-export default function CreateQuoteWizard({ token, onClose, onSubmitted, prefillLead }) {
+export default function CreateQuoteWizard({ token, onClose, onSubmitted, prefillLead, prefillDraft }) {
   // STEPS: 0=Contact, 1=Job Address, 2=Scope, 3=Trades, 4=AI Questions (dynamic), 5=Review
   const TRADE_STEP = 3;
   const BASE_STEPS = ['Contact', 'Job Address', 'Scope of Work', 'Trades', 'Review'];
 
   const navigate = useNavigate();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(prefillDraft?.step || 0);
   const [busy, setBusy] = useState(false);
   const [fetchingQuestions, setFetchingQuestions] = useState(false);
 
   const [contact, setContact] = useState({
-    name: prefillLead?.caller_name || '',
-    phone: prefillLead?.caller_phone || '',
-    email: prefillLead?.job_email || '',
+    name: prefillLead?.caller_name || prefillDraft?.contact?.name || '',
+    phone: prefillLead?.caller_phone || prefillDraft?.contact?.phone || '',
+    email: prefillLead?.job_email || prefillDraft?.contact?.email || '',
   });
   const [address, setAddress] = useState({
-    street: prefillLead?.job_address || '',
-    city: prefillLead?.job_city || '',
-    state: '',
-    zip: '',
+    street: prefillLead?.job_address || prefillDraft?.address?.street || '',
+    city: prefillLead?.job_city || prefillDraft?.address?.city || '',
+    state: prefillDraft?.address?.state || '',
+    zip: prefillDraft?.address?.zip || '',
   });
   const [scope, setScope] = useState(() => {
     const jobScope = prefillLead?.job_scope || '';
@@ -923,19 +925,20 @@ export default function CreateQuoteWizard({ token, onClose, onSubmitted, prefill
     if (jobScope && notes && !jobScope.includes(notes)) {
       return `${jobScope}\n\n--- Site Visit Notes ---\n${notes}`;
     }
-    if (!jobScope && notes) {
-      return notes;
-    }
-    return jobScope;
+    if (!jobScope && notes) return notes;
+    if (jobScope) return jobScope;
+    return prefillDraft?.scope || '';
   });
-  const [jobType, setJobType] = useState(prefillLead?.job_type || '');
-  const [budgetTarget, setBudgetTarget] = useState('');
+  const [jobType, setJobType] = useState(prefillLead?.job_type || prefillDraft?.jobType || '');
+  const [budgetTarget, setBudgetTarget] = useState(prefillDraft?.budgetTarget || '');
 
-  const [selectedTrades, setSelectedTrades] = useState(new Set());
+  const [selectedTrades, setSelectedTrades] = useState(
+    new Set(prefillDraft?.selectedTrades || []),
+  );
 
-  const [wizardQuestions, setWizardQuestions] = useState([]);
-  const [wizardAnswers, setWizardAnswers] = useState([]);
-  const [aiStepInserted, setAiStepInserted] = useState(false);
+  const [wizardQuestions, setWizardQuestions] = useState(prefillDraft?.wizardQuestions || []);
+  const [wizardAnswers, setWizardAnswers] = useState(prefillDraft?.wizardAnswers || []);
+  const [aiStepInserted, setAiStepInserted] = useState(prefillDraft?.aiStepInserted || false);
 
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [extractingFiles, setExtractingFiles] = useState(false);
@@ -1053,6 +1056,95 @@ export default function CreateQuoteWizard({ token, onClose, onSubmitted, prefill
     }, 15000);
     return () => clearTimeout(autoSaveTimer.current);
   }, [scope, contact, address, jobType, budgetTarget, selectedTrades, wizardAnswers, step]);
+
+  // ── localStorage auto-save for fresh (non-lead) wizards ──────────────────
+  const lsAutoSaveTimer = useRef(null);
+  useEffect(() => {
+    if (prefillLead) return;
+    const hasData = !!(contact.name?.trim() || scope?.trim() || address.street?.trim());
+    if (!hasData) return;
+    clearTimeout(lsAutoSaveTimer.current);
+    lsAutoSaveTimer.current = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          LS_DRAFT_KEY,
+          JSON.stringify({
+            savedAt: new Date().toISOString(),
+            step,
+            contact,
+            address,
+            scope,
+            jobType,
+            budgetTarget,
+            selectedTrades: [...selectedTrades],
+            wizardQuestions,
+            wizardAnswers,
+            aiStepInserted,
+          }),
+        );
+      } catch {}
+    }, 5000);
+    return () => clearTimeout(lsAutoSaveTimer.current);
+  }, [scope, contact, address, jobType, budgetTarget, selectedTrades, wizardAnswers, step]);
+
+  // Show restore toast once when wizard is opened from a saved draft
+  const didShowRestoreToast = useRef(false);
+  useEffect(() => {
+    if (prefillDraft && !didShowRestoreToast.current) {
+      didShowRestoreToast.current = true;
+      showToast('Draft restored — pick up where you left off');
+    }
+  }, []);
+
+  // ── Close handler — saves draft + creates reminder task ──────────────────
+  const handleClose = async () => {
+    if (!prefillLead) {
+      const hasData = !!(contact.name?.trim() || scope?.trim() || address.street?.trim());
+      if (hasData) {
+        const draft = {
+          savedAt: new Date().toISOString(),
+          step,
+          contact,
+          address,
+          scope,
+          jobType,
+          budgetTarget,
+          selectedTrades: [...selectedTrades],
+          wizardQuestions,
+          wizardAnswers,
+          aiStepInserted,
+        };
+        try {
+          localStorage.setItem(LS_DRAFT_KEY, JSON.stringify(draft));
+        } catch {}
+        const label = contact.name?.trim() || 'New Job';
+        const descParts = [];
+        if (address.street) {
+          descParts.push(
+            `Address: ${[address.street, address.city].filter(Boolean).join(', ')}`,
+          );
+        }
+        if (scope?.trim()) {
+          const preview = scope.trim().slice(0, 200);
+          descParts.push(`Scope: ${preview}${scope.length > 200 ? '...' : ''}`);
+        }
+        descParts.push('Reopen from Dashboard → Resume Draft button.');
+        try {
+          await fetch('/api/tasks', {
+            method: 'POST',
+            headers: { 'x-auth-token': token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: `Resume estimate — ${label}`,
+              description: descParts.join('\n'),
+              priority: 'normal',
+            }),
+          });
+        } catch {}
+        showToast('Draft saved — resume from the Dashboard', 'success');
+      }
+    }
+    onClose();
+  };
 
   // Step layout: Trades step is always step 3.
   // AI Questions step is inserted at step 4 if questions are returned.
@@ -1268,6 +1360,7 @@ export default function CreateQuoteWizard({ token, onClose, onSubmitted, prefill
           showToast('Proposal submitted — processing now');
         }
         clearDraft();
+        try { localStorage.removeItem(LS_DRAFT_KEY); } catch {}
         onSubmitted(data.jobId);
         onClose();
         navigate(`/jobs/${data.jobId}`);
@@ -1290,7 +1383,7 @@ export default function CreateQuoteWizard({ token, onClose, onSubmitted, prefill
     } else if (step > 0) {
       setStep((s) => s - 1);
     } else {
-      onClose();
+      handleClose();
     }
   };
 
@@ -1335,7 +1428,7 @@ export default function CreateQuoteWizard({ token, onClose, onSubmitted, prefill
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: 'none',
               border: 'none',
@@ -1835,7 +1928,7 @@ export default function CreateQuoteWizard({ token, onClose, onSubmitted, prefill
               }}
             >
               <button
-                onClick={step === 0 ? onClose : () => setStep((s) => s - 1)}
+                onClick={step === 0 ? handleClose : () => setStep((s) => s - 1)}
                 style={{
                   padding: '10px 20px',
                   border: '1px solid #ddd',
