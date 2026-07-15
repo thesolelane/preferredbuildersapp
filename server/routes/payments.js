@@ -500,7 +500,9 @@ router.post(
           // Partial payment — accumulate on the oldest open invoice
           const oldest = openInvoices[0];
           const newAmtPaid = Math.min(oldest.amount, oldest.amount_paid + parsedAmount);
-          const nowFull = newAmtPaid >= oldest.amount - Math.max(25, oldest.amount * 0.02);
+          const remaining = Math.round((oldest.amount - newAmtPaid) * 100) / 100;
+          const nowFull = remaining <= Math.max(25, oldest.amount * 0.02);
+
           if (nowFull) {
             db.prepare(
               "UPDATE invoices SET status = 'paid', paid_at = ?, amount_paid = ? WHERE id = ?",
@@ -517,6 +519,45 @@ router.post(
           console.log(
             `[PaymentSync] Partial: Invoice ${oldest.invoice_number} — $${parsedAmount} applied, $${newAmtPaid} of $${oldest.amount} paid${nowFull ? ' → PAID' : ''}`,
           );
+
+          // Auto-generate a "Balance Due" draft invoice for the remainder
+          if (!nowFull && remaining > 0) {
+            try {
+              const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(job_id);
+              const { nextInvoiceNumber } = require('./invoices');
+              const balanceInvNum = nextInvoiceNumber(
+                db,
+                job_id,
+                oldest.invoice_type || 'contract_invoice',
+                job?.quote_number,
+              );
+              const paidDateLabel = invPaidAt
+                ? new Date(invPaidAt).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })
+                : 'on file';
+              db.prepare(
+                `INSERT INTO invoices
+                  (job_id, invoice_number, invoice_type, status, amount, amount_paid,
+                   contract_amount, pass_through_amount, notes)
+                 VALUES (?, ?, ?, 'draft', ?, 0, ?, 0, ?)`,
+              ).run(
+                job_id,
+                balanceInvNum,
+                oldest.invoice_type || 'contract_invoice',
+                remaining,
+                remaining,
+                `Balance due — partial payment of $${parsedAmount.toLocaleString()} received ${paidDateLabel} toward ${oldest.invoice_number}. Remaining balance: $${remaining.toLocaleString()}.`,
+              );
+              console.log(
+                `[PaymentSync] Created balance-due invoice ${balanceInvNum} for $${remaining} (${job_id})`,
+              );
+            } catch (balErr) {
+              console.warn('[PaymentSync] Balance invoice creation failed:', balErr.message);
+            }
+          }
         }
       } catch (syncErr) {
         console.warn('[PaymentSync]', syncErr.message);
