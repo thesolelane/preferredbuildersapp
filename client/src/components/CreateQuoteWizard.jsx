@@ -1058,34 +1058,44 @@ export default function CreateQuoteWizard({ token, onClose, onSubmitted, prefill
   }, [scope, contact, address, jobType, budgetTarget, selectedTrades, wizardAnswers, step]);
 
   // ── localStorage auto-save for fresh (non-lead) wizards ──────────────────
-  const lsAutoSaveTimer = useRef(null);
+  // Keeps a ref to the latest draft so the unmount cleanup can save it
+  // even when a forced logout destroys the component before effects fire.
+  const latestDraftRef = useRef(null);
+
   useEffect(() => {
     if (prefillLead) return;
     const hasData = !!(contact.name?.trim() || scope?.trim() || address.street?.trim());
     if (!hasData) return;
-    clearTimeout(lsAutoSaveTimer.current);
-    lsAutoSaveTimer.current = setTimeout(() => {
-      try {
-        localStorage.setItem(
-          LS_DRAFT_KEY,
-          JSON.stringify({
-            savedAt: new Date().toISOString(),
-            step,
-            contact,
-            address,
-            scope,
-            jobType,
-            budgetTarget,
-            selectedTrades: [...selectedTrades],
-            wizardQuestions,
-            wizardAnswers,
-            aiStepInserted,
-          }),
-        );
-      } catch {}
-    }, 5000);
-    return () => clearTimeout(lsAutoSaveTimer.current);
+    const draft = {
+      savedAt: new Date().toISOString(),
+      step,
+      contact,
+      address,
+      scope,
+      jobType,
+      budgetTarget,
+      selectedTrades: [...selectedTrades],
+      wizardQuestions,
+      wizardAnswers,
+      aiStepInserted,
+    };
+    latestDraftRef.current = draft;
+    try {
+      localStorage.setItem(LS_DRAFT_KEY, JSON.stringify(draft));
+    } catch {}
   }, [scope, contact, address, jobType, budgetTarget, selectedTrades, wizardAnswers, step]);
+
+  // Save on unmount — catches forced logouts and tab closes
+  useEffect(() => {
+    if (prefillLead) return;
+    return () => {
+      const draft = latestDraftRef.current;
+      if (!draft) return;
+      try {
+        localStorage.setItem(LS_DRAFT_KEY, JSON.stringify({ ...draft, savedAt: new Date().toISOString() }));
+      } catch {}
+    };
+  }, []);
 
   // Show restore toast once when wizard is opened from a saved draft
   const didShowRestoreToast = useRef(false);
