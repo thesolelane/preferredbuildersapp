@@ -42,7 +42,7 @@ externalPort = 80
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
+externalPort = 80
 
 [agent]
 expertMode = true
@@ -73,7 +73,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node server/index.js"
+args = "node --max-old-space-size=512 server/index.js"
 waitForPort = 5000
 
 [[workflows.workflow]]

@@ -66,44 +66,83 @@ if (CHROMIUM_PATH) console.log('[PDF] Using Chromium:', CHROMIUM_PATH);
 const OUTPUT_DIR = path.join(__dirname, '../../outputs');
 if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
-async function generatePDF(data, type, jobId) {
-  let html;
-  if (type === 'proposal') {
-    html = buildProposalHTML(data);
-  } else {
-    html = buildContractHTMLNew(adaptToContractSchema(data));
-  }
+// ── Shared browser singleton ──────────────────────────────────────────────
+// One Chromium process stays resident. Each PDF opens and closes only a page,
+// not the entire browser — saves ~250 MB per PDF call and prevents OOM crashes.
+let _browser = null;
+let _browserLaunching = null;
 
-  const filename = `PB_${type === 'proposal' ? 'Proposal' : 'Contract'}_${jobId.slice(0, 8)}_${Date.now()}.pdf`;
+const BROWSER_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--memory-pressure-off',
+  '--js-flags=--max-old-space-size=256',
+];
+
+async function getBrowser() {
+  if (_browser && _browser.isConnected()) return _browser;
+  if (_browserLaunching) return _browserLaunching;
+
+  _browserLaunching = puppeteer
+    .launch({ headless: 'new', executablePath: CHROMIUM_PATH, args: BROWSER_ARGS })
+    .then((b) => {
+      _browser = b;
+      _browserLaunching = null;
+      b.on('disconnected', () => {
+        _browser = null;
+        console.warn('[PDF] Browser disconnected — will re-launch on next request');
+      });
+      return b;
+    });
+
+  return _browserLaunching;
+}
+
+// Run an async fn with a fresh page; always closes the page when done.
+async function withPage(fn) {
+  const browser = await getBrowser();
+  const page = await browser.newPage();
+  try {
+    return await fn(page);
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
+const PB_HEADER = `<div style="font-size:7.5px;color:#aaa;width:100%;text-align:center;font-family:Arial,sans-serif;padding-top:6px;letter-spacing:0.3px;">
+  Preferred Builders General Services Inc. &nbsp;|&nbsp; LIC# HIC-197400 &nbsp;|&nbsp; 978-377-1784
+</div>`;
+
+const LETTER_MARGINS = { top: '0.8in', right: '1in', bottom: '0.8in', left: '1in' };
+
+async function generatePDF(data, type, jobId) {
+  const html =
+    type === 'proposal'
+      ? buildProposalHTML(data)
+      : buildContractHTMLNew(adaptToContractSchema(data));
+
+  const label = type === 'proposal' ? 'Proposal' : 'Contract';
+  const filename = `PB_${label}_${jobId.slice(0, 8)}_${Date.now()}.pdf`;
   const outputPath = path.join(OUTPUT_DIR, filename);
 
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    executablePath: CHROMIUM_PATH,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
-
-  try {
-    const page = await browser.newPage();
+  await withPage(async (page) => {
     await page.setContent(html, { waitUntil: 'networkidle0' });
     await page.pdf({
       path: outputPath,
       format: 'Letter',
-      margin: { top: '0.8in', right: '1in', bottom: '0.8in', left: '1in' },
+      margin: LETTER_MARGINS,
       printBackground: true,
       displayHeaderFooter: true,
-      headerTemplate: `<div style="font-size:7.5px;color:#aaa;width:100%;text-align:center;font-family:Arial,sans-serif;padding-top:6px;letter-spacing:0.3px;">
-        Preferred Builders General Services Inc. &nbsp;|&nbsp; LIC# HIC-197400 &nbsp;|&nbsp; 978-377-1784
-      </div>`,
+      headerTemplate: PB_HEADER,
       footerTemplate: `<div style="width:100%;font-family:Arial,sans-serif;font-size:8px;color:#555;display:flex;justify-content:space-between;align-items:center;padding:0 72px;box-sizing:border-box;">
         <span style="color:#888;">Preferred Builders General Services Inc.</span>
         <span style="font-weight:bold;color:#1B3A6B;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
         <span style="color:#888;">${type === 'proposal' ? 'PROPOSAL' : 'CONTRACT'} — Confidential</span>
       </div>`,
     });
-  } finally {
-    await browser.close();
-  }
+  });
 
   return outputPath;
 }
@@ -123,33 +162,22 @@ async function generateSignedPDF(data, docType, jobId, appendHtml) {
   const filename = `PB_${docType === 'proposal' ? 'Proposal' : 'Contract'}_${jobId.slice(0, 8)}_signed_${Date.now()}.pdf`;
   const outputPath = path.join(OUTPUT_DIR, filename);
 
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    executablePath: CHROMIUM_PATH,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
-
-  try {
-    const page = await browser.newPage();
+  await withPage(async (page) => {
     await page.setContent(html, { waitUntil: 'networkidle0' });
     await page.pdf({
       path: outputPath,
       format: 'Letter',
-      margin: { top: '0.8in', right: '1in', bottom: '0.8in', left: '1in' },
+      margin: LETTER_MARGINS,
       printBackground: true,
       displayHeaderFooter: true,
-      headerTemplate: `<div style="font-size:7.5px;color:#aaa;width:100%;text-align:center;font-family:Arial,sans-serif;padding-top:6px;letter-spacing:0.3px;">
-        Preferred Builders General Services Inc. &nbsp;|&nbsp; LIC# HIC-197400 &nbsp;|&nbsp; 978-377-1784
-      </div>`,
+      headerTemplate: PB_HEADER,
       footerTemplate: `<div style="width:100%;font-family:Arial,sans-serif;font-size:8px;color:#555;display:flex;justify-content:space-between;align-items:center;padding:0 72px;box-sizing:border-box;">
         <span style="color:#888;">Preferred Builders General Services Inc.</span>
         <span style="font-weight:bold;color:#1B3A6B;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
         <span style="color:#888;">${docType === 'proposal' ? 'PROPOSAL' : 'CONTRACT'} — SIGNED</span>
       </div>`,
     });
-  } finally {
-    await browser.close();
-  }
+  });
 
   return outputPath;
 }
@@ -178,14 +206,7 @@ async function generatePDFFromHTML(html, filenameBase) {
   const filename = `${filenameBase}_${Date.now()}.pdf`;
   const outputPath = path.join(OUTPUT_DIR, filename);
 
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    executablePath: CHROMIUM_PATH,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
-
-  try {
-    const page = await browser.newPage();
+  await withPage(async (page) => {
     await page.setContent(html, { waitUntil: 'networkidle0' });
     await page.pdf({
       path: outputPath,
@@ -193,9 +214,7 @@ async function generatePDFFromHTML(html, filenameBase) {
       margin: { top: '0.5in', right: '0.75in', bottom: '0.5in', left: '0.75in' },
       printBackground: true,
     });
-  } finally {
-    await browser.close();
-  }
+  });
 
   return outputPath;
 }
