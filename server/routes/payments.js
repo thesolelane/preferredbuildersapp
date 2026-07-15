@@ -463,34 +463,59 @@ router.post(
       );
     }
 
-    // Sync: if a matching outstanding invoice exists for this job, mark it paid.
-    // Matching rules:
-    //   1. Invoice must be unpaid (draft, sent, or pending_send)
-    //   2. Payment amount must be within 2% or $25 of the invoice amount (whichever is larger)
-    //      — handles rounding differences and small overpayments on deposits
+    // Sync: link payment to an open invoice and update amount_paid.
+    // Full-match rule: payment within 2% or $25 of invoice amount → mark paid.
+    // Partial-match rule: any credit payment → accumulate amount_paid on the
+    //   oldest open invoice; mark paid only when fully covered.
     if (!isPTR && crDr === 'credit') {
       try {
         const openInvoices = db
           .prepare(
-            "SELECT id, invoice_number, amount FROM invoices WHERE job_id = ? AND status IN ('draft', 'sent', 'pending_send') ORDER BY issued_at ASC",
+            `SELECT id, invoice_number, amount, COALESCE(amount_paid, 0) AS amount_paid
+             FROM invoices
+             WHERE job_id = ? AND status IN ('draft', 'sent', 'pending_send')
+             ORDER BY COALESCE(issued_at, created_at) ASC`,
           )
           .all(job_id);
 
+        const invPaidAt = date_received || new Date().toISOString().slice(0, 10);
         const tolerance = Math.max(25, parsedAmount * 0.02);
-        const matchingInv = openInvoices.find(
+
+        // Prefer an invoice whose full amount matches this payment
+        const fullMatch = openInvoices.find(
           (inv) => Math.abs(inv.amount - parsedAmount) <= tolerance,
         );
 
-        if (matchingInv) {
-          const invPaidAt = date_received || new Date().toISOString().slice(0, 10);
+        if (fullMatch) {
           db.prepare(
             "UPDATE invoices SET status = 'paid', paid_at = ?, amount_paid = ? WHERE id = ?",
-          ).run(invPaidAt, parsedAmount, matchingInv.id);
+          ).run(invPaidAt, parsedAmount, fullMatch.id);
           db.prepare(
             'UPDATE payments_received SET invoice_id = ? WHERE id = ? AND invoice_id IS NULL',
-          ).run(matchingInv.id, payment.id);
+          ).run(fullMatch.id, payment.id);
           console.log(
-            `[PaymentSync] Invoice ${matchingInv.invoice_number} (${matchingInv.amount}) linked to payment ${payment.id} (${parsedAmount})`,
+            `[PaymentSync] Full match: Invoice ${fullMatch.invoice_number} marked paid (${parsedAmount})`,
+          );
+        } else if (openInvoices.length > 0) {
+          // Partial payment — accumulate on the oldest open invoice
+          const oldest = openInvoices[0];
+          const newAmtPaid = Math.min(oldest.amount, oldest.amount_paid + parsedAmount);
+          const nowFull = newAmtPaid >= oldest.amount - Math.max(25, oldest.amount * 0.02);
+          if (nowFull) {
+            db.prepare(
+              "UPDATE invoices SET status = 'paid', paid_at = ?, amount_paid = ? WHERE id = ?",
+            ).run(invPaidAt, newAmtPaid, oldest.id);
+          } else {
+            db.prepare('UPDATE invoices SET amount_paid = ? WHERE id = ?').run(
+              newAmtPaid,
+              oldest.id,
+            );
+          }
+          db.prepare(
+            'UPDATE payments_received SET invoice_id = ? WHERE id = ? AND invoice_id IS NULL',
+          ).run(oldest.id, payment.id);
+          console.log(
+            `[PaymentSync] Partial: Invoice ${oldest.invoice_number} — $${parsedAmount} applied, $${newAmtPaid} of $${oldest.amount} paid${nowFull ? ' → PAID' : ''}`,
           );
         }
       } catch (syncErr) {

@@ -113,14 +113,14 @@ function InvoiceStatusPanel({ job, token, refreshKey }) {
         method: 'POST',
         headers: { 'x-auth-token': token, 'Content-Type': 'application/json' },
       });
+      const d = await res.json();
       if (res.ok) {
         fetchInvoices();
       } else {
-        const d = await res.json();
-        console.error('Failed to send invoice:', d.error);
+        alert(d.error || 'Failed to send invoice — check that a customer email is on file.');
       }
     } catch (_e) {
-      /* network error */
+      alert('Network error — could not send invoice.');
     }
     setSending(null);
   };
@@ -202,7 +202,7 @@ function InvoiceStatusPanel({ job, token, refreshKey }) {
               >
                 {inv.status === 'pending_send' ? 'PENDING SEND' : inv.status?.toUpperCase()}
               </span>
-              {job?.customer_email && canSend && (
+              {canSend && (
                 <button
                   onClick={() => sendInvoice(inv)}
                   disabled={sending === inv.id}
