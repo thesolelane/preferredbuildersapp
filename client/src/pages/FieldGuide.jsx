@@ -406,7 +406,126 @@ const MARKUP_ROWS = [
 /* ─────────────────────────────────────────────
    MAIN COMPONENT
 ───────────────────────────────────────────── */
-const TABS = ['Checklist', 'Process Flow', 'Stretch Code', 'Exclusions', 'Markup Chain'];
+const TABS = ['Checklist', 'Process Flow', 'Stretch Code', 'Exclusions', 'Markup Chain', 'Payments & Invoicing'];
+
+/* ─────────────────────────────────────────────
+   PAYMENTS & INVOICING GUIDE
+───────────────────────────────────────────── */
+const INVOICE_TYPES = [
+  {
+    type: 'Deposit Invoice (DEP)',
+    color: '#1B3A6B',
+    when: 'Auto-generated when contract is signed',
+    amount: '33% of total contract value',
+    note: 'Must be collected before any work begins.',
+  },
+  {
+    type: 'Progress Invoice',
+    color: '#E07B2A',
+    when: 'Created manually as work milestones are hit',
+    amount: 'Negotiated per milestone (e.g. Foundation Complete)',
+    note: 'Typical draw schedule: 33% deposit / 33% mid-job / 34% final.',
+  },
+  {
+    type: 'Final Invoice',
+    color: '#2E7D32',
+    when: 'Last payment before job closeout',
+    amount: 'Remaining balance after all prior draws',
+    note: 'Collect before marking the job complete.',
+  },
+  {
+    type: 'Balance Due (auto)',
+    color: '#7B1FA2',
+    when: 'Auto-generated when a partial payment is recorded',
+    amount: 'Remaining balance = invoice amount − payment received',
+    note: 'Draft only — review before sending to customer.',
+  },
+];
+
+const PAYMENT_STEPS = [
+  {
+    step: '1',
+    icon: '💵',
+    title: 'Go to the Job → Payments tab',
+    body: 'Always record payments inside the specific job, not from the global Payments page.',
+  },
+  {
+    step: '2',
+    icon: '➕',
+    title: 'Click "Add Payment" under Checks Received',
+    body: 'Enter the exact amount on the check, the date received, check number, and payment type (Deposit / Progress / Final).',
+  },
+  {
+    step: '3',
+    icon: '🔗',
+    title: 'Select the matching invoice',
+    body: 'Pick the invoice this payment is for from the dropdown. The system will auto-link and update the invoice status.',
+  },
+  {
+    step: '4',
+    icon: '✅',
+    title: 'Save — system does the rest',
+    body: 'Full payment: invoice marked Paid automatically. Partial payment: invoice stays open, balance-due draft created for the remainder.',
+  },
+];
+
+const PAYMENT_RULES = [
+  {
+    icon: '⚠️',
+    color: '#C62828',
+    rule: 'Never click "Mark Paid" on an invoice directly',
+    detail:
+      'Use the Payments tab to record the check instead. "Mark Paid" skips the payment record and breaks the AR ledger.',
+  },
+  {
+    icon: '💡',
+    color: '#E07B2A',
+    rule: 'Enter the actual check amount — even if partial',
+    detail:
+      'If the customer sends $13,000 on a $30,000 invoice, record $13,000. The system auto-generates the balance-due for $17,000.',
+  },
+  {
+    icon: '🔢',
+    color: '#1B3A6B',
+    rule: 'Always enter the check number',
+    detail:
+      'Check numbers make it easy to trace payments during disputes or audits. Never leave it blank if you have it.',
+  },
+  {
+    icon: '📋',
+    color: '#2E7D32',
+    rule: 'Review auto-generated balance-due invoices',
+    detail:
+      'After recording a partial payment, open the new balance-due draft and confirm the amount before sending it to the customer.',
+  },
+];
+
+const AR_GLOSSARY = [
+  {
+    term: 'AR Collected',
+    definition:
+      'Total cash collected through invoices marked Paid. Does not include payments recorded without a linked invoice.',
+  },
+  {
+    term: 'AR Outstanding',
+    definition:
+      'Total dollar value of all open (unpaid) invoices right now across all active jobs.',
+  },
+  {
+    term: 'Won Revenue YTD',
+    definition:
+      'Total contract value of all won/completed jobs this year — includes the full job value even if not fully invoiced yet. Will always be higher than AR Collected.',
+  },
+  {
+    term: 'Amount Paid (on invoice)',
+    definition:
+      'How much of a specific invoice has been collected. Full payment = invoice amount. Partial = less than invoice amount.',
+  },
+  {
+    term: 'Balance Due',
+    definition: 'Invoice amount minus amount paid. Auto-generated as a new draft invoice when a partial payment is recorded.',
+  },
+];
 
 export default function FieldGuide() {
   const [activeTab, setActiveTab] = useState('Checklist');
@@ -1055,6 +1174,94 @@ export default function FieldGuide() {
               the system so markup is applied consistently.
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════
+          TAB: PAYMENTS & INVOICING
+      ════════════════════════════════ */}
+      {activeTab === 'Payments & Invoicing' && (
+        <div style={{ padding: 16 }}>
+
+          {/* Invoice Types */}
+          <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', overflow: 'hidden', marginBottom: 14 }}>
+            <div style={{ background: BLUE, color: 'white', padding: '9px 16px', fontWeight: 'bold', fontSize: 12 }}>
+              🧾 Invoice Types — What Each One Means
+            </div>
+            {INVOICE_TYPES.map((inv, i) => (
+              <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid #f3f3f3', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ width: 10, minWidth: 10, height: 10, borderRadius: '50%', background: inv.color, marginTop: 4 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 'bold', color: inv.color, marginBottom: 2 }}>{inv.type}</div>
+                  <div style={{ fontSize: 11, color: '#555', marginBottom: 2 }}><strong>When:</strong> {inv.when}</div>
+                  <div style={{ fontSize: 11, color: '#555', marginBottom: 2 }}><strong>Amount:</strong> {inv.amount}</div>
+                  <div style={{ fontSize: 11, color: '#888', fontStyle: 'italic' }}>{inv.note}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* How to Record a Payment */}
+          <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', overflow: 'hidden', marginBottom: 14 }}>
+            <div style={{ background: '#2E7D32', color: 'white', padding: '9px 16px', fontWeight: 'bold', fontSize: 12 }}>
+              💵 How to Record a Payment — Step by Step
+            </div>
+            {PAYMENT_STEPS.map((s, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '1px solid #f3f3f3', gap: 12 }}>
+                <div style={{ width: 28, height: 28, minWidth: 28, borderRadius: '50%', background: '#2E7D32', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 13 }}>
+                  {s.step}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 'bold', color: '#222', marginBottom: 2 }}>{s.icon} {s.title}</div>
+                  <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5 }}>{s.body}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Best Practices / Rules */}
+          <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', overflow: 'hidden', marginBottom: 14 }}>
+            <div style={{ background: '#C62828', color: 'white', padding: '9px 16px', fontWeight: 'bold', fontSize: 12 }}>
+              📌 Best Practices — Do This Every Time
+            </div>
+            {PAYMENT_RULES.map((r, i) => (
+              <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid #f3f3f3', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div style={{ fontSize: 20, lineHeight: 1 }}>{r.icon}</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 'bold', color: r.color, marginBottom: 3 }}>{r.rule}</div>
+                  <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5 }}>{r.detail}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* AR Glossary */}
+          <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', overflow: 'hidden', marginBottom: 14 }}>
+            <div style={{ background: '#7B1FA2', color: 'white', padding: '9px 16px', fontWeight: 'bold', fontSize: 12 }}>
+              📖 What the Numbers Mean — AR Glossary
+            </div>
+            {AR_GLOSSARY.map((g, i) => (
+              <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid #f3f3f3' }}>
+                <div style={{ fontSize: 13, fontWeight: 'bold', color: '#7B1FA2', marginBottom: 3 }}>{g.term}</div>
+                <div style={{ fontSize: 12, color: '#555', lineHeight: 1.5 }}>{g.definition}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick reminder box */}
+          <div style={{ background: '#fff8e1', border: '1px solid #ffe082', borderRadius: 10, padding: 14 }}>
+            <div style={{ fontWeight: 'bold', color: '#E07B2A', fontSize: 13, marginBottom: 6 }}>
+              💡 AR Collected vs Won Revenue — Why They Never Match
+            </div>
+            <div style={{ fontSize: 12, color: '#5a3e00', lineHeight: 1.7 }}>
+              <strong>Won Revenue</strong> counts the full contract value of every closed job — even if you've only collected part of it so far.
+              <br />
+              <strong>AR Collected</strong> counts only cash that's actually come in through paid invoices.
+              <br /><br />
+              Example: You win a $300K job and collect the $100K deposit. Won Revenue = $300K. AR Collected = $100K. Both numbers are correct — they're just measuring different things.
+            </div>
+          </div>
+
         </div>
       )}
     </div>
