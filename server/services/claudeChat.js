@@ -244,6 +244,36 @@ const ADMIN_TOOLS = [
     },
   },
   {
+    name: 'lookup_invoices',
+    description:
+      'Look up invoices for a job or customer. Returns invoice numbers, amounts, how much has been paid, balance remaining, and status. Use when someone asks what a customer owes, what invoices are outstanding, payment status on a job, or how much has been collected.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Customer name, job number (e.g. PB-2026-0039), or project address',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'lookup_payments',
+    description:
+      'Look up payment history for a job or customer. Returns checks received with amounts, dates, check numbers, and which invoice each payment is linked to. Use when someone asks what payments have come in, whether a check was recorded, or to reconcile a payment.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Customer name, job number (e.g. PB-2026-0039), or project address',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
     name: 'create_task',
     description:
       'Create a task, reminder, or to-do item. Use this when someone says "remind me to", "schedule", "make a note", "add a task", or similar.',
@@ -370,6 +400,95 @@ async function runAdminTool(toolName, toolInput, db) {
         return `**${j.customer_name}** — ${j.project_address}${j.project_city ? ', ' + j.project_city : ''}\nStatus: ${j.status?.replace(/_/g, ' ')}\nValue: ${j.total_value ? '$' + Number(j.total_value).toLocaleString() : '—'}\nEmail: ${j.customer_email || '—'} | Phone: ${j.customer_phone || '—'}${propLines}`;
       })
       .join('\n\n');
+  }
+
+  if (toolName === 'lookup_invoices') {
+    const q = `%${toolInput.query}%`;
+    const jobs = db
+      .prepare(
+        `SELECT id, customer_name, project_address, job_number FROM jobs
+         WHERE archived = 0 AND (customer_name LIKE ? OR project_address LIKE ? OR job_number LIKE ?)
+         ORDER BY created_at DESC LIMIT 5`,
+      )
+      .all(q, q, q);
+    if (!jobs.length) return 'No jobs found matching that search.';
+
+    const lines = [];
+    for (const job of jobs) {
+      const invoices = db
+        .prepare(
+          `SELECT invoice_number, amount, COALESCE(amount_paid, 0) AS amount_paid, status, notes, issued_at
+           FROM invoices WHERE job_id = ? AND status != 'void' ORDER BY COALESCE(issued_at, created_at) ASC`,
+        )
+        .all(job.id);
+      if (!invoices.length) continue;
+      lines.push(`**${job.customer_name}** — ${job.project_address} (${job.job_number || 'no #'})`);
+      for (const inv of invoices) {
+        const balance = (Number(inv.amount) - Number(inv.amount_paid)).toFixed(2);
+        const statusLabel =
+          inv.status === 'paid'
+            ? '✅ Paid'
+            : inv.status === 'draft'
+              ? '📝 Draft'
+              : inv.status === 'sent'
+                ? '📤 Sent'
+                : inv.status;
+        lines.push(
+          `  • ${inv.invoice_number}: $${Number(inv.amount).toLocaleString()} — ${statusLabel}` +
+            (Number(inv.amount_paid) > 0
+              ? ` | Paid: $${Number(inv.amount_paid).toLocaleString()} | Balance: $${Number(balance).toLocaleString()}`
+              : '') +
+            (inv.notes ? ` | ${inv.notes.slice(0, 80)}` : ''),
+        );
+      }
+      const totalOwed = invoices
+        .filter((i) => i.status !== 'paid')
+        .reduce((s, i) => s + Number(i.amount) - Number(i.amount_paid), 0);
+      if (totalOwed > 0) lines.push(`  → Total outstanding: $${totalOwed.toLocaleString()}`);
+    }
+    return lines.length ? lines.join('\n') : 'No invoices found for matching jobs.';
+  }
+
+  if (toolName === 'lookup_payments') {
+    const q = `%${toolInput.query}%`;
+    const jobs = db
+      .prepare(
+        `SELECT id, customer_name, project_address, job_number FROM jobs
+         WHERE archived = 0 AND (customer_name LIKE ? OR project_address LIKE ? OR job_number LIKE ?)
+         ORDER BY created_at DESC LIMIT 5`,
+      )
+      .all(q, q, q);
+    if (!jobs.length) return 'No jobs found matching that search.';
+
+    const lines = [];
+    for (const job of jobs) {
+      const payments = db
+        .prepare(
+          `SELECT r.amount, r.date_received, r.check_number, r.payment_type, r.notes,
+                  r.credit_debit, i.invoice_number
+           FROM payments_received r
+           LEFT JOIN invoices i ON i.id = r.invoice_id
+           WHERE r.job_id = ? AND (r.is_pass_through_reimbursement IS NULL OR r.is_pass_through_reimbursement = 0)
+           ORDER BY r.date_received DESC, r.created_at DESC`,
+        )
+        .all(job.id);
+      if (!payments.length) continue;
+      const total = payments
+        .filter((p) => p.credit_debit !== 'debit')
+        .reduce((s, p) => s + Number(p.amount), 0);
+      lines.push(
+        `**${job.customer_name}** — ${job.project_address} (${job.job_number || 'no #'}) | Total received: $${total.toLocaleString()}`,
+      );
+      for (const p of payments) {
+        lines.push(
+          `  • ${p.date_received || '—'}: $${Number(p.amount).toLocaleString()}` +
+            (p.check_number ? ` check #${p.check_number}` : '') +
+            ` (${p.payment_type || 'payment'})` +
+            (p.invoice_number ? ` → linked to ${p.invoice_number}` : ' → no invoice linked'),
+        );
+      }
+    }
+    return lines.length ? lines.join('\n') : 'No payments found for matching jobs.';
   }
 
   if (toolName === 'create_task') {
@@ -539,6 +658,8 @@ ${senderLine}
 You have live access to the database and can:
 - Look up any customer contact info (name, email, phone) using lookup_contacts
 - Look up job/project status and info using lookup_jobs
+- Look up invoices for any job or customer (amounts, paid, balance, status) using lookup_invoices
+- Look up payment history for any job or customer (checks received, dates, check numbers) using lookup_payments
 - Create tasks, reminders, and to-do items using create_task
 - Look up MA property assessor data (year built, building area, assessed value, field card link) using lookup_property
 - Get free satellite-derived building dimensions (width, depth, area, perimeter, roof area) using get_building_measurements — needs lat/lng from lookup_property first
