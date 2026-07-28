@@ -277,4 +277,40 @@ router.patch('/jobs/:id/payment-overrides', requireProbeToken, (req, res) => {
   res.json({ ok: true, id: req.params.id, payment_overrides: overrides });
 });
 
+// PATCH /api/probe/payments/reassign — move payment records to a different job
+// Body: { ids: [23, 8], type: 'received'|'made', target_job_id: '...' }
+router.patch('/payments/reassign', requireProbeToken, (req, res) => {
+  const db = getDb();
+  const { ids, type, target_job_id } = req.body;
+
+  if (!Array.isArray(ids) || ids.length === 0)
+    return res.status(400).json({ error: 'ids must be a non-empty array' });
+  if (!['received', 'made'].includes(type))
+    return res.status(400).json({ error: 'type must be received or made' });
+  if (!target_job_id)
+    return res.status(400).json({ error: 'target_job_id is required' });
+
+  const targetJob = db.prepare('SELECT id, project_address, pb_number FROM jobs WHERE id = ?').get(target_job_id);
+  if (!targetJob) return res.status(404).json({ error: 'Target job not found' });
+
+  const table = type === 'received' ? 'payments_received' : 'payments_made';
+  const ph = ids.map(() => '?').join(',');
+  const rows = db.prepare(`SELECT id, job_id, amount FROM ${table} WHERE id IN (${ph})`).all(...ids);
+  if (rows.length === 0) return res.status(404).json({ error: 'No matching payments found' });
+
+  const update = db.prepare(
+    `UPDATE ${table} SET job_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  );
+  const move = db.transaction(() => rows.forEach(r => update.run(target_job_id, r.id)));
+  move();
+
+  console.log(`[Probe] Reassigned ${rows.length} ${type} payment(s) to job ${targetJob.pb_number || target_job_id}`);
+  res.json({
+    ok: true,
+    moved: rows.length,
+    target_job: { id: targetJob.id, pb_number: targetJob.pb_number, address: targetJob.project_address },
+    payment_ids: rows.map(r => r.id),
+  });
+});
+
 module.exports = router;

@@ -799,7 +799,15 @@ router.patch('/received/:id', requireAuth, validateNumber('amount', { min: 0.01 
     credit_debit,
     notes,
     invoice_id,
+    job_id,
   } = req.body;
+
+  // Validate new job_id if provided
+  if (job_id !== undefined && job_id !== row.job_id) {
+    const newJob = db.prepare('SELECT id FROM jobs WHERE id = ?').get(job_id);
+    if (!newJob) return res.status(404).json({ error: 'Target job not found' });
+  }
+  const resolvedJobId = job_id !== undefined ? job_id : row.job_id;
 
   let parsedAmt = row.amount;
   if (amount !== undefined) {
@@ -830,6 +838,7 @@ router.patch('/received/:id', requireAuth, validateNumber('amount', { min: 0.01 
   db.prepare(
     `
     UPDATE payments_received SET
+      job_id = ?,
       customer_name = ?, check_number = ?, amount = ?, date_received = ?, time_received = ?,
       payment_type = ?, credit_debit = ?, notes = ?,
       invoice_id = COALESCE(?, invoice_id),
@@ -837,6 +846,7 @@ router.patch('/received/:id', requireAuth, validateNumber('amount', { min: 0.01 
     WHERE id = ?
   `,
   ).run(
+    resolvedJobId,
     customer_name ?? row.customer_name,
     check_number ?? row.check_number,
     parsedAmt,
@@ -890,7 +900,15 @@ router.patch('/made/:id', requireAuth, validateNumber('amount', { min: 0.01 }), 
     notes,
     paid_by,
     lien_waiver_signed,
+    job_id,
   } = req.body;
+
+  // Validate new job_id if provided
+  if (job_id !== undefined && job_id !== row.job_id) {
+    const newJob = db.prepare('SELECT id FROM jobs WHERE id = ?').get(job_id);
+    if (!newJob) return res.status(404).json({ error: 'Target job not found' });
+  }
+  const resolvedJobId = job_id !== undefined ? job_id : row.job_id;
 
   let parsedAmt = row.amount;
   if (amount !== undefined) {
@@ -925,12 +943,14 @@ router.patch('/made/:id', requireAuth, validateNumber('amount', { min: 0.01 }), 
   db.prepare(
     `
     UPDATE payments_made SET
+      job_id = ?,
       payee_name = ?, check_number = ?, amount = ?, date_paid = ?, time_paid = ?,
       category = ?, credit_debit = ?, notes = ?, paid_by = ?,
       lien_waiver_signed = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `,
   ).run(
+    resolvedJobId,
     payee_name ?? row.payee_name,
     check_number ?? row.check_number,
     parsedAmt,

@@ -74,6 +74,9 @@ export default function Payments({ token }) {
   const [formIn, setFormIn] = useState(EMPTY_IN);
   const [formOut, setFormOut] = useState(EMPTY_OUT);
   const [saving, setSaving] = useState(false);
+  const [reassignTarget, setReassignTarget] = useState(null); // { payment, type: 'received'|'made' }
+  const [reassignJobId, setReassignJobId] = useState('');
+  const [reassigning, setReassigning] = useState(false);
   const [splitIn, setSplitIn] = useState(false);
   const [splitAllocations, setSplitAllocations] = useState([
     { ...EMPTY_ALLOC_G },
@@ -281,6 +284,38 @@ export default function Payments({ token }) {
     } else {
       const data = await res.json().catch(() => ({}));
       showToast(data.error || 'Failed to delete', 'error');
+    }
+  };
+
+  const openReassign = (payment, type) => {
+    setReassignTarget({ payment, type });
+    setReassignJobId(payment.job_id || '');
+  };
+
+  const closeReassign = () => {
+    setReassignTarget(null);
+    setReassignJobId('');
+  };
+
+  const confirmReassign = async () => {
+    if (!reassignTarget || !reassignJobId) return;
+    const { payment, type } = reassignTarget;
+    if (reassignJobId === payment.job_id) { closeReassign(); return; }
+    setReassigning(true);
+    const url = `/api/payments/${type}/${payment.id}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ job_id: reassignJobId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setReassigning(false);
+    if (res.ok) {
+      loadPayments();
+      showToast('Payment moved to new job');
+      closeReassign();
+    } else {
+      showToast(data.error || 'Failed to move payment', 'error');
     }
   };
 
@@ -1076,6 +1111,7 @@ export default function Payments({ token }) {
             },
           ]}
           onDelete={deleteReceived}
+          onReassign={(p) => openReassign(p, 'received')}
           emptyMsg="No AR entries recorded yet."
         />
       ) : (
@@ -1142,8 +1178,55 @@ export default function Payments({ token }) {
             },
           ]}
           onDelete={deleteMade}
+          onReassign={(p) => openReassign(p, 'made')}
           emptyMsg="No AP entries recorded yet."
         />
+      )}
+
+      {/* Reassign-to-job modal */}
+      {reassignTarget && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeReassign(); }}
+        >
+          <div style={{
+            background: 'white', borderRadius: 12, padding: 28, width: 420,
+            maxWidth: '95vw', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+          }}>
+            <h3 style={{ margin: '0 0 6px', fontSize: 15, color: '#1e3a5f' }}>Move Payment to Another Job</h3>
+            <div style={{ fontSize: 12, color: '#888', marginBottom: 18 }}>
+              {fmt(reassignTarget.payment.amount)} ·{' '}
+              {reassignTarget.payment.check_number ? `Check #${reassignTarget.payment.check_number} · ` : ''}
+              {reassignTarget.payment.customer_name || reassignTarget.payment.payee_name || ''}
+            </div>
+            <label style={{ fontSize: 11, color: '#888', display: 'block', marginBottom: 4 }}>
+              Move to job
+            </label>
+            <JobSelect value={reassignJobId} onChange={setReassignJobId} jobs={jobs} />
+            <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button
+                onClick={closeReassign}
+                style={{ padding: '8px 18px', border: '1px solid #ddd', borderRadius: 7, background: 'white', cursor: 'pointer', fontSize: 13 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReassign}
+                disabled={reassigning || !reassignJobId || reassignJobId === reassignTarget.payment.job_id}
+                style={{
+                  padding: '8px 18px', background: BLUE, color: 'white', border: 'none',
+                  borderRadius: 7, cursor: 'pointer', fontSize: 13, fontWeight: 'bold',
+                  opacity: (reassigning || !reassignJobId || reassignJobId === reassignTarget.payment.job_id) ? 0.5 : 1,
+                }}
+              >
+                {reassigning ? 'Moving…' : 'Move Payment'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1309,7 +1392,7 @@ function SplitGroupHeader({ groupId, rows, expanded, onToggle, isTarget }) {
   );
 }
 
-function PaymentTable({ payments, columns, onDelete, emptyMsg, defaultExpandedGroup, storageKey }) {
+function PaymentTable({ payments, columns, onDelete, onReassign, emptyMsg, defaultExpandedGroup, storageKey }) {
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const seed = defaultExpandedGroup ? [defaultExpandedGroup] : [];
     if (storageKey) {
@@ -1375,7 +1458,24 @@ function PaymentTable({ payments, columns, onDelete, emptyMsg, defaultExpandedGr
               {c.render(entry.payment)}
             </td>
           ))}
-          <td style={{ padding: '10px 12px' }}>
+          <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+            {onReassign && (
+              <button
+                onClick={() => onReassign(entry.payment)}
+                style={{
+                  padding: '4px 10px',
+                  background: '#1e3a5f11',
+                  color: BLUE,
+                  border: '1px solid #1e3a5f22',
+                  borderRadius: 5,
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  marginRight: 4,
+                }}
+              >
+                Move
+              </button>
+            )}
             <button
               onClick={() => onDelete(entry.payment)}
               style={{
@@ -1422,7 +1522,24 @@ function PaymentTable({ payments, columns, onDelete, emptyMsg, defaultExpandedGr
                   {c.render(p)}
                 </td>
               ))}
-              <td style={{ padding: '9px 12px' }}>
+              <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
+                {onReassign && (
+                  <button
+                    onClick={() => onReassign(p)}
+                    style={{
+                      padding: '4px 10px',
+                      background: '#1e3a5f11',
+                      color: BLUE,
+                      border: '1px solid #1e3a5f22',
+                      borderRadius: 5,
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      marginRight: 4,
+                    }}
+                  >
+                    Move
+                  </button>
+                )}
                 <button
                   onClick={() => onDelete(p)}
                   style={{
