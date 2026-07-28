@@ -304,9 +304,16 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
     const badAmt = validLines.find((li) => !Number(li.amount) || Number(li.amount) <= 0);
     if (badAmt) return showToast('All line items need an amount greater than 0', 'error');
     setSaving(true);
+    const parsedLines = validLines.map((li) => ({ ...li, amount: parseFloat(li.amount) }));
+    const totalAmt = parsedLines.reduce((s, li) => s + li.amount, 0);
+    const hasPT = parsedLines.some((li) => li.type === 'pass_through');
+    const hasContract = parsedLines.some((li) => li.type !== 'pass_through');
+    const invoiceType = hasContract && hasPT ? 'combined_invoice' : hasPT ? 'pass_through_invoice' : 'contract_invoice';
     const payload = {
       notes: formInv.notes,
-      line_items: validLines.map((li) => ({ ...li, amount: parseFloat(li.amount) })),
+      line_items: parsedLines,
+      invoice_type: invoiceType,
+      amount: totalAmt,
     };
     const res = await fetch(`/api/invoices/job/${jobId}`, {
       method: 'POST',
