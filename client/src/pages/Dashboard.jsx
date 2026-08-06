@@ -209,6 +209,13 @@ export default function Dashboard({ token }) {
     } catch {}
   }, [showCompleted]);
 
+  // Persist outstanding invoices filter
+  useEffect(() => {
+    try {
+      localStorage.setItem('pb_dashboard_filter_outstanding', filterOutstanding ? 'true' : 'false');
+    } catch {}
+  }, [filterOutstanding]);
+
   // Re-fetch whenever navigating to the dashboard
   useEffect(() => {
     const fn = () => setIsMobile(window.innerWidth < 1024);
@@ -252,6 +259,13 @@ export default function Dashboard({ token }) {
     }
   });
 
+  const [filterOutstanding, setFilterOutstanding] = useState(() => {
+    try {
+      return localStorage.getItem('pb_dashboard_filter_outstanding') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [showArchived, setShowArchived] = useState(false);
   const [archivedJobs, setArchivedJobs] = useState([]);
   const [archiveModal, setArchiveModal] = useState(null);
@@ -587,11 +601,32 @@ export default function Dashboard({ token }) {
       {/* Jobs list — cards on mobile, table on desktop */}
       {(() => {
         const completedCount = jobs.filter((j) => j.status === 'complete').length;
-        const activeJobs = showCompleted ? jobs : jobs.filter((j) => j.status !== 'complete');
+        const outstandingCount = jobs.filter((j) => (j.inv_pending_send || 0) + (j.inv_sent || 0) > 0).length;
+        let activeJobs = showCompleted ? jobs : jobs.filter((j) => j.status !== 'complete');
+        if (filterOutstanding) {
+          activeJobs = activeJobs.filter((j) => (j.inv_pending_send || 0) + (j.inv_sent || 0) > 0);
+        }
         return (
         <>
-          {completedCount > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setFilterOutstanding((v) => !v)}
+              style={{
+                background: filterOutstanding ? '#E65100' : 'white',
+                color: filterOutstanding ? 'white' : '#E65100',
+                border: '1px solid #E65100',
+                borderRadius: 6,
+                padding: '4px 14px',
+                fontSize: 12,
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              {filterOutstanding
+                ? `⚡ Outstanding invoices (${activeJobs.length})`
+                : `⚡ Has outstanding invoices (${outstandingCount})`}
+            </button>
+            {completedCount > 0 && (
               <button
                 onClick={() => setShowCompleted((v) => !v)}
                 style={{
@@ -607,8 +642,8 @@ export default function Dashboard({ token }) {
               >
                 {showCompleted ? `Hide Completed (${completedCount})` : `Show Completed (${completedCount})`}
               </button>
-            </div>
-          )}
+            )}
+          </div>
       {isMobile ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {activeJobs.length === 0 && (
