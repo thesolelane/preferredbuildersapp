@@ -175,10 +175,6 @@ router.get('/job/:jobId', requireAuth, (req, res) => {
 router.post(
   '/job/:jobId',
   requireAuth,
-  (req, res, next) => {
-    console.log('[InvoiceCreate] body keys:', Object.keys(req.body || {}), '| invoice_type:', req.body?.invoice_type, '| content-type:', req.headers['content-type']);
-    next();
-  },
   requireFields(['invoice_type', 'amount']),
   validateEnum('invoice_type', VALID_TYPES),
   validateNumber('amount', { min: 0 }),
