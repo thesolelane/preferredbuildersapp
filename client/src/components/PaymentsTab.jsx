@@ -100,6 +100,7 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
   const [receiptUpload, setReceiptUpload] = useState(null);
   const [linkingPaymentId, setLinkingPaymentId] = useState(null);
   const [linkInvoices, setLinkInvoices] = useState([]);
+  const [filterApCategory, setFilterApCategory] = useState('');
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
@@ -2365,29 +2366,43 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
           <span style={{ fontSize: 12, fontWeight: 'normal', color: '#888' }}>({made.length})</span>
         </div>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
-          {['Subcontractor', 'Materials', 'Permits', 'Other'].map((lbl) => (
-            <span
-              key={lbl}
-              style={{
-                fontSize: 10,
-                padding: '2px 9px',
-                borderRadius: 10,
-                background: '#fff0f0',
-                color: RED,
-                fontWeight: 600,
-                border: `1px solid ${RED}33`,
-              }}
-            >
-              {lbl}
-            </span>
-          ))}
+          {[['', 'All'], ['subcontractor', 'Subcontractor'], ['material', 'Materials'], ['permit', 'Permits'], ['other', 'Other']].map(([val, lbl]) => {
+            const active = filterApCategory === val;
+            return (
+              <button
+                key={val}
+                onClick={() => setFilterApCategory(val)}
+                style={{
+                  fontSize: 10,
+                  padding: '2px 9px',
+                  borderRadius: 10,
+                  background: active ? RED : '#fff0f0',
+                  color: active ? 'white' : RED,
+                  fontWeight: 600,
+                  border: `1px solid ${RED}${active ? '' : '33'}`,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {lbl}
+              </button>
+            );
+          })}
         </div>
-        {made.length === 0 ? (
+        {(() => {
+          const visibleMade = filterApCategory ? made.filter((p) => p.category === filterApCategory) : made;
+          return made.length === 0 ? (
           <div style={{ color: '#aaa', fontSize: 13, padding: '12px 0' }}>
             No AP entries recorded yet.
           </div>
         ) : (
           <div style={{ overflow: 'auto' }}>
+            {visibleMade.length === 0 && (
+              <div style={{ color: '#aaa', fontSize: 13, padding: '12px 0' }}>
+                No AP entries match this category filter.
+              </div>
+            )}
+            {visibleMade.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#fff5f5' }}>
@@ -2422,7 +2437,7 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                 </tr>
               </thead>
               <tbody>
-                {made.map((p) => (
+                {visibleMade.map((p) => (
                   <tr
                     key={p.id}
                     style={{
@@ -2618,8 +2633,10 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
-        )}
+        );
+        })()}
       </div>
 
       {/* Job Cost Breakdown */}

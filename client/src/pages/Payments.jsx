@@ -69,6 +69,7 @@ export default function Payments({ token }) {
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
   const [filterArType, setFilterArType] = useState('');
+  const [filterApCategory, setFilterApCategory] = useState('');
   const [loading, setLoading] = useState(true);
   const [showFormIn, setShowFormIn] = useState(false);
   const [showFormOut, setShowFormOut] = useState(false);
@@ -954,7 +955,7 @@ export default function Payments({ token }) {
             style={inputStyle}
           />
         </div>
-        {(filterJob || filterCustomer || filterFrom || filterTo || filterArType) && (
+        {(filterJob || filterCustomer || filterFrom || filterTo || filterArType || filterApCategory) && (
           <button
             onClick={() => {
               setFilterJob('');
@@ -962,6 +963,7 @@ export default function Payments({ token }) {
               setFilterFrom('');
               setFilterTo('');
               setFilterArType('');
+              setFilterApCategory('');
             }}
             style={{
               padding: '8px 14px',
@@ -1027,22 +1029,28 @@ export default function Payments({ token }) {
                 </button>
               );
             })
-          : ['Subcontractor', 'Materials', 'Permits', 'Other'].map((lbl) => (
-              <span
-                key={lbl}
-                style={{
-                  fontSize: 10,
-                  padding: '2px 9px',
-                  borderRadius: 10,
-                  background: '#fff0f0',
-                  color: RED,
-                  fontWeight: 600,
-                  border: `1px solid ${RED}33`,
-                }}
-              >
-                {lbl}
-              </span>
-            ))}
+          : [['', 'All'], ['subcontractor', 'Subcontractor'], ['material', 'Materials'], ['permit', 'Permits'], ['other', 'Other']].map(([val, lbl]) => {
+              const active = filterApCategory === val;
+              return (
+                <button
+                  key={val}
+                  onClick={() => setFilterApCategory(val)}
+                  style={{
+                    fontSize: 11,
+                    padding: '3px 11px',
+                    borderRadius: 10,
+                    background: active ? RED : '#fff0f0',
+                    color: active ? 'white' : RED,
+                    fontWeight: 600,
+                    border: `1px solid ${RED}${active ? '' : '33'}`,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {lbl}
+                </button>
+              );
+            })}
       </div>
 
       {loading ? (
@@ -1126,7 +1134,7 @@ export default function Payments({ token }) {
       ) : (
         <PaymentTable
           key="made-table"
-          payments={made}
+          payments={filterApCategory ? made.filter((p) => p.category === filterApCategory) : made}
           storageKey="pb_ledger_expanded_made"
           columns={[
             {
