@@ -2,6 +2,7 @@
 
 ## User Preferences
 - **Group related follow-up tasks together** — when proposing follow-up tasks, bundle ones that are related or can be done in the same pass, and prioritize them together so they get handled as a batch rather than individually.
+- **Only propose tasks for critical fixes or systemic gaps** — do not suggest polish, nice-to-haves, or incremental improvements as project tasks. Only raise a task if something is broken, missing in a way that affects daily use, or is a significant workflow gap.
 
 
 
