@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { showToast } from '../utils/toast';
 import { showConfirm } from '../utils/confirm';
 import ClassBreakdownCell from '../components/ClassBreakdownCell';
@@ -1043,6 +1043,7 @@ export default function Payments({ token }) {
         <PaymentTable
           key="received-table"
           payments={received}
+          token={token}
           defaultExpandedGroup={defaultSplitGroup}
           storageKey="pb_ledger_expanded_received"
           columns={[
@@ -1392,7 +1393,7 @@ function SplitGroupHeader({ groupId, rows, expanded, onToggle, isTarget }) {
   );
 }
 
-function PaymentTable({ payments, columns, onDelete, onReassign, emptyMsg, defaultExpandedGroup, storageKey }) {
+function PaymentTable({ payments, columns, onDelete, onReassign, emptyMsg, defaultExpandedGroup, storageKey, token }) {
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const seed = defaultExpandedGroup ? [defaultExpandedGroup] : [];
     if (storageKey) {
@@ -1405,6 +1406,28 @@ function PaymentTable({ payments, columns, onDelete, onReassign, emptyMsg, defau
     }
     return new Set(seed);
   });
+  const [expandedSplits, setExpandedSplits] = useState(new Set());
+  const [splitSiblings, setSplitSiblings] = useState({});
+
+  const toggleSplitPanel = (splitGroupId) => {
+    setExpandedSplits((prev) => {
+      const next = new Set(prev);
+      if (next.has(splitGroupId)) {
+        next.delete(splitGroupId);
+      } else {
+        next.add(splitGroupId);
+        if (!splitSiblings[splitGroupId]) {
+          fetch(`/api/payments/split-siblings/${splitGroupId}`, {
+            headers: { 'x-auth-token': token },
+          })
+            .then((r) => r.json())
+            .then((d) => setSplitSiblings((prev) => ({ ...prev, [splitGroupId]: d.siblings || [] })))
+            .catch(() => setSplitSiblings((prev) => ({ ...prev, [splitGroupId]: [] })));
+        }
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!storageKey) return;
@@ -1448,50 +1471,145 @@ function PaymentTable({ payments, columns, onDelete, onReassign, emptyMsg, defau
       return next;
     });
 
+  const renderActionCell = (p, cellPadding = '10px 12px') => (
+    <td style={{ padding: cellPadding, whiteSpace: 'nowrap' }}>
+      {p.split_group_id && (
+        <button
+          onClick={() => toggleSplitPanel(p.split_group_id)}
+          title="Show all allocations from this split check"
+          style={{
+            fontSize: 10,
+            padding: '3px 7px',
+            borderRadius: 8,
+            background: expandedSplits.has(p.split_group_id) ? SPLIT_ACCENT : '#eff6ff',
+            color: expandedSplits.has(p.split_group_id) ? 'white' : SPLIT_ACCENT,
+            fontWeight: 'bold',
+            border: '1px solid #bfdbfe',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            marginRight: 4,
+          }}
+        >
+          {expandedSplits.has(p.split_group_id) ? '▲ Split check' : '▼ Split check'}
+        </button>
+      )}
+      {onReassign && (
+        <button
+          onClick={() => onReassign(p)}
+          style={{
+            padding: '4px 10px',
+            background: '#1e3a5f11',
+            color: BLUE,
+            border: '1px solid #1e3a5f22',
+            borderRadius: 5,
+            cursor: 'pointer',
+            fontSize: 11,
+            marginRight: 4,
+          }}
+        >
+          Move
+        </button>
+      )}
+      <button
+        onClick={() => onDelete(p)}
+        style={{
+          padding: '4px 10px',
+          background: '#ff000011',
+          color: RED,
+          border: '1px solid #ff000022',
+          borderRadius: 5,
+          cursor: 'pointer',
+          fontSize: 11,
+        }}
+      >
+        Delete
+      </button>
+    </td>
+  );
+
+  const renderSiblingPanel = (p, colCount) => {
+    if (!p.split_group_id || !expandedSplits.has(p.split_group_id)) return null;
+    const siblings = splitSiblings[p.split_group_id];
+    return (
+      <tr
+        key={`siblings-${p.id}`}
+        style={{ background: '#e8f0fe', borderBottom: '1px solid #dce6f5', borderLeft: `3px solid ${SPLIT_ACCENT}` }}
+      >
+        <td colSpan={colCount + 1} style={{ padding: '10px 14px' }}>
+          <div style={{ fontSize: 12, color: '#1e3a8a', fontWeight: 600, marginBottom: 6 }}>
+            All allocations from this check:
+          </div>
+          {!siblings ? (
+            <div style={{ fontSize: 12, color: '#888' }}>Loading…</div>
+          ) : siblings.length === 0 ? (
+            <div style={{ fontSize: 12, color: '#888' }}>No sibling allocations found.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {siblings.map((s) => {
+                const isThisRow = s.id === p.id;
+                return (
+                  <div
+                    key={s.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '5px 10px',
+                      borderRadius: 6,
+                      background: isThisRow ? '#dbeafe' : 'white',
+                      border: isThisRow ? '1px solid #93c5fd' : '1px solid #e5e7eb',
+                      fontSize: 12,
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, color: '#1e3a8a', minWidth: 72 }}>
+                      {fmt(s.amount)}
+                    </span>
+                    <span style={{ color: '#555', flex: 1 }}>
+                      {s.job_customer || '—'}
+                      {s.project_address ? (
+                        <span style={{ color: '#888', marginLeft: 6 }}>· {s.project_address}</span>
+                      ) : null}
+                    </span>
+                    {isThisRow && (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          padding: '1px 6px',
+                          borderRadius: 6,
+                          background: SPLIT_ACCENT,
+                          color: 'white',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        this row
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </td>
+      </tr>
+    );
+  };
+
   const rows = [];
   for (const entry of order) {
     if (entry.type === 'single') {
+      const p = entry.payment;
       rows.push(
-        <tr key={entry.payment.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-          {columns.map((c) => (
-            <td key={c.key} style={{ padding: '10px 12px', color: '#333' }}>
-              {c.render(entry.payment)}
-            </td>
-          ))}
-          <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-            {onReassign && (
-              <button
-                onClick={() => onReassign(entry.payment)}
-                style={{
-                  padding: '4px 10px',
-                  background: '#1e3a5f11',
-                  color: BLUE,
-                  border: '1px solid #1e3a5f22',
-                  borderRadius: 5,
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  marginRight: 4,
-                }}
-              >
-                Move
-              </button>
-            )}
-            <button
-              onClick={() => onDelete(entry.payment)}
-              style={{
-                padding: '4px 10px',
-                background: '#ff000011',
-                color: RED,
-                border: '1px solid #ff000022',
-                borderRadius: 5,
-                cursor: 'pointer',
-                fontSize: 11,
-              }}
-            >
-              Delete
-            </button>
-          </td>
-        </tr>,
+        <Fragment key={p.id}>
+          <tr style={{ borderBottom: expandedSplits.has(p.split_group_id) ? 'none' : '1px solid #f0f0f0' }}>
+            {columns.map((c) => (
+              <td key={c.key} style={{ padding: '10px 12px', color: '#333' }}>
+                {c.render(p)}
+              </td>
+            ))}
+            {renderActionCell(p)}
+          </tr>
+          {renderSiblingPanel(p, columns.length)}
+        </Fragment>,
       );
     } else {
       const groupRows = groupMap.get(entry.id);
@@ -1509,53 +1627,23 @@ function PaymentTable({ payments, columns, onDelete, onReassign, emptyMsg, defau
       if (expanded) {
         for (const p of groupRows) {
           rows.push(
-            <tr
-              key={p.id}
-              style={{
-                borderBottom: '1px solid #e8f0fe',
-                background: '#f8fbff',
-                borderLeft: `4px solid ${SPLIT_ACCENT}44`,
-              }}
-            >
-              {columns.map((c) => (
-                <td key={c.key} style={{ padding: '9px 12px', color: '#333' }}>
-                  {c.render(p)}
-                </td>
-              ))}
-              <td style={{ padding: '9px 12px', whiteSpace: 'nowrap' }}>
-                {onReassign && (
-                  <button
-                    onClick={() => onReassign(p)}
-                    style={{
-                      padding: '4px 10px',
-                      background: '#1e3a5f11',
-                      color: BLUE,
-                      border: '1px solid #1e3a5f22',
-                      borderRadius: 5,
-                      cursor: 'pointer',
-                      fontSize: 11,
-                      marginRight: 4,
-                    }}
-                  >
-                    Move
-                  </button>
-                )}
-                <button
-                  onClick={() => onDelete(p)}
-                  style={{
-                    padding: '4px 10px',
-                    background: '#ff000011',
-                    color: RED,
-                    border: '1px solid #ff000022',
-                    borderRadius: 5,
-                    cursor: 'pointer',
-                    fontSize: 11,
-                  }}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>,
+            <Fragment key={p.id}>
+              <tr
+                style={{
+                  borderBottom: expandedSplits.has(p.split_group_id) ? 'none' : '1px solid #e8f0fe',
+                  background: '#f8fbff',
+                  borderLeft: `4px solid ${SPLIT_ACCENT}44`,
+                }}
+              >
+                {columns.map((c) => (
+                  <td key={c.key} style={{ padding: '9px 12px', color: '#333' }}>
+                    {c.render(p)}
+                  </td>
+                ))}
+                {renderActionCell(p, '9px 12px')}
+              </tr>
+              {renderSiblingPanel(p, columns.length)}
+            </Fragment>,
           );
         }
       }
