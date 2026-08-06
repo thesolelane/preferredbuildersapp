@@ -521,6 +521,7 @@ router.post(
           );
 
           // Auto-generate a "Balance Due" draft invoice for the remainder
+
           if (!nowFull && remaining > 0) {
             try {
               const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(job_id);
@@ -557,6 +558,39 @@ router.post(
             } catch (balErr) {
               console.warn('[PaymentSync] Balance invoice creation failed:', balErr.message);
             }
+          }
+        }
+
+        // Symmetric guard: if this payment is still unlinked (no open invoice
+        // matched above), check for an already-paid invoice on the same job
+        // with a matching amount that no other payment row has claimed yet.
+        // This closes the gap where a payment is recorded manually before the
+        // invoice is marked paid, or vice-versa.
+        const stillUnlinked = db
+          .prepare('SELECT invoice_id FROM payments_received WHERE id = ?')
+          .get(payment.id);
+        if (!stillUnlinked?.invoice_id) {
+          const unlinkedPaid = db
+            .prepare(
+              `SELECT id, invoice_number FROM invoices
+               WHERE job_id = ? AND status = 'paid'
+                 AND ABS(amount - ?) <= ?
+                 AND NOT EXISTS (
+                   SELECT 1 FROM payments_received pr
+                   WHERE pr.invoice_id = invoices.id
+                 )
+               ORDER BY COALESCE(paid_at, created_at) DESC
+               LIMIT 1`,
+            )
+            .get(job_id, parsedAmount, tolerance);
+          if (unlinkedPaid) {
+            db.prepare('UPDATE payments_received SET invoice_id = ? WHERE id = ?').run(
+              unlinkedPaid.id,
+              payment.id,
+            );
+            console.log(
+              `[PaymentSync] Back-linked payment ${payment.id} to already-paid invoice ${unlinkedPaid.invoice_number}`,
+            );
           }
         }
       } catch (syncErr) {
