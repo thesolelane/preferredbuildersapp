@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import StaffChat from './StaffChat';
 
@@ -39,7 +39,7 @@ const BOTTOM_NAV = [
 
 const ALL_NAV = [...MAIN_NAV, ...CONFIG_NAV_ALL];
 
-function SidebarNavItem({ item, active, collapsed }) {
+function SidebarNavItem({ item, active, collapsed, badge }) {
   return (
     <Link to={item.path} style={{ textDecoration: 'none' }}>
       <div
@@ -59,8 +59,26 @@ function SidebarNavItem({ item, active, collapsed }) {
       >
         <span style={{ fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
         {!collapsed && (
-          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
             {item.label}
+          </span>
+        )}
+        {badge > 0 && (
+          <span
+            style={{
+              background: ORANGE,
+              color: 'white',
+              fontSize: 10,
+              fontWeight: 700,
+              borderRadius: 10,
+              padding: '1px 6px',
+              minWidth: 18,
+              textAlign: 'center',
+              flexShrink: 0,
+              lineHeight: '16px',
+            }}
+          >
+            {badge}
           </span>
         )}
       </div>
@@ -73,6 +91,22 @@ export default function Layout({ children, token, onLogout, userName, userRole }
   const [collapsed, setCollapsed] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [outstandingCount, setOutstandingCount] = useState(0);
+  const outstandingTimer = useRef(null);
+
+  const fetchOutstanding = () => {
+    if (!token) return;
+    fetch('/api/jobs/outstanding-invoice-count', { headers: { 'x-auth-token': token } })
+      .then((r) => r.json())
+      .then((data) => setOutstandingCount(data.count || 0))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchOutstanding();
+    outstandingTimer.current = setInterval(fetchOutstanding, 60_000);
+    return () => clearInterval(outstandingTimer.current);
+  }, [token]);
 
   const CONFIG_NAV = CONFIG_NAV_ALL.filter((n) => !n.adminOnly || userRole === 'system_admin');
 
@@ -187,6 +221,7 @@ export default function Layout({ children, token, onLogout, userName, userRole }
                 item={item}
                 active={pathname === item.path}
                 collapsed={collapsed}
+                badge={item.path === '/' ? outstandingCount : 0}
               />
             ))}
             <div
@@ -329,6 +364,7 @@ export default function Layout({ children, token, onLogout, userName, userRole }
       >
         {BOTTOM_NAV.map((item) => {
           const active = pathname === item.path;
+          const itemBadge = item.path === '/' ? outstandingCount : 0;
           return (
             <Link key={item.path} to={item.path} style={{ flex: 1, textDecoration: 'none' }}>
               <div
@@ -341,9 +377,32 @@ export default function Layout({ children, token, onLogout, userName, userRole }
                   fontSize: 10,
                   fontWeight: active ? 'bold' : 'normal',
                   borderTop: active ? `2px solid ${ORANGE}` : '2px solid transparent',
+                  position: 'relative',
                 }}
               >
-                <span style={{ fontSize: 22, marginBottom: 2 }}>{item.icon}</span>
+                <span style={{ fontSize: 22, marginBottom: 2, position: 'relative' }}>
+                  {item.icon}
+                  {itemBadge > 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: -4,
+                        right: -8,
+                        background: ORANGE,
+                        color: 'white',
+                        fontSize: 9,
+                        fontWeight: 700,
+                        borderRadius: 8,
+                        padding: '0 4px',
+                        minWidth: 14,
+                        textAlign: 'center',
+                        lineHeight: '14px',
+                      }}
+                    >
+                      {itemBadge}
+                    </span>
+                  )}
+                </span>
                 {item.label}
               </div>
             </Link>
@@ -432,6 +491,7 @@ export default function Layout({ children, token, onLogout, userName, userRole }
             <div style={{ padding: '4px 0 8px' }}>
               {ALL_NAV.map((item) => {
                 const active = pathname === item.path;
+                const itemBadge = item.path === '/' ? outstandingCount : 0;
                 return (
                   <Link
                     key={item.path}
@@ -452,8 +512,24 @@ export default function Layout({ children, token, onLogout, userName, userRole }
                       }}
                     >
                       <span style={{ fontSize: 20 }}>{item.icon}</span>
-                      <span>{item.label}</span>
-                      {active && <span style={{ marginLeft: 'auto', color: ORANGE }}>●</span>}
+                      <span style={{ flex: 1 }}>{item.label}</span>
+                      {itemBadge > 0 && (
+                        <span
+                          style={{
+                            background: ORANGE,
+                            color: 'white',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            borderRadius: 10,
+                            padding: '2px 7px',
+                            minWidth: 20,
+                            textAlign: 'center',
+                          }}
+                        >
+                          {itemBadge}
+                        </span>
+                      )}
+                      {active && !itemBadge && <span style={{ color: ORANGE }}>●</span>}
                     </div>
                   </Link>
                 );

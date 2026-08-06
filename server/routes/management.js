@@ -77,6 +77,22 @@ router.patch(
   },
 );
 
+// GET count of jobs with outstanding invoices (pending_send + sent > 0)
+// Lightweight endpoint used by the sidebar badge — no pagination needed
+router.get('/outstanding-invoice-count', requireAuth, (req, res) => {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) AS count FROM jobs j WHERE j.archived = 0
+         AND (
+           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status IN ('pending_send','sent'))
+         + (SELECT COUNT(*) FROM direct_invoices WHERE job_id = j.id AND status IN ('pending_send','sent'))
+         ) > 0`,
+    )
+    .get();
+  res.json({ count: row.count });
+});
+
 // GET archived jobs (must be before /:id route)
 router.get('/archived/list', requireAuth, (req, res) => {
   const db = getDb();
