@@ -74,6 +74,7 @@ function InvoiceSummaryBadges({ job }) {
 export default function Dashboard({ token }) {
   const location = useLocation();
   const [jobs, setJobs] = useState([]);
+  const [showCompleted, setShowCompleted] = useState(false);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
@@ -571,9 +572,33 @@ export default function Dashboard({ token }) {
       )}
 
       {/* Jobs list — cards on mobile, table on desktop */}
+      {(() => {
+        const completedCount = jobs.filter((j) => j.status === 'complete').length;
+        const activeJobs = showCompleted ? jobs : jobs.filter((j) => j.status !== 'complete');
+        return (
+        <>
+          {completedCount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <button
+                onClick={() => setShowCompleted((v) => !v)}
+                style={{
+                  background: showCompleted ? '#1B3A6B' : 'white',
+                  color: showCompleted ? 'white' : '#1B3A6B',
+                  border: '1px solid #1B3A6B',
+                  borderRadius: 6,
+                  padding: '4px 14px',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                {showCompleted ? `Hide Completed (${completedCount})` : `Show Completed (${completedCount})`}
+              </button>
+            </div>
+          )}
       {isMobile ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {jobs.length === 0 && (
+          {activeJobs.length === 0 && (
             <div
               style={{
                 background: 'white',
@@ -587,7 +612,7 @@ export default function Dashboard({ token }) {
               No jobs yet. Waiting for estimates from Hearth...
             </div>
           )}
-          {jobs.map((job) => (
+          {activeJobs.map((job) => (
             <div
               key={job.id}
               style={{
@@ -762,14 +787,14 @@ export default function Dashboard({ token }) {
               </tr>
             </thead>
             <tbody>
-              {jobs.length === 0 && (
+              {activeJobs.length === 0 && (
                 <tr>
                   <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#888' }}>
                     No jobs yet. Waiting for estimates from Hearth...
                   </td>
                 </tr>
               )}
-              {jobs.map((job, i) => (
+              {activeJobs.map((job, i) => (
                 <tr
                   key={job.id}
                   style={{
@@ -881,6 +906,9 @@ export default function Dashboard({ token }) {
           </table>
         </div>
       )}
+        </>
+        );
+      })()}
 
       <div style={{ marginTop: 12, textAlign: 'right' }}>
         <button
