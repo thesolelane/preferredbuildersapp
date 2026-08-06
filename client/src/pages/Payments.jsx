@@ -1601,6 +1601,12 @@ function PaymentTable({ payments, columns, onDelete, onReassign, emptyMsg, defau
 }
 
 const TYPE_COLORS = { deposit: '#3B82F6', progress: ORANGE, final: '#2E7D32', other: '#888' };
+const TYPE_LABELS = {
+  deposit: 'AR — Deposit',
+  progress: 'AR — Progress',
+  final: 'AR — Final',
+  other: 'AR — Other',
+};
 function TypeBadge({ type }) {
   const color = TYPE_COLORS[type] || '#888';
   return (
@@ -1614,12 +1620,18 @@ function TypeBadge({ type }) {
         fontWeight: 'bold',
       }}
     >
-      {type?.charAt(0).toUpperCase() + type?.slice(1)}
+      {TYPE_LABELS[type] || (type?.charAt(0).toUpperCase() + type?.slice(1))}
     </span>
   );
 }
 
 const CAT_COLORS = { subcontractor: '#7C3AED', material: ORANGE, permit: '#0D9488', other: '#888' };
+const CAT_LABELS = {
+  subcontractor: 'AP — Sub',
+  material: 'AP — Materials',
+  permit: 'AP — Permit',
+  other: 'AP — Other',
+};
 function CategoryBadge({ cat }) {
   const color = CAT_COLORS[cat] || '#888';
   return (
@@ -1633,7 +1645,7 @@ function CategoryBadge({ cat }) {
         fontWeight: 'bold',
       }}
     >
-      {cat?.charAt(0).toUpperCase() + cat?.slice(1)}
+      {CAT_LABELS[cat] || (cat?.charAt(0).toUpperCase() + cat?.slice(1))}
     </span>
   );
 }

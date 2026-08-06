@@ -3068,6 +3068,12 @@ function BreakdownRow({ label, value, color, bold }) {
 }
 
 const TYPE_COLORS = { deposit: '#3B82F6', progress: ORANGE, final: GREEN, other: '#888' };
+const TYPE_LABELS = {
+  deposit: 'AR — Deposit',
+  progress: 'AR — Progress',
+  final: 'AR — Final',
+  other: 'AR — Other',
+};
 function TypeBadge({ type }) {
   const color = TYPE_COLORS[type] || '#888';
   return (
@@ -3081,7 +3087,7 @@ function TypeBadge({ type }) {
         fontWeight: 'bold',
       }}
     >
-      {type?.charAt(0).toUpperCase() + type?.slice(1)}
+      {TYPE_LABELS[type] || (type?.charAt(0).toUpperCase() + type?.slice(1))}
     </span>
   );
 }
@@ -3094,6 +3100,15 @@ const CAT_COLORS = {
   engineer: '#0891b2',
   architect: '#6366f1',
   designer: '#ec4899',
+};
+const CAT_LABELS = {
+  subcontractor: 'AP — Sub',
+  material: 'AP — Materials',
+  permit: 'AP — Permit',
+  other: 'AP — Other',
+  engineer: 'AP — Engineer',
+  architect: 'AP — Architect',
+  designer: 'AP — Designer',
 };
 function CategoryBadge({ cat }) {
   const color = CAT_COLORS[cat] || '#888';
@@ -3108,7 +3123,7 @@ function CategoryBadge({ cat }) {
         fontWeight: 'bold',
       }}
     >
-      {cat?.charAt(0).toUpperCase() + cat?.slice(1)}
+      {CAT_LABELS[cat] || (cat?.charAt(0).toUpperCase() + cat?.slice(1))}
     </span>
   );
 }
