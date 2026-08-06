@@ -1,5 +1,10 @@
 # Preferred Builders AI Contract System
 
+## User Preferences
+- **Group related follow-up tasks together** — when proposing follow-up tasks, bundle ones that are related or can be done in the same pass, and prioritize them together so they get handled as a batch rather than individually.
+
+
+
 ## Overview
 AI-powered construction estimation, contract generation, and team communication system for Preferred Builders General Services Inc. (HIC-197400).
 
