@@ -68,6 +68,7 @@ export default function Payments({ token }) {
   const [filterCustomer, setFilterCustomer] = useState('');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
+  const [filterArType, setFilterArType] = useState('');
   const [loading, setLoading] = useState(true);
   const [showFormIn, setShowFormIn] = useState(false);
   const [showFormOut, setShowFormOut] = useState(false);
@@ -953,13 +954,14 @@ export default function Payments({ token }) {
             style={inputStyle}
           />
         </div>
-        {(filterJob || filterCustomer || filterFrom || filterTo) && (
+        {(filterJob || filterCustomer || filterFrom || filterTo || filterArType) && (
           <button
             onClick={() => {
               setFilterJob('');
               setFilterCustomer('');
               setFilterFrom('');
               setFilterTo('');
+              setFilterArType('');
             }}
             style={{
               padding: '8px 14px',
@@ -1001,24 +1003,30 @@ export default function Payments({ token }) {
           </button>
         ))}
       </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '8px 4px 12px' }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '8px 4px 12px', alignItems: 'center' }}>
         {tab === 'received'
-          ? ['Deposit', 'Progress', 'Final', 'Other'].map((lbl) => (
-              <span
-                key={lbl}
-                style={{
-                  fontSize: 10,
-                  padding: '2px 9px',
-                  borderRadius: 10,
-                  background: '#e8f5e9',
-                  color: GREEN,
-                  fontWeight: 600,
-                  border: `1px solid ${GREEN}33`,
-                }}
-              >
-                {lbl}
-              </span>
-            ))
+          ? [['', 'All'], ['deposit', 'Deposit'], ['progress', 'Progress'], ['final', 'Final'], ['other', 'Other']].map(([val, lbl]) => {
+              const active = filterArType === val;
+              return (
+                <button
+                  key={val}
+                  onClick={() => setFilterArType(val)}
+                  style={{
+                    fontSize: 11,
+                    padding: '3px 11px',
+                    borderRadius: 10,
+                    background: active ? GREEN : '#e8f5e9',
+                    color: active ? 'white' : GREEN,
+                    fontWeight: 600,
+                    border: `1px solid ${GREEN}${active ? '' : '33'}`,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {lbl}
+                </button>
+              );
+            })
           : ['Subcontractor', 'Materials', 'Permits', 'Other'].map((lbl) => (
               <span
                 key={lbl}
@@ -1042,7 +1050,7 @@ export default function Payments({ token }) {
       ) : tab === 'received' ? (
         <PaymentTable
           key="received-table"
-          payments={received}
+          payments={filterArType ? received.filter((p) => p.payment_type === filterArType) : received}
           token={token}
           defaultExpandedGroup={defaultSplitGroup}
           storageKey="pb_ledger_expanded_received"
