@@ -74,7 +74,13 @@ function InvoiceSummaryBadges({ job }) {
 export default function Dashboard({ token }) {
   const location = useLocation();
   const [jobs, setJobs] = useState([]);
-  const [showCompleted, setShowCompleted] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(() => {
+    try {
+      return localStorage.getItem('pb_dashboard_show_completed') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
@@ -195,6 +201,13 @@ export default function Dashboard({ token }) {
     };
     esRef.current = es;
   };
+
+  // Persist show/hide completed jobs preference
+  useEffect(() => {
+    try {
+      localStorage.setItem('pb_dashboard_show_completed', showCompleted ? 'true' : 'false');
+    } catch {}
+  }, [showCompleted]);
 
   // Re-fetch whenever navigating to the dashboard
   useEffect(() => {
