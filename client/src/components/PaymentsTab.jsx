@@ -1942,12 +1942,18 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                         borderBottom: expandedSplits.has(p.split_group_id)
                           ? 'none'
                           : '1px solid #f0f0f0',
-                        background: p.is_pass_through_reimbursement
-                          ? '#fffef0'
+                        background: (!p.invoice_id && p.credit_debit === 'credit')
+                          ? '#fffbeb'
+                          : p.is_pass_through_reimbursement
+                            ? '#fffef0'
+                            : p.split_group_id
+                              ? '#f8fbff'
+                              : 'white',
+                        borderLeft: (!p.invoice_id && p.credit_debit === 'credit')
+                          ? '3px solid #F59E0B'
                           : p.split_group_id
-                            ? '#f8fbff'
-                            : 'white',
-                        borderLeft: p.split_group_id ? '3px solid #3B82F6' : undefined,
+                            ? '3px solid #3B82F6'
+                            : undefined,
                       }}
                     >
                       <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
@@ -2056,25 +2062,43 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                           </span>
                         ) : (
                           <div style={{ position: 'relative' }}>
-                            <button
-                              onClick={() =>
-                                linkingPaymentId === p.id
-                                  ? setLinkingPaymentId(null)
-                                  : openLinkInvoice(p.id)
-                              }
-                              style={{
-                                padding: '2px 7px',
-                                background: '#eff6ff',
-                                color: '#2563eb',
-                                border: '1px solid #bfdbfe',
-                                borderRadius: 5,
-                                cursor: 'pointer',
-                                fontSize: 10,
-                                fontWeight: 'bold',
-                              }}
-                            >
-                              🔗 Link
-                            </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                              {p.credit_debit === 'credit' && (
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    padding: '2px 6px',
+                                    borderRadius: 8,
+                                    background: '#FEF3C7',
+                                    color: '#92400E',
+                                    border: '1px solid #F59E0B',
+                                    fontWeight: 'bold',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  ⚠ No Invoice
+                                </span>
+                              )}
+                              <button
+                                onClick={() =>
+                                  linkingPaymentId === p.id
+                                    ? setLinkingPaymentId(null)
+                                    : openLinkInvoice(p.id)
+                                }
+                                style={{
+                                  padding: '2px 7px',
+                                  background: p.credit_debit === 'credit' ? '#FEF3C7' : '#eff6ff',
+                                  color: p.credit_debit === 'credit' ? '#92400E' : '#2563eb',
+                                  border: `1px solid ${p.credit_debit === 'credit' ? '#F59E0B' : '#bfdbfe'}`,
+                                  borderRadius: 5,
+                                  cursor: 'pointer',
+                                  fontSize: 10,
+                                  fontWeight: 'bold',
+                                }}
+                              >
+                                🔗 Link
+                              </button>
+                            </div>
                             {linkingPaymentId === p.id && (
                               <div
                                 style={{
