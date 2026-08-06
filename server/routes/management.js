@@ -93,10 +93,14 @@ router.get('/', requireAuth, (req, res) => {
            j.project_address, j.project_city, j.status, j.total_value,
            j.deposit_amount, j.created_at, j.updated_at, j.submitted_by,
            j.contact_id, j.pb_number, j.external_ref,
-           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'draft') AS inv_draft,
-           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'pending_send') AS inv_pending_send,
-           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'sent') AS inv_sent,
-           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'paid') AS inv_paid
+           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'draft')
+             + (SELECT COUNT(*) FROM direct_invoices WHERE job_id = j.id AND status = 'draft') AS inv_draft,
+           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'pending_send')
+             + (SELECT COUNT(*) FROM direct_invoices WHERE job_id = j.id AND status = 'pending_send') AS inv_pending_send,
+           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'sent')
+             + (SELECT COUNT(*) FROM direct_invoices WHERE job_id = j.id AND status = 'sent') AS inv_sent,
+           (SELECT COUNT(*) FROM invoices WHERE job_id = j.id AND status = 'paid')
+             + (SELECT COUNT(*) FROM direct_invoices WHERE job_id = j.id AND status = 'paid') AS inv_paid
     FROM jobs j WHERE j.archived = 0`;
   const params = [];
   if (status) {
