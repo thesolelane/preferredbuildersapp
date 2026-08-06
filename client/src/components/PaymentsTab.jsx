@@ -129,6 +129,37 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
     load();
   }, [load]);
 
+  // Rehydrate expanded split panels from sessionStorage when jobId changes,
+  // and pre-fetch sibling data so restored panels render immediately.
+  useEffect(() => {
+    let ids = [];
+    try {
+      const stored = sessionStorage.getItem(`splitPanels_${jobId}`);
+      ids = stored ? JSON.parse(stored) : [];
+    } catch {
+      ids = [];
+    }
+    setExpandedSplits(new Set(ids));
+    setSplitSiblings({});
+    ids.forEach((splitGroupId) => {
+      fetch(`/api/payments/split-siblings/${splitGroupId}`, {
+        headers: { 'x-auth-token': token },
+      })
+        .then((r) => r.json())
+        .then((d) => setSplitSiblings((prev) => ({ ...prev, [splitGroupId]: d.siblings || [] })))
+        .catch(() => setSplitSiblings((prev) => ({ ...prev, [splitGroupId]: [] })));
+    });
+  }, [jobId, token]);
+
+  // Persist expanded split panels to sessionStorage whenever the set changes.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(`splitPanels_${jobId}`, JSON.stringify([...expandedSplits]));
+    } catch {
+      // ignore storage errors
+    }
+  }, [expandedSplits, jobId]);
+
   const toggleSplitPanel = (splitGroupId) => {
     setExpandedSplits((prev) => {
       const next = new Set(prev);
