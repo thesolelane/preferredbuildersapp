@@ -251,6 +251,7 @@ export default function Analytics({ token }) {
     proposalVelocity,
     monthlyRevenue,
     summary,
+    cashFlow,
     reconciliation,
   } = data;
   const totalActive = pipeline.reduce((s, p) => s + p.count, 0);
@@ -358,6 +359,39 @@ export default function Analytics({ token }) {
             value={winRate.rate !== null ? `${winRate.rate}%` : '—'}
             sub={winRate.total > 0 ? `${winRate.won}W / ${winRate.lost}L` : 'No closed jobs yet'}
             color={GREEN}
+          />
+        </div>
+      )}
+
+      {cashFlow && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 16,
+            marginBottom: 20,
+          }}
+        >
+          <StatCard
+            icon="📥"
+            label="Total AR Collected"
+            value={`$${(cashFlow.totalAR || 0).toLocaleString()}`}
+            sub="Payments received"
+            color={GREEN}
+          />
+          <StatCard
+            icon="📤"
+            label="Total AP Paid Out"
+            value={`$${(cashFlow.totalAP || 0).toLocaleString()}`}
+            sub="Payments made"
+            color={RED}
+          />
+          <StatCard
+            icon="💼"
+            label="Net Cash Position"
+            value={`$${Math.abs(cashFlow.netCash || 0).toLocaleString()}`}
+            sub={cashFlow.netCash >= 0 ? 'Net positive' : 'Net negative'}
+            color={cashFlow.netCash >= 0 ? TEAL : RED}
           />
         </div>
       )}

@@ -208,6 +208,34 @@ router.get('/pipeline', requireAuth, (req, res) => {
 
   const avgWonMargin = marginCount > 0 ? Math.round((marginSum / marginCount) * 10) / 10 : null;
 
+  // AR / AP totals filtered by date range
+  let arDateFilter = '';
+  let apDateFilter = '';
+  if (range === '30') {
+    arDateFilter = "AND date_received >= date('now', '-30 days')";
+    apDateFilter = "AND date_paid >= date('now', '-30 days')";
+  } else if (range === '90') {
+    arDateFilter = "AND date_received >= date('now', '-90 days')";
+    apDateFilter = "AND date_paid >= date('now', '-90 days')";
+  } else if (range === '365') {
+    arDateFilter = "AND date_received >= date('now', '-365 days')";
+    apDateFilter = "AND date_paid >= date('now', '-365 days')";
+  }
+
+  const totalAR = db
+    .prepare(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM payments_received
+       WHERE credit_debit = 'credit' ${arDateFilter}`,
+    )
+    .get().total;
+
+  const totalAP = db
+    .prepare(
+      `SELECT COALESCE(SUM(amount), 0) as total FROM payments_made
+       WHERE credit_debit = 'debit' ${apDateFilter}`,
+    )
+    .get().total;
+
   // Reconciliation: count paid invoices with no matching payment row linked via invoice_id
   const unlinkedPaidInvoices = db
     .prepare(
@@ -240,6 +268,11 @@ router.get('/pipeline', requireAuth, (req, res) => {
       pipelineValue: Math.round(pipelineValue),
       wonRevenueYTD: Math.round(wonRevenueYTD),
       avgWonMargin,
+    },
+    cashFlow: {
+      totalAR: Math.round(totalAR),
+      totalAP: Math.round(totalAP),
+      netCash: Math.round(totalAR - totalAP),
     },
     reconciliation: {
       unlinkedPaidInvoices,
