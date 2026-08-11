@@ -33,10 +33,14 @@ async function runInvoiceRetryTick() {
 
     try {
       await sendInvoiceEmail(inv.id, db, 'system (retry)');
+      // Clear last_error on successful send
+      db.prepare('UPDATE invoices SET last_error = NULL WHERE id = ?').run(inv.id);
       console.log(
         `[InvoiceRetry] Invoice ${inv.invoice_number} sent successfully (attempt ${attempts})`,
       );
     } catch (err) {
+      // Persist the latest error message so the UI can display it
+      db.prepare('UPDATE invoices SET last_error = ? WHERE id = ?').run(err.message, inv.id);
       console.warn(
         `[InvoiceRetry] Invoice ${inv.invoice_number} send failed (attempt ${attempts}): ${err.message}`,
       );

@@ -733,6 +733,7 @@ async function initDatabase() {
   addColIfMissing('invoices', 'pb_due_amount', 'REAL NOT NULL DEFAULT 0');
   addColIfMissing('invoices', 'full_contract_value', 'REAL NOT NULL DEFAULT 0');
   addColIfMissing('invoices', 'send_attempts', 'INTEGER NOT NULL DEFAULT 0');
+  addColIfMissing('invoices', 'last_error', 'TEXT');
 
   // ── Agent keys + agent messages tables ──────────────────────────────────────
   db.exec(`

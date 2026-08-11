@@ -84,6 +84,7 @@ router.get('/all', requireAuth, (req, res) => {
       `
     SELECT i.id, i.invoice_number, i.invoice_type, i.status, i.amount,
            i.issued_at, i.paid_at, i.created_at, i.job_id,
+           i.send_attempts, i.last_error,
            j.project_address, j.pb_number, j.customer_name, j.customer_email,
            'job' AS source
     FROM invoices i
@@ -633,14 +634,22 @@ router.post('/:id/pdf', requireAuth, (req, res) => {
 
 // POST /:id/email — email invoice PDF to customer (uses shared invoiceEmailService)
 router.post('/:id/email', requireAuth, async (req, res) => {
+  const db = getDb();
+  const inv = db.prepare('SELECT id FROM invoices WHERE id = ?').get(req.params.id);
+  if (!inv) return res.status(404).json({ error: 'Invoice not found' });
   try {
-    const db = getDb();
-    const inv = db.prepare('SELECT id FROM invoices WHERE id = ?').get(req.params.id);
-    if (!inv) return res.status(404).json({ error: 'Invoice not found' });
     const result = await sendInvoiceEmail(inv.id, db, req.session?.name || 'staff');
+    // Clear last_error on successful send
+    db.prepare(
+      'UPDATE invoices SET send_attempts = send_attempts + 1, last_error = NULL WHERE id = ?',
+    ).run(inv.id);
     res.json(result);
   } catch (err) {
     console.error('[Invoice Email]', err.message);
+    // Record failure: increment attempt count and store error message
+    db.prepare(
+      "UPDATE invoices SET send_attempts = send_attempts + 1, last_error = ?, status = 'pending_send', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    ).run(err.message, inv.id);
     res.status(500).json({ error: 'Failed to email invoice: ' + err.message });
   }
 });

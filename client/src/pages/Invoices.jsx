@@ -466,6 +466,46 @@ export default function Invoices({ token }) {
                     {(inv.status || 'draft').replace('_', ' ').toUpperCase()}
                   </span>
 
+                  {isPendingSend && (inv.send_attempts > 0 || inv.last_error) && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                        minWidth: 160,
+                        maxWidth: 280,
+                      }}
+                    >
+                      {inv.send_attempts > 0 && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: '#92400e',
+                            fontWeight: 600,
+                          }}
+                        >
+                          ⚠ {inv.send_attempts} failed attempt{inv.send_attempts !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                      {inv.last_error && (
+                        <span
+                          title={inv.last_error}
+                          style={{
+                            fontSize: 10,
+                            color: '#b91c1c',
+                            fontStyle: 'italic',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: 280,
+                          }}
+                        >
+                          {inv.last_error}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                     <a
                       href={pdfUrl}
