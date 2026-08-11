@@ -869,6 +869,21 @@ router.patch('/received/:id', requireAuth, validateNumber('amount', { min: 0.01 
         : Number(invoice_id) || null
       : undefined;
 
+  // Duplicate-link guard: reject if the target invoice is already claimed by
+  // another payment (including split-group siblings).
+  if (newInvoiceId !== null && newInvoiceId !== undefined) {
+    const claimant = db
+      .prepare('SELECT id FROM payments_received WHERE invoice_id = ? AND id != ?')
+      .get(newInvoiceId, row.id);
+    if (claimant) {
+      const inv = db.prepare('SELECT invoice_number FROM invoices WHERE id = ?').get(newInvoiceId);
+      const label = inv?.invoice_number ? `Invoice ${inv.invoice_number}` : 'That invoice';
+      return res
+        .status(409)
+        .json({ error: `${label} is already linked to another payment and cannot be linked again.` });
+    }
+  }
+
   db.prepare(
     `
     UPDATE payments_received SET
