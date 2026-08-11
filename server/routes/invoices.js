@@ -15,7 +15,7 @@ const VALID_TYPES = [
   'change_order',
   'combined_invoice',
 ];
-const VALID_STATUSES = ['draft', 'sent', 'pending_send', 'paid', 'void'];
+const VALID_STATUSES = ['draft', 'sent', 'pending_send', 'paid', 'void', 'failed'];
 
 function getOrCreateCounters(db, jobId) {
   let row = db.prepare('SELECT * FROM invoice_counters WHERE job_id = ?').get(jobId);
@@ -84,7 +84,7 @@ router.get('/all', requireAuth, (req, res) => {
       `
     SELECT i.id, i.invoice_number, i.invoice_type, i.status, i.amount,
            i.issued_at, i.paid_at, i.created_at, i.job_id,
-           i.send_attempts, i.last_error,
+           i.retry_count, i.last_error,
            j.project_address, j.pb_number, j.customer_name, j.customer_email,
            'job' AS source
     FROM invoices i
@@ -630,6 +630,38 @@ router.post('/:id/pdf', requireAuth, (req, res) => {
   // Redirect to GET which streams the PDF (preserves token from header or body)
   const token = req.query.token || req.body?.token || '';
   res.redirect(307, `/api/invoices/${req.params.id}/pdf?token=${encodeURIComponent(token)}`);
+});
+
+// POST /:id/retry — manually retry a permanently-failed invoice
+router.post('/:id/retry', requireAuth, async (req, res) => {
+  const db = getDb();
+  const inv = db.prepare('SELECT * FROM invoices WHERE id = ?').get(req.params.id);
+  if (!inv) return res.status(404).json({ error: 'Invoice not found' });
+  if (inv.status !== 'failed') return res.status(400).json({ error: 'Invoice is not in failed state' });
+
+  // Reset both failure counters and re-queue — gives a fresh 5-attempt window
+  db.prepare(
+    `UPDATE invoices
+     SET status = 'pending_send', retry_count = 0, send_attempts = 0, last_error = NULL,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+  ).run(inv.id);
+
+  const job = inv.job_id ? db.prepare('SELECT * FROM jobs WHERE id = ?').get(inv.job_id) : null;
+  const contact = job?.contact_id
+    ? db.prepare('SELECT pb_customer_number FROM contacts WHERE id = ?').get(job.contact_id)
+    : null;
+  logActivity({
+    customer_number: contact?.pb_customer_number || null,
+    job_id: inv.job_id,
+    event_type: 'INVOICE_UPDATED',
+    description: `Invoice ${inv.invoice_number} queued for manual retry by ${req.session?.name || 'staff'}`,
+    document_ref: inv.invoice_number,
+    recorded_by: req.session?.name || 'staff',
+  });
+
+  const updated = db.prepare('SELECT * FROM invoices WHERE id = ?').get(inv.id);
+  res.json({ invoice: updated });
 });
 
 // POST /:id/email — email invoice PDF to customer (uses shared invoiceEmailService)

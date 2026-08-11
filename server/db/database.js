@@ -733,7 +733,14 @@ async function initDatabase() {
   addColIfMissing('invoices', 'pb_due_amount', 'REAL NOT NULL DEFAULT 0');
   addColIfMissing('invoices', 'full_contract_value', 'REAL NOT NULL DEFAULT 0');
   addColIfMissing('invoices', 'send_attempts', 'INTEGER NOT NULL DEFAULT 0');
+  addColIfMissing('invoices', 'retry_count', 'INTEGER NOT NULL DEFAULT 0');
   addColIfMissing('invoices', 'last_error', 'TEXT');
+
+  // Backfill retry_count from send_attempts for pending invoices that already have
+  // failure history before this column was introduced.
+  db.prepare(
+    `UPDATE invoices SET retry_count = send_attempts WHERE retry_count = 0 AND send_attempts > 0`,
+  ).run();
 
   // ── Agent keys + agent messages tables ──────────────────────────────────────
   db.exec(`

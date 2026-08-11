@@ -22,6 +22,7 @@ const STATUS_COLOR = {
   pending_send: ORANGE,
   paid: GREEN,
   void: '#aaa',
+  failed: RED,
 };
 
 const TYPE_LABELS = {
@@ -50,6 +51,7 @@ export default function Invoices({ token }) {
   const [savingEdit, setSavingEdit] = useState(false);
   const [markPaidInv, setMarkPaidInv] = useState(null);
   const [markPaidCheck, setMarkPaidCheck] = useState('');
+  const [retrying, setRetrying] = useState(null);
 
   const headers = { 'x-auth-token': token, 'Content-Type': 'application/json' };
 
@@ -122,6 +124,19 @@ export default function Invoices({ token }) {
       const d = await res.json().catch(() => ({}));
       showToast(d.error || 'Failed', 'error');
     }
+  };
+
+  const retryInvoice = async (inv) => {
+    setRetrying(inv.id);
+    const res = await fetch(`/api/invoices/${inv.id}/retry`, { method: 'POST', headers });
+    const data = await res.json();
+    if (res.ok) {
+      load();
+      showToast('Invoice queued for retry — will attempt to send within 4 hours');
+    } else {
+      showToast(data.error || 'Retry failed', 'error');
+    }
+    setRetrying(null);
   };
 
   const openSplitPay = (inv) => {
@@ -337,6 +352,7 @@ export default function Invoices({ token }) {
           <option value="sent">Sent</option>
           <option value="pending_send">Pending Send</option>
           <option value="paid">Paid</option>
+          <option value="failed">Failed</option>
         </select>
       </div>
 
@@ -370,6 +386,7 @@ export default function Invoices({ token }) {
             const isJob = inv.source === 'job';
             const isDirect = inv.source === 'direct';
             const isPendingSend = inv.status === 'pending_send';
+            const isFailed = inv.status === 'failed';
             const isUnpaid = inv.status !== 'paid' && inv.status !== 'void';
             const hasEmail = isJob ? !!inv.customer_email : !!inv.customer_email;
             const pdfUrl = isJob
@@ -380,8 +397,8 @@ export default function Invoices({ token }) {
               <div key={`${inv.source}-${inv.id}`}>
                 <div
                   style={{
-                    background: isPendingSend ? '#fffbeb' : 'white',
-                    border: `1px solid ${isPendingSend ? '#fcd34d' : '#e5e7eb'}`,
+                    background: isFailed ? '#fff5f5' : isPendingSend ? '#fffbeb' : 'white',
+                    border: `1px solid ${isFailed ? '#fca5a5' : isPendingSend ? '#fcd34d' : '#e5e7eb'}`,
                     borderRadius: 9,
                     padding: '12px 16px',
                     display: 'flex',
@@ -524,7 +541,26 @@ export default function Invoices({ token }) {
                       PDF
                     </a>
 
-                    {isUnpaid && (
+                    {isFailed && isJob && (
+                      <button
+                        onClick={() => retryInvoice(inv)}
+                        disabled={retrying === inv.id}
+                        style={{
+                          fontSize: 11,
+                          padding: '4px 10px',
+                          background: RED,
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 5,
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {retrying === inv.id ? 'Queuing…' : '↺ Retry'}
+                      </button>
+                    )}
+
+                    {isUnpaid && !isFailed && (
                       <>
                         {isJob && (isPendingSend || inv.status === 'draft') && (
                           <button
@@ -724,6 +760,26 @@ export default function Invoices({ token }) {
                     </button>
                   </div>
                 </div>
+
+                {isFailed && inv.last_error && (
+                  <div
+                    style={{
+                      background: '#fff5f5',
+                      border: '1px solid #fca5a5',
+                      borderTop: 'none',
+                      borderRadius: '0 0 8px 8px',
+                      padding: '8px 14px',
+                      fontSize: 11,
+                      color: '#991b1b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <span style={{ fontWeight: 700 }}>⚠ Last error:</span>
+                    <span style={{ fontFamily: 'monospace' }}>{inv.last_error}</span>
+                  </div>
+                )}
 
                 {splitPayInv?.id === inv.id && isDirect && (
                   <div
