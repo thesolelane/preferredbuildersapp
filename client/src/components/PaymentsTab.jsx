@@ -496,6 +496,19 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
     const data = await res.json();
     if (res.ok) {
       setSummary(data.summary);
+      // Remove stale split panel state when the deleted payment belonged to a split group
+      if (p.split_group_id) {
+        setExpandedSplits((prev) => {
+          const next = new Set(prev);
+          next.delete(p.split_group_id);
+          return next;
+        });
+        setSplitSiblings((prev) => {
+          const next = { ...prev };
+          delete next[p.split_group_id];
+          return next;
+        });
+      }
       load();
       showToast('Record deleted');
     } else showToast(data.error || 'Failed to delete', 'error');
