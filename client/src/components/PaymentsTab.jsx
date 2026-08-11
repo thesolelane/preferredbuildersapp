@@ -2415,6 +2415,28 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                 No AP entries match this category filter.
               </div>
             )}
+            {visibleMade.length > 0 && filterApCategory && (() => {
+              const total = visibleMade.reduce(
+                (s, p) => s + (p.credit_debit === 'credit' ? -1 : 1) * Number(p.amount || 0),
+                0,
+              );
+              return (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: '#7a3a3a',
+                    marginBottom: 8,
+                    padding: '5px 12px',
+                    background: '#fff5f5',
+                    borderRadius: 6,
+                    border: '1px solid #f5c6c6',
+                  }}
+                >
+                  Showing {visibleMade.length} {visibleMade.length === 1 ? 'entry' : 'entries'} ·{' '}
+                  <strong>{fmt(total)}</strong> total
+                </div>
+              );
+            })()}
             {visibleMade.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>

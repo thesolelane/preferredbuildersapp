@@ -1132,7 +1132,31 @@ export default function Payments({ token }) {
           emptyMsg="No AR entries recorded yet."
         />
       ) : (
-        <PaymentTable
+        <>
+          {filterApCategory && (() => {
+            const filtered = made.filter((p) => p.category === filterApCategory);
+            const total = filtered.reduce(
+              (s, p) => s + (p.credit_debit === 'credit' ? -1 : 1) * Number(p.amount || 0),
+              0,
+            );
+            return (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#7a3a3a',
+                  marginBottom: 8,
+                  padding: '5px 12px',
+                  background: '#fff5f5',
+                  borderRadius: 6,
+                  border: '1px solid #f5c6c6',
+                }}
+              >
+                Showing {filtered.length} {filtered.length === 1 ? 'entry' : 'entries'} ·{' '}
+                <strong>{fmt(total)}</strong> total
+              </div>
+            );
+          })()}
+          <PaymentTable
           key="made-table"
           payments={filterApCategory ? made.filter((p) => p.category === filterApCategory) : made}
           storageKey="pb_ledger_expanded_made"
@@ -1198,6 +1222,7 @@ export default function Payments({ token }) {
           onReassign={(p) => openReassign(p, 'made')}
           emptyMsg="No AP entries recorded yet."
         />
+        </>
       )}
 
       {/* Reassign-to-job modal */}
