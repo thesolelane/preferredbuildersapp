@@ -95,6 +95,14 @@ async function getBrowser() {
         console.warn('[PDF] Browser disconnected — will re-launch on next request');
       });
       return b;
+    })
+    .catch((err) => {
+      // Reset so subsequent PDF requests can retry the launch rather than
+      // waiting forever on a permanently-rejected promise.
+      _browserLaunching = null;
+      _browser = null;
+      console.error('[PDF] Browser launch failed:', err.message);
+      throw err;
     });
 
   return _browserLaunching;

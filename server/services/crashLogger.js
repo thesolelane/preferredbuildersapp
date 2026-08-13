@@ -162,4 +162,29 @@ process.on('uncaughtException', (err) => {
   handleExit(`uncaughtException: ${err.message}`, 1);
 });
 
+// Unhandled promise rejections — log and save a snapshot, but do NOT exit
+// for known non-fatal errors (e.g. Puppeteer EBUSY temp-file cleanup on Windows).
+// For truly unexpected rejections we still save a snapshot and exit.
+const KNOWN_NON_FATAL = [
+  /EBUSY.*puppeteer/i,
+  /EBUSY.*chrome/i,
+  /ENOENT.*puppeteer/i,
+  /Target closed/i,
+  /Session closed/i,
+];
+
+process.on('unhandledRejection', (reason, promise) => {
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : msg;
+
+  if (KNOWN_NON_FATAL.some((re) => re.test(msg) || re.test(String(promise)))) {
+    // Non-fatal: log and continue — do not kill the server
+    console.warn('[CrashLogger] Non-fatal unhandledRejection (suppressed):', msg);
+    return;
+  }
+
+  console.error('[CrashLogger] unhandledRejection — saving snapshot and exiting:', stack);
+  handleExit(`unhandledRejection: ${msg}`, 1);
+});
+
 module.exports = { saveCrashSnapshot };
