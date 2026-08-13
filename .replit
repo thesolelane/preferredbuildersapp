@@ -40,6 +40,10 @@ deploymentTarget = "cloudrun"
 localPort = 3001
 externalPort = 80
 
+[[ports]]
+localPort = 5000
+externalPort = 80
+
 [agent]
 expertMode = true
 integrations = ["google-calendar:1.0.0"]
