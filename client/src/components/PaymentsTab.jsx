@@ -59,7 +59,7 @@ const EMPTY_OUT = {
   paid_by: 'pb',
 };
 const EMPTY_LINE = { description: '', amount: '', type: 'contract' };
-const EMPTY_INV = { notes: '', line_items: [{ ...EMPTY_LINE }] };
+const EMPTY_INV = { notes: '', line_items: [{ ...EMPTY_LINE }], credit_amount: '' };
 
 const inputStyle = {
   width: '100%',
@@ -341,11 +341,13 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
     const hasPT = parsedLines.some((li) => li.type === 'pass_through');
     const hasContract = parsedLines.some((li) => li.type !== 'pass_through');
     const invoiceType = hasContract && hasPT ? 'combined_invoice' : hasPT ? 'pass_through_invoice' : 'contract_invoice';
+    const creditAmt = Math.max(0, parseFloat(formInv.credit_amount) || 0);
     const payload = {
       notes: formInv.notes,
       line_items: parsedLines,
       invoice_type: invoiceType,
       amount: totalAmt,
+      credit_amount: creditAmt,
     };
     const res = await fetch(`/api/invoices/job/${jobId}`, {
       method: 'POST',
@@ -894,6 +896,8 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
             0,
           );
           const grandTotal = contractTotal + passThroughTotal;
+          const creditAmt = Math.max(0, parseFloat(formInv.credit_amount) || 0);
+          const netTotal = Math.max(0, grandTotal - creditAmt);
           const hasPT = lines.some((li) => li.type === 'pass_through');
           const updateLine = (i, field, value) =>
             setFormInv((p) => {
@@ -1128,6 +1132,19 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                       style={{ border: 'none', borderTop: '1px solid #dbeafe', margin: '6px 0' }}
                     />
                   )}
+                  {creditAmt > 0 && (
+                    <>
+                      <hr style={{ border: 'none', borderTop: '1px solid #dbeafe', margin: '6px 0' }} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#047857' }}>
+                        <span style={{ fontWeight: 500 }}>Subtotal:</span>
+                        <span style={{ fontWeight: 600 }}>{fmt(grandTotal)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#047857' }}>
+                        <span style={{ fontWeight: 500 }}>Credit Applied:</span>
+                        <span style={{ fontWeight: 600 }}>− {fmt(creditAmt)}</span>
+                      </div>
+                    </>
+                  )}
                   <div
                     style={{
                       display: 'flex',
@@ -1138,10 +1155,27 @@ export default function PaymentsTab({ jobId, token, job, onInvoiceChange }) {
                     }}
                   >
                     <span>Total Due:</span>
-                    <span>{fmt(grandTotal)}</span>
+                    <span>{fmt(creditAmt > 0 ? netTotal : grandTotal)}</span>
                   </div>
                 </div>
               )}
+
+              {/* Credit */}
+              <Field label="Credit / Discount (optional)">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <span style={{ color: '#555', fontSize: 13 }}>$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formInv.credit_amount}
+                    onChange={(e) => setFormInv((p) => ({ ...p, credit_amount: e.target.value }))}
+                    placeholder="0.00"
+                    style={{ ...inputStyle, maxWidth: 140 }}
+                  />
+                  <span style={{ fontSize: 12, color: '#888' }}>subtracted from invoice total</span>
+                </div>
+              </Field>
 
               {/* Notes */}
               <Field label="Notes (optional)">
@@ -2956,6 +2990,11 @@ function InvoiceGroup({ label, invoices, color, onMark, onDelete, token, job }) 
                     })}
                   </span>
                 )}
+              {Number(inv.credit_amount) > 0 && (
+                <span style={{ fontSize: 10, color: '#047857', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                  Credit: −${Number(inv.credit_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </span>
+              )}
             </div>
             {inv.invoice_type === 'combined_invoice' && (
               <span

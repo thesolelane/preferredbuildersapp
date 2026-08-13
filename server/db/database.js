@@ -735,6 +735,7 @@ async function initDatabase() {
   addColIfMissing('invoices', 'send_attempts', 'INTEGER NOT NULL DEFAULT 0');
   addColIfMissing('invoices', 'retry_count', 'INTEGER NOT NULL DEFAULT 0');
   addColIfMissing('invoices', 'last_error', 'TEXT');
+  addColIfMissing('invoices', 'credit_amount', 'REAL NOT NULL DEFAULT 0');
 
   // Backfill retry_count from send_attempts for pending invoices that already have
   // failure history before this column was introduced.

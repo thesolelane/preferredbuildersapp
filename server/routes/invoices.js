@@ -185,7 +185,8 @@ router.post(
     const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(jobId);
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    const { invoice_type, amount, notes, line_items } = req.body;
+    const { invoice_type, amount, notes, line_items, credit_amount } = req.body;
+    const creditAmt = Math.max(0, parseFloat(credit_amount) || 0);
 
     // ── Compute amounts from line items if provided ──────────────────────────
     let items = Array.isArray(line_items) && line_items.length ? line_items : null;
@@ -219,25 +220,29 @@ router.post(
       else invType = 'contract_invoice';
     }
 
+    // Apply credit — reduces the billed total, cannot make total negative
+    const netTotal = Math.max(0, totalAmt - creditAmt);
+
     const invNum = nextInvoiceNumber(db, jobId, invType, job.quote_number);
 
     const info = db
       .prepare(
         `
     INSERT INTO invoices
-      (job_id, invoice_number, invoice_type, status, amount, contract_amount, pass_through_amount, line_items, notes)
-    VALUES (?, ?, ?, 'draft', ?, ?, ?, ?, ?)
+      (job_id, invoice_number, invoice_type, status, amount, contract_amount, pass_through_amount, line_items, notes, credit_amount)
+    VALUES (?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)
   `,
       )
       .run(
         jobId,
         invNum,
         invType,
-        totalAmt,
+        netTotal,
         contractAmt,
         passThroughAmt,
         items ? JSON.stringify(items) : null,
         notes || null,
+        creditAmt,
       );
 
     const invoice = db.prepare('SELECT * FROM invoices WHERE id = ?').get(info.lastInsertRowid);
