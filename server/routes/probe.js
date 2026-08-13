@@ -254,6 +254,29 @@ router.get('/tasks', requireProbeToken, (req, res) => {
   res.json({ count: tasks.length, tasks });
 });
 
+// GET /api/probe/users — list registered user accounts (no password hashes)
+router.get('/users', requireProbeToken, (req, res) => {
+  const db = getDb();
+  const users = db
+    .prepare('SELECT id, name, email, role, created_at FROM users ORDER BY created_at ASC')
+    .all();
+  res.json({ count: users.length, users });
+});
+
+// PATCH /api/probe/users/:id/reset-password — set a new password for a user
+router.patch('/users/:id/reset-password', requireProbeToken, (req, res) => {
+  const { new_password } = req.body;
+  if (!new_password || new_password.length < 6)
+    return res.status(400).json({ error: 'new_password must be at least 6 characters' });
+  const bcrypt = require('bcryptjs');
+  const db = getDb();
+  const user = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const hash = bcrypt.hashSync(new_password, 10);
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, user.id);
+  res.json({ ok: true, message: `Password reset for ${user.name} (${user.email})` });
+});
+
 // PATCH /api/probe/jobs/:id/payment-overrides — set custom payment schedule on a job
 router.patch('/jobs/:id/payment-overrides', requireProbeToken, (req, res) => {
   const db = getDb();
