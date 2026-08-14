@@ -314,6 +314,14 @@ router.patch(
       `Customer info updated${job.contact_id && updateContact ? ' (contact profile + sibling jobs synced)' : ''}`,
       req.session?.name || 'admin',
     );
+
+    // Trigger property enrichment (MassGIS + Solar) whenever an address is set/changed
+    if (address) {
+      const { enrichPropertyBackground } = require('../services/propertyEnrichment');
+      const fullAddr = city ? `${address}, ${city}` : address;
+      enrichPropertyBackground(db, 'job', job.id, fullAddr);
+    }
+
     res.json({ success: true });
   },
 );
