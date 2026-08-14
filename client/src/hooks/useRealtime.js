@@ -1,10 +1,15 @@
 import { useEffect } from 'react';
-import { io } from 'socket.io-client';
 
-// Lazy singleton — defer io() until first use so module init order doesn't matter
+// Use require() instead of static import so webpack does NOT scope-hoist
+// socket.io-client into the same chunk as the rest of the app.
+// Static import of io() was causing a TDZ crash (class initialization order
+// issue) in the production scope-hoisted bundle after module graph changes.
 let socket = null;
 function getSocket() {
-  if (!socket) socket = io();
+  if (!socket) {
+    const { io } = require('socket.io-client'); // eslint-disable-line
+    socket = io();
+  }
   return socket;
 }
 
