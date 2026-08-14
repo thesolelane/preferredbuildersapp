@@ -5,7 +5,7 @@ import { showToast } from '../utils/toast';
 
 import CreateQuoteWizard from '../components/CreateQuoteWizard';
 import { getStatusStyle } from '../utils/statusUtils';
-import useRealtime from '../hooks/useRealtime';
+
 
 const OUTCOME_BADGES = {
   lost_price: { label: 'Lost – Price', bg: '#FFEBEE', color: '#C62828' },
@@ -243,21 +243,6 @@ export default function Dashboard({ token }) {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
-
-  // Live real-time dashboard updates via Socket.io
-  useRealtime('dashboard', (update) => {
-    if (
-      [
-        'signature',
-        'customer_photo_upload',
-        'customer_change_order',
-        'manual_signature',
-        'pipeline_update',
-      ].includes(update.eventType)
-    ) {
-      loadDashboard();
-    }
-  });
 
   const [filterOutstanding, setFilterOutstanding] = useState(() => {
     try {
