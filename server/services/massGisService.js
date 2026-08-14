@@ -40,7 +40,13 @@ function calcParcelDimensions(geometry) {
   const widthFt = Math.round(R * Math.cos(midLat) * dLng);
   const perimFt = Math.round(2 * (widthFt + depthFt));
 
-  return { lotWidthFt: widthFt, lotDepthFt: depthFt, lotPerimeterFt: perimFt };
+  return {
+    lotWidthFt: widthFt,
+    lotDepthFt: depthFt,
+    lotPerimeterFt: perimFt,
+    centroidLat: (minLat + maxLat) / 2,
+    centroidLng: (minLng + maxLng) / 2,
+  };
 }
 
 const USE_CODES = {
@@ -151,6 +157,9 @@ function normalize(attrs, geometry) {
     lotWidthFt: parcelDims?.lotWidthFt || null,
     lotDepthFt: parcelDims?.lotDepthFt || null,
     lotPerimeterFt: parcelDims?.lotPerimeterFt || null,
+    // Parcel centroid — used to auto-trigger Solar API
+    centroidLat: parcelDims?.centroidLat || null,
+    centroidLng: parcelDims?.centroidLng || null,
     // Building dimensions (estimated from floor area ÷ stories)
     footprintSqFt: footprintSqFt,
     estBuildingPerimFt: estBuildingPerimFt,

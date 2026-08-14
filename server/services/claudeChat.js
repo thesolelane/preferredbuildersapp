@@ -602,6 +602,23 @@ async function runAdminTool(toolName, toolInput, db) {
     console.log(`[Chat→MassGIS] address="${toolInput.address}"`);
     const propData = await lookupPropertyByAddress(toolInput.address);
     if (propData) {
+      // Auto-enrich with free Solar roof data whenever coordinates are available
+      if (propData.centroidLat && propData.centroidLng) {
+        const { getFreeMeasurements } = require('./measurementService');
+        try {
+          const measurements = await getFreeMeasurements(
+            propData.centroidLat,
+            propData.centroidLng,
+            toolInput.address,
+          );
+          if (measurements) {
+            propData.buildingMeasurements = measurements;
+            console.log(`[Chat→MassGIS] Auto-enriched with free measurements for ${toolInput.address}`);
+          }
+        } catch (err) {
+          console.warn('[Chat→MassGIS] Auto-measurement error (non-fatal):', err.message);
+        }
+      }
       return JSON.stringify(propData, null, 2);
     }
     if (perplexity.isConfigured()) {
