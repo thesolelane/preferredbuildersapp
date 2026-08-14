@@ -1,4 +1,4 @@
-// client/src/index.js
+// client/src/index.js — v2 (SW cache bust)
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
