@@ -13,6 +13,7 @@ const { lookupPropertyByAddress, parseAddress } = require('./massGisService');
 const { lookupMrpcByAddress } = require('./mrpcService');
 const { checkLeadRecord } = require('./leadCheckService');
 const perplexity = require('./perplexityService');
+const { getFreeMeasurements } = require('./measurementService');
 
 /**
  * Enrich a record with property data. Runs in the background (fire-and-forget).
@@ -33,6 +34,7 @@ async function enrichProperty(db, type, id, address) {
     let massGisData = null;
     let mrpcData = null;
     let leadData = null;
+    let freeMeasurements = null;
 
     // ── MassGIS L3 Parcel lookup (statewide: year built, areas, assessed value,
     //    lot dimensions from polygon geometry, estimated building perimeter) ──
@@ -52,6 +54,26 @@ async function enrichProperty(db, type, id, address) {
       }
     } catch (err) {
       console.warn(`[PropertyEnrichment] MassGIS error for ${type} ${id}:`, err.message);
+    }
+
+    // ── Google Solar API (free roof area + pitch segments; skipped when key not set) ──
+    if (massGisData?.centroidLat && massGisData?.centroidLng) {
+      try {
+        freeMeasurements = await getFreeMeasurements(
+          massGisData.centroidLat,
+          massGisData.centroidLng,
+          address,
+        );
+        if (freeMeasurements) {
+          console.log(
+            `[PropertyEnrichment] Free measurements for ${type} ${id} — ` +
+              `sources: ${freeMeasurements.sources?.join(', ') || 'none'}, ` +
+              `roofArea: ${freeMeasurements.roofAreaFt2 || '—'} sq ft`,
+          );
+        }
+      } catch (err) {
+        console.warn(`[PropertyEnrichment] Free measurements error for ${type} ${id}:`, err.message);
+      }
     }
 
     // ── MRPC lookup (Montachusett towns: field card URL with sketch + last sale
@@ -87,6 +109,7 @@ async function enrichProperty(db, type, id, address) {
       massGis: massGisData,
       mrpc: mrpcData,
       leadCheck: leadData,
+      freeMeasurements: freeMeasurements || null,
       enrichedAt: new Date().toISOString(),
     };
 
@@ -99,7 +122,8 @@ async function enrichProperty(db, type, id, address) {
       `[PropertyEnrichment] Saved property_data for ${type} ${id} — ` +
         `MassGIS: ${massGisData ? 'found' : 'null'}, ` +
         `MRPC: ${mrpcData ? 'found' : 'not covered'}, ` +
-        `Lead: ${leadData ? (leadData.hasRecord ? 'found' : 'not found') : 'null'}`,
+        `Lead: ${leadData ? (leadData.hasRecord ? 'found' : 'not found') : 'null'}, ` +
+        `FreeMeasurements: ${freeMeasurements ? freeMeasurements.sources?.join('+') : 'none'}`,
     );
   } catch (err) {
     console.error(`[PropertyEnrichment] Unexpected error for ${type} ${id}:`, err.message);
