@@ -61,8 +61,9 @@ root.render(
   </AppErrorBoundary>
 );
 
+// Unregister any cached service workers — they were causing stale-bundle crashes.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js');
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((r) => r.unregister());
   });
 }
