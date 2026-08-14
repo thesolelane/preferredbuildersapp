@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import ErrorBoundary from './components/ErrorBoundary';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import JobDetail from './pages/JobDetail';
@@ -115,6 +116,7 @@ function App() {
   if (!token) return <Login onLogin={handleLogin} />;
 
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <Toast />
       <ConfirmDialog />
@@ -145,6 +147,7 @@ function App() {
         </Routes>
       </Layout>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
