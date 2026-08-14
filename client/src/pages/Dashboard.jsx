@@ -115,6 +115,19 @@ export default function Dashboard({ token }) {
   const [savingLead, setSavingLead] = useState(false);
   const suggestTimer = useRef(null);
   const esRef = useRef(null);
+  const [filterOutstanding, setFilterOutstanding] = useState(() => {
+    try {
+      return localStorage.getItem('pb_dashboard_filter_outstanding') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedJobs, setArchivedJobs] = useState([]);
+  const [archiveModal, setArchiveModal] = useState(null);
+  const [archiveReason, setArchiveReason] = useState('');
+  const [archiveNote, setArchiveNote] = useState('');
+  const [archiveBusy, setArchiveBusy] = useState(false);
 
   const headers = { 'x-auth-token': token };
 
@@ -243,20 +256,6 @@ export default function Dashboard({ token }) {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
-
-  const [filterOutstanding, setFilterOutstanding] = useState(() => {
-    try {
-      return localStorage.getItem('pb_dashboard_filter_outstanding') === 'true';
-    } catch {
-      return false;
-    }
-  });
-  const [showArchived, setShowArchived] = useState(false);
-  const [archivedJobs, setArchivedJobs] = useState([]);
-  const [archiveModal, setArchiveModal] = useState(null);
-  const [archiveReason, setArchiveReason] = useState('');
-  const [archiveNote, setArchiveNote] = useState('');
-  const [archiveBusy, setArchiveBusy] = useState(false);
 
   const openArchiveModal = (jobId, customerName, status) => {
     if (['complete', 'contract_signed'].includes(status)) {
